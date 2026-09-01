@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>TutorConnect</title>
+</head>
+<body>
+<main class="container">
+
+<!--nav-->
+<section class="slide">
+    <img src="" alt="" class="slide-img">
+    <h1>Miért válassz minket?</h1>
+    <ul class="slide-list">
+        <li class="slide-item active" data-img="/img/ellenorzott-oktatok.jpg">Ellenőrzött oktatók</li>
+        <li class="slide-item" data-img="/img/biztonsagos-fizetes.jpg">Biztonságos fizetés</li>
+        <li class="slide-item" data-img="/img/moderacio.jpg">Moderáció és admin támogatás</li>
+    </ul>
+    <div class="slide-controls">
+        <button class="arrow left" aria-label="Előző">‹</button>
+        <button class="arrow right" aria-label="Következő">›</button>
+    </div>
+</section>
+
+  <section class="">
+    <div class="">
+      <h2>Találj megbízható korrepetáló percek alatt.</h2>
+      <p>Felső és alsó éveseknek, szakértó oktatók, valós értékelésekkel, egyszerű időpontfoglalással.</p>
+      <div class="">
+        <button class="primary">Diákként keresek oktatót</button>
+        <button class="secondary">Korrepetáloként regisztrálok</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature-card">Megbizhazó oktató</div>
+    <div class="feature-card">Gyors idopontfoglalás</div>
+  </section>
+
+  <section class="hugyan_mükszik">
+    <h2>Hogyan működik?</h2>
+    <div class="steps">
+      <div class="step">1. Válaszd ki a tantárgyat</div>
+      <div class="step">2. Foglalj időpontot</div>
+      <div class="step">3. Tanulj és értékeld</div>
+    </div>
+  </section>
+
+
+  <!-- Statisztikák -->
+  <section class="stats">
+    <div class="stat">#+ sikeres korrepetálás</div>
+    <div class="stat">#+ aktív oktató</div> <!--Ide majd a # helyett az okatatok számát kérd ki a databaseböl-->
+    <div class="stat">#% elégedettség</div>
+  </section>
+
+  <!-- Footer -->
+
+</main>
+</body>
+<script src="/js/creator.js"></script>
+
+<script>
+const slideItems = document.querySelectorAll('.slide-item');
+const slideImg = document.querySelector('.slide-img');
+const nextBtn = document.querySelector('.arrow.right');
+const prevBtn = document.querySelector('.arrow.left');
+
+let index = 0;
+
+function showSlide(i) {
+    slideItems[index].classList.remove('active');
+    index = (i + slideItems.length) % slideItems.length;
+    slideItems[index].classList.add('active');
+    slideImg.src = slideItems[index].dataset.img;
+}
+
+function nextSlide() {
+    showSlide(index + 1);
+}
+
+function prevSlide() {
+    showSlide(index - 1);
+}
+
+// Kezdő kép beállítása
+slideImg.src = slideItems[index].dataset.img;
+
+// Automatikus váltás
+let autoSlide = setInterval(nextSlide, 5000);
+
+nextBtn.addEventListener('click', () => {
+    nextSlide();
+    resetTimer();
+});
+
+prevBtn.addEventListener('click', () => {
+    prevSlide();
+    resetTimer();
+});
+
+function resetTimer() {
+    clearInterval(autoSlide);
+    autoSlide = setInterval(nextSlide, 5000);
+}
+</script>
+</html>
