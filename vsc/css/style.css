@@ -266,35 +266,34 @@ button:hover {
     transform: translateY(-4px);
 }
 
-/* How it works */
-.hugyan_mukszik {
-    padding: 60px 0;
-    text-align: center;
-    width: 100%;
-    background: var(--white);
-}
-
-.hugyan_mukszik h2 {
+/* Hogyan müködik */
+.hugyan_mükszik_diak h1 {
+    color: var(--dark-text);
     font-size: 1.8rem;
+    text-align: center;
     margin-bottom: 32px;
     color: var(--main-blue-dark);
 }
 
 .steps {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 20px;
     padding: 0 20px;
 }
 
 .step {
+    text-align: center;
     background: var(--main-blue-light);
     border-radius: var(--radius);
     padding: 24px 16px;
     font-weight: 500;
     color: var(--main-blue-dark);
+    width: 100%;
+    max-width: 400px;
+    position: relative;
 }
-
 /* Stats */
 .stats {
     display: grid;
@@ -432,4 +431,26 @@ text-decoration: none;
     font-weight: 600;
     color: var(--main-blue-dark);
     transition: transform 0.2s ease;
+}
+
+/* Hero (subject szekció) */
+.subhero {
+    text-align: center;
+    padding: 20px 20px;
+    width: 100%;
+}
+
+.subhero p {
+    color: #495057;
+    font-size: 1.1rem;
+    max-width: 700px;
+    margin: 0 auto ;
+}
+
+.category {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    justify-items: center;
 }
