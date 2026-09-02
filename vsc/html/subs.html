@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/vsc/css/style.css">
+    <title>TutorConnect</title>
+</head>
+<body>
+<main class="container">
+
+<!--nav-->
+
+
+
+  <section class="sfeatures">
+    <div class="sfeature-card">Megbizhazó oktató</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+  </section>
+
+    <section class="sfeatures">
+    <div class="sfeature-card">Megbizhazó oktató</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+  </section>
+
+
+    <section class="sfeatures">
+    <div class="sfeature-card">Megbizhazó oktató</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+    <div class="sfeature-card">Gyors idopontfoglalás</div>
+  </section>
+
+
+
+
+
+
+<!-- Footer -->
+
+</main>
+</body>
+<script src="/vsc/js/creator.js"></script>
+
+<script>
+const slideItems = document.querySelectorAll('.slide-item');
+const slideImg = document.querySelector('.slide-img');
+const nextBtn = document.querySelector('.arrow.right');
+const prevBtn = document.querySelector('.arrow.left');
+
+let index = 0;
+
+function showSlide(i) {
+    slideItems[index].classList.remove('active');
+    index = (i + slideItems.length) % slideItems.length;
+    slideItems[index].classList.add('active');
+    slideImg.src = slideItems[index].dataset.img;
+}
+
+function nextSlide() {
+    showSlide(index + 1);
+}
+
+function prevSlide() {
+    showSlide(index - 1);
+}
+
+// Kezdő kép beállítása
+slideImg.src = slideItems[index].dataset.img;
+
+// Automatikus váltás
+let autoSlide = setInterval(nextSlide, 5000);
+
+nextBtn.addEventListener('click', () => {
+    nextSlide();
+    resetTimer();
+});
+
+prevBtn.addEventListener('click', () => {
+    prevSlide();
+    resetTimer();
+});
+
+function resetTimer() {
+    clearInterval(autoSlide);
+    autoSlide = setInterval(nextSlide, 5000);
+}
+</script>
+</html>

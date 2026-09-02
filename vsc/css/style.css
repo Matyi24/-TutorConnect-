@@ -335,9 +335,39 @@ button:hover {
     color: var(--white);
 }
 
+a{
+text-decoration: none;
+}
+
 /* Responsive */
 @media (max-width: 600px) {
     .slide h1 { font-size: 1.4rem; }
     .hero h2 { font-size: 1.6rem; }
     .slide-img { height: 180px; }
+}
+
+
+
+/* Subject cards */
+.sfeatures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    padding: 40px 0;
+    width: 100%;
+}
+
+.sfeature-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 28px 20px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--main-blue-dark);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease;
+}
+
+.sfeature-card:hover {
+    transform: translateY(-4px);
 }
