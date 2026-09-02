@@ -433,3 +433,25 @@ text-decoration: none;
     color: var(--main-blue-dark);
     transition: transform 0.2s ease;
 }
+
+/* Hero (subject szekció) */
+.subhero {
+    text-align: center;
+    padding: 20px 20px;
+    width: 100%;
+}
+
+.subhero p {
+    color: #495057;
+    font-size: 1.1rem;
+    max-width: 700px;
+    margin: 0 auto ;
+}
+
+.category {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    justify-items: center;
+}
