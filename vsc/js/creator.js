@@ -5,6 +5,7 @@ container.insertAdjacentHTML('afterbegin', `
     <div class="logo">TutorConnect</div>
     <ul class="nav-links">
       <li>Főoldal</li>
+      <li>Tantárgyak</li>
       <li>Hogyan működik</li>
       <li>Oktatók</li>
       <li>GYIK</li>
