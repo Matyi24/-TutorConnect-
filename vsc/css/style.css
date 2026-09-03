@@ -199,10 +199,7 @@ button:hover {
 
 .arrow {
     background: transparent;
-    color: var(--white);
-    border: 2px solid var(--white);
-    width: 44px;
-    height: 44px;
+    color: black;
     border-radius: 50%;
     font-size: 1.4rem;
     display: flex;
@@ -453,4 +450,81 @@ text-decoration: none;
     align-items: center;
     justify-content: center;
     justify-items: center;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.subject-selector {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    font-size: 18px;
+}
+
+.dropdown-button {
+    width: 24px;
+    height: 24px;
+
+    border: 1.5px solid #333;
+    border-radius: 50%;
+
+    background: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    padding: 0;
+}
+
+.arrow {
+    font-size: 18px;
+    line-height: 1;
+
+    transform: translateY(-2px);
+    transition: transform 0.2s;
+}
+
+/* A lenyíló menü */
+
+.dropdown-menu {
+    position: absolute;
+
+    /* Jobbra jelenjen meg */
+    top: 50%;
+    left: calc(100% + 10px);
+
+    transform: translateY(-50%);
+
+    min-width: 180px;
+
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+
+    display: none;
+
+    z-index: 100;
+    overflow: hidden;
+}
+
+/* Amikor nyitva van */
+.dropdown-menu.open {
+    display: block;
+}
+
+/* Egy elem a menüben */
+.dropdown-item {
+    padding: 10px 14px;
+
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.dropdown-item:hover {
+    background-color: #f0f0f0;
 }

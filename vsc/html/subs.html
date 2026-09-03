@@ -1,100 +1,91 @@
 <!DOCTYPE html>
 <html lang="hu">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
     <title>TutorConnect</title>
 </head>
+
 <body>
-<main class="container">
+    <main class="container">
 
-<!--nav-->
+        <!--nav-->
 
-<!--hero-->
-<div class="subhero">
-    <h1>Válassz tantárgyat</h1>
-    <p>Találj megbízható korrepetálót percek alatt, vagy ajánld fel segítségedet a diákoknak!</p>
-</div>
+        <!--hero-->
+        <div class="subhero">
+            <h1>Válassz tantárgyat</h1>
+            <p>Találj megbízható korrepetálót percek alatt, vagy ajánld fel segítségedet a diákoknak!</p>
+        </div>
 
-<!--Tartalom-->
+        <!--Tartalom-->
 
-<div class="category">
+        <div class="category">
 
-<label class="subcat" for="subs">Válassz tantárgy kategóriát:</label>
+            <div class="subject-selector">
+                <span id="selectedSubject">Minden tárgy</span>
 
-<select id="subs" name="subs">
-  <option value="matematika">Matematikai tárgyak</option>
-  <option value="human">Humán tárgyak</option>
-  <option value="termeszet">Természettudomány</option>
-  <option value="nyelv">Nyelvtan</option>
-</select>
+                <button id="dropdownButton" class="dropdown-button">
+                    <span class="arrow">⌄</span>
+                </button>
 
-</div>
+                <div id="dropdownMenu" class="dropdown-menu">
+                    <div class="dropdown-item">Minden tárgy</div>
+                    <div class="dropdown-item">Matematika</div>
+                    <div class="dropdown-item">Magyar</div>
+                    <div class="dropdown-item">Történelem</div>
+                    <div class="dropdown-item">Angol</div>
+                    <div class="dropdown-item">Informatika</div>
+                </div>
+            </div>
 
-  <div class="grid-container">
-    <a href="matek.html"><div class="subcard">Matematika</div></a>
-    <a href="matek.html"><div class="subcard">Szoftver-tesztelés</div></a>
-    <a href="matek.html"><div class="subcard">Szoftver-fejlesztés</div></a>
-    <a href="matek.html"><div class="subcard">Digitális kultúra</div></a>
-    <a href="matek.html"><div class="subcard">Fizika</div></a>
-    <a href="matek.html"><div class="subcard">Biológia</div></a>
-    <a href="matek.html"><div class="subcard">Statisztika</div></a>
-    <a href="matek.html"><div class="subcard">Pénzügy</div></a>
-    <a href="matek.html"><div class="subcard">Jog</div></a>
-    <a href="matek.html"><div class="subcard">Magyar nyelv</div></a>
-    <a href="matek.html"><div class="subcard">Történelem</div></a>
-    <a href="matek.html"><div class="subcard">Latin</div></a>
-  </div>
+        </div>
 
-<!-- Footer -->
+        <div class="grid-container">
+            <a href="matek.html">
+                <div class="subcard">Matematika</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Szoftver-tesztelés</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Szoftver-fejlesztés</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Digitális kultúra</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Fizika</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Biológia</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Statisztika</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Pénzügy</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Jog</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Magyar nyelv</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Történelem</div>
+            </a>
+            <a href="matek.html">
+                <div class="subcard">Latin</div>
+            </a>
+        </div>
 
-</main>
+        <!-- Footer -->
+
+    </main>
 </body>
 <script src="/js/creator.js"></script>
+<script src="/js/dropdown.js"></script>
 
-<script>
-const slideItems = document.querySelectorAll('.slide-item');
-const slideImg = document.querySelector('.slide-img');
-const nextBtn = document.querySelector('.arrow.right');
-const prevBtn = document.querySelector('.arrow.left');
-
-let index = 0;
-
-function showSlide(i) {
-    slideItems[index].classList.remove('active');
-    index = (i + slideItems.length) % slideItems.length;
-    slideItems[index].classList.add('active');
-    slideImg.src = slideItems[index].dataset.img;
-}
-
-function nextSlide() {
-    showSlide(index + 1);
-}
-
-function prevSlide() {
-    showSlide(index - 1);
-}
-
-// Kezdő kép beállítása
-slideImg.src = slideItems[index].dataset.img;
-
-// Automatikus váltás
-let autoSlide = setInterval(nextSlide, 5000);
-
-nextBtn.addEventListener('click', () => {
-    nextSlide();
-    resetTimer();
-});
-
-prevBtn.addEventListener('click', () => {
-    prevSlide();
-    resetTimer();
-});
-
-function resetTimer() {
-    clearInterval(autoSlide);
-    autoSlide = setInterval(nextSlide, 5000);
-}
-</script>
 </html>
