@@ -4,7 +4,7 @@ container.insertAdjacentHTML('afterbegin', `
   <nav class="navbar">
     <div class="logo">TutorConnect</div>
     <ul class="nav-links">
-      <a href="/vsc/html/index.html"><li>Főoldal</li></a>
+      <a href="index"><li>Főoldal</li></a>
       <li>Hogyan működik</li>
       <li>Oktatók</li>
       <li>GYIK</li>

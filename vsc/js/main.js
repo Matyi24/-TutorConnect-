@@ -6,13 +6,19 @@ app.use("/css", express.static(path.join(__dirname, "../css")));
 app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 
-app.get('/', (req, res) => {
-    res.send('hello world');
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/index.html"));
 });
-
-
 
 app.get("/index", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/index.html"));
 });
-app.listen(3000, () => console.log('Listening on port 3000...'));
+
+app.get("/subs", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/subs.html"));
+});
+
+
+
+app.listen(3000, () => console.log('Listening on port 3000...'));  
