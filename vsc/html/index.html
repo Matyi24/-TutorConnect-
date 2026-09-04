@@ -15,7 +15,7 @@
     <h1>Miért válassz minket?</h1>
 
     <ul class="slide-list">
-        <li class="slide-item active" data-img="/img/#.jpg">
+        <li class="slide-item active" data-img="/img/.jpg">
         <li class="slide-item active" data-img="/img/.jpg">
             Ellenőrzött oktatók.
         </li>
@@ -53,25 +53,14 @@
 
       
           <div class="step">1. Válaszd ki a tantárgyat.</div>
-
-
-          
           <div class="step">2. Foglalj időpontot.</div>
           <div class="step">3. Tanulj és értékeld.</div>
-        
-
-
 </div>
 
-
-
-
-
-    <section class="features">
+<section class="features">
       <a href="subs"><div class="feature-card" id="diak">Diákként keresek oktatót.</div></a>
       <div class="feature-card" id="Korrepetalo">Korrepetáloként regisztrálok.</div>
-      
-    </section>
+</section>
 
     <!-- Statisztikák -->
     <section class="stats">
@@ -115,7 +104,7 @@ function prevSlide() {
 // Kezdő háttérkép
 slide.style.backgroundImage = `url("${slideItems[index].dataset.img}")`;
 
-// Automatikus váltás
+
 let autoSlide = setInterval(nextSlide, 5000);
 
 nextBtn.addEventListener('click', () => {
