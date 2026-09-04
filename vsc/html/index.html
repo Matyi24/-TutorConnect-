@@ -15,7 +15,7 @@
     <h1>Miért válassz minket?</h1>
 
     <ul class="slide-list">
-        <li class="slide-item active" data-img="/img/#.jpg">
+        <li class="slide-item active" data-img="/img/.jpg">
         <li class="slide-item active" data-img="/img/.jpg">
             Ellenőrzött oktatók.
         </li>
@@ -52,36 +52,21 @@
 <div class="main-grid">
 
       
-          <div class="step1">
-            <h1>1. Válaszd ki a tantárgyat.</h1>
+          <div class="step">1. Válaszd ki a tantárgyat.</div>
 
-<p >Első lépésként válaszd ki azt a tantárgyat, amelyből szeretnél fejlődni vagy segítségre van szükséged. Böngéssz a különböző tantárgyak között, és találd meg azt, amelyik leginkább megfelel a céljaidnak. Legyen szó egy közelgő dolgozatra való felkészülésről, egy nehezebb tananyag megértéséről, házi feladat elkészítéséről vagy az ismereteid elmélyítéséről, könnyedén megtalálhatod a számodra megfelelő tanulási lehetőséget.</p>
-        </div>
 
-          <div class="step2">
-            <h1>2. Foglalj időpontot.</h1>
-<p>Válaszd ki a számodra legmegfelelőbb időpontot, amikor nyugodtan és zavartalanul tanulhatsz. Állítsd be, hogy mikor szeretnél segítséget kérni, és tervezd meg előre a tanulásra szánt időt. Így könnyebben beillesztheted a tanulást a mindennapjaidba, és biztos lehetsz benne, hogy a megfelelő időben kapsz segítséget.</p>
-          </div>
-          <div class="step2">
-            <h1>3. Tanulj és értékeld.</h1>
-<p>
-    A lefoglalt időpontban kezdj bele a tanulásba, és dolgozz együtt a személyre szabott segítséggel. Gyakorolj, kérdezz bátran, és mélyítsd el a tudásodat a kiválasztott tantárgyból. A tanulás végén értékeld a fejlődésedet, hogy lásd, miben lettél jobb, és mely területeken érdemes még tovább gyakorolnod.
-</p>
-          </div>
+          
+          <div class="step">2. Foglalj időpontot.</div>
+          <div class="step">3. Tanulj és értékeld.</div>
         
 
 
 </div>
 
-
-
-
-
-    <section class="features">
+<section class="features">
       <a href="subs"><div class="feature-card" id="diak">Diákként keresek oktatót.</div></a>
       <div class="feature-card" id="Korrepetalo">Korrepetáloként regisztrálok.</div>
-      
-    </section>
+</section>
 
     <!-- Statisztikák -->
     <section class="stats">
@@ -125,7 +110,7 @@ function prevSlide() {
 // Kezdő háttérkép
 slide.style.backgroundImage = `url("${slideItems[index].dataset.img}")`;
 
-// Automatikus váltás
+
 let autoSlide = setInterval(nextSlide, 5000);
 
 nextBtn.addEventListener('click', () => {

@@ -7,8 +7,9 @@ app.use("/css", express.static(path.join(__dirname, "../css")));
 app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 
+app.use(express.static("vsc"));
 
-const connection = mysql.createConnection({
+const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
@@ -28,7 +29,29 @@ app.get("/subs", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/subs.html"));
 });
 
-connection.connect((err) => {
+
+app.get("/api/subjects", (req, res) => {
+
+    const sql = "SELECT * FROM subjects";
+
+    db.query(sql, (err, results) => {
+
+        if (err) {
+            console.error("❌ SQL hiba:", err);
+
+            return res.status(500).json({
+                error: "Adatbázis hiba"
+            });
+        }
+
+        console.log("✅ Tantárgyak lekérve:", results.length);
+
+        res.json(results);
+    });
+});
+
+
+db.connect((err) => {
   if (err) {
     console.error("Kapcsolódási hiba:", err);
     return;
