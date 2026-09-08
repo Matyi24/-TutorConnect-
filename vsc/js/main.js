@@ -60,6 +60,28 @@ db.connect((err) => {
   console.log("Sikeresen csatlakozva a MySQL-hez!");
 });
 
+app.get("/api/subjects", async (req, res) => {
 
+    try {
+
+        const [rows] = await db.query(`
+            SELECT id, name, category
+            FROM subjects
+            ORDER BY name ASC
+        `);
+
+        res.json(rows);
+
+    } catch (error) {
+
+        console.error("Hiba:", error);
+
+        res.status(500).json({
+            error: "Nem sikerült lekérni a subjecteket."
+        });
+
+    }
+
+});
 
 app.listen(3000, () => console.log('Listening on port 3000...'));  
