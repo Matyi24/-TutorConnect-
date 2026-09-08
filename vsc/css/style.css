@@ -263,15 +263,6 @@ button:hover {
     transform: translateY(-4px);
 }
 
-/* Hogyan müködik */
-.hugyan_mükszik_diak h1 {
-    color: var(--dark-text);
-    font-size: 1.8rem;
-    text-align: center;
-    margin-bottom: 32px;
-    color: var(--main-blue-dark);
-}
-
 .steps {
     display: flex;
     flex-direction: column;
@@ -346,96 +337,6 @@ text-decoration: none;
     .hero h2 { font-size: 1.6rem; }
 }
 
-
-/* Subject cards */
-.grid-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr;
-    gap: 0.75em;
-    justify-items: center;
-    align-items: center;
-    justify-content: center;
-    margin-top: 1em;
-    margin-bottom: 1em;
-
-}
-
-.subcard {
-    width: 95%;
-    background: var(--white);
-    border-radius: var(--radius);
-    padding: 28px 20px;
-    text-align: center;
-    font-weight: 600;
-    color: var(--main-blue-dark);
-    box-shadow: var(--shadow);
-    transition: transform 0.2s ease;
-}
-
-.subcard:hover {
-    transform: translateY(-4px);
-}
-
-.grid-container a{
-    justify-items: center;
-    align-items: center;
-    width: 100%;
-    text-align: center;
-    font-weight: 600;
-    color: var(--main-blue-dark);
-    transition: transform 0.2s ease;
-}
-
-/* Hero (subject szekció) */
-.subhero {
-    text-align: center;
-    padding: 20px 20px;
-    width: 100%;
-}
-
-.subhero p {
-    color: #495057;
-    font-size: 1.1rem;
-    max-width: 700px;
-    margin: 0 auto ;
-}
-
-.category {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    justify-items: center;
-        font-family: 'Segoe UI', system-ui, sans-serif;
-}
-
-.subject-selector {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-
-    font-size: 18px;
-}
-
-.dropdown-button {
-    width: 24px;
-    height: 24px;
-
-    border: 1.5px solid #333;
-    border-radius: 50%;
-
-    background: white;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-    padding: 0;
-}
-
 .arrow {
     font-size: 18px;
     line-height: 1;
@@ -444,47 +345,6 @@ text-decoration: none;
     transition: transform 0.2s;
 }
 
-/* A lenyíló menü */
-
-.dropdown-menu {
-    position: absolute;
-
-    /* Jobbra jelenjen meg */
-    top: 50%;
-    left: calc(100% + 10px);
-
-    transform: translateY(-50%);
-
-    min-width: 180px;
-
-    background: white;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-
-    display: none;
-
-    z-index: 100;
-    overflow: hidden;
-}
-
-/* Amikor nyitva van */
-.dropdown-menu.open {
-    display: block;
-}
-
-/* Egy elem a menüben */
-.dropdown-item {
-    padding: 10px 14px;
-
-    cursor: pointer;
-    font-size: 16px;
-}
-
-.dropdown-item:hover {
-    background-color: #f0f0f0;
-}
 
 .main-grid{
     width: 80%;
@@ -531,7 +391,11 @@ text-decoration: none;
     margin-bottom: 20px;
     color: var(--main-blue-dark);
 }
-
+.hogyan{
+    font-size: 10vh;
+    text-align: center;
+    color:var(--main-blue)
+}
 .step1 p{
 width: 80%;
 padding: 10px 20px;
