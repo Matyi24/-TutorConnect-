@@ -6,6 +6,7 @@ const mysql = require("mysql2");
 app.use("/css", express.static(path.join(__dirname, "../css")));
 app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
+app.use("/images", express.static(path.join(__dirname, "../images")));
 
 app.use(express.static("vsc"));
 
