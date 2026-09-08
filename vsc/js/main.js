@@ -32,7 +32,7 @@ app.get("/subs", (req, res) => {
 
 app.get("/api/subjects", (req, res) => {
 
-    const sql = "SELECT * FROM subjects";
+    const sql = "SELECT * FROM subjects"; 
 
     db.query(sql, (err, results) => {
 
@@ -43,7 +43,7 @@ app.get("/api/subjects", (req, res) => {
                 error: "Adatbázis hiba"
             });
         }
-
+ 
         console.log("✅ Tantárgyak lekérve:", results.length);
 
         res.json(results);
