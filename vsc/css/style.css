@@ -10,6 +10,13 @@
     --shadow: 0 4px 16px rgba(76, 110, 245, 0.12);
 }
 
+img {
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+
 * {
     box-sizing: border-box;
     margin: 0;
