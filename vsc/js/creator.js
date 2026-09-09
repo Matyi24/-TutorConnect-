@@ -10,8 +10,8 @@ container.insertAdjacentHTML('afterbegin', `
       <li>GYIK</li>
     </ul>
     <div class="cta-buttons">
-      <button class="login">Belépés</button>
-      <button class="register">Regisztráció</button>
+      <a href="login.html"><button class="login">Belépés</button></a>
+      <a href="register.html"><button class="register">Regisztráció</button></a>
     </div>
   </nav>
 `);

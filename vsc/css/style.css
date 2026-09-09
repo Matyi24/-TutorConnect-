@@ -26,10 +26,13 @@ body {
     font-family: 'Segoe UI', system-ui, sans-serif;
     color: var(--dark-text);
     background: var(--main-blue-light);
-    background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), url('/images/mainbg2.png');
+    line-height: 1.6;
+}
+
+#hatter{
+    background-image: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1)), url('/images/jokep.png');
     background-size: cover;
     background-position: center;
-    line-height: 1.6;
 }
 
 .container {
