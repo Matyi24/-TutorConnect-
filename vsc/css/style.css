@@ -16,7 +16,6 @@ img {
   pointer-events: none;
 }
 
-
 * {
     box-sizing: border-box;
     margin: 0;
@@ -27,6 +26,9 @@ body {
     font-family: 'Segoe UI', system-ui, sans-serif;
     color: var(--dark-text);
     background: var(--main-blue-light);
+    background-image: linear-gradient(rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), url('/images/mainbg2.png');
+    background-size: cover;
+    background-position: center;
     line-height: 1.6;
 }
 
