@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+</head>
+<body>
+ <h1 class="title">Register</h1>
+      <div class="register_text">Van már tutor connect fiókod? <a href="login">Jelentkezz be.</a></div>
+ 
+        <div class="field">
+          <label for="name">Név:</label>
+          <input type="text" id="name" name="name">
+        </div>
+ 
+        <div class="field">
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email">
+        </div>
+ 
+        <div class="field">
+          <label for="role">Ennek regisztálok:</label>
+          <select id="role" name="role">
+            <option value="korrepetalo" id="Tutor">Korrepetáló</option>
+            <option value="diak" id="Diak">Diák</option>
+          </select>
+        </div>
+ 
+        <div class="field">
+          <label>Jelszó:</label>
+          <input type="password" id="password" name="password">
+        </div>
+ 
+        <div class="field">
+          <label>Jelszó megerősítése:</label>
+          <input type="password" id="password_confirm" name="password_confirm">
+        </div>
+ 
+        <button type="submit" class="signin-btn">Regisztrálok.</button>
+</body>
+</html>
