@@ -21,6 +21,10 @@ body {
     color: var(--dark-text);
     background: var(--main-blue-light);
     line-height: 1.6;
+    background-image: url(/images/mainbg.png) ;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
 }
 
 .container {
@@ -232,10 +236,25 @@ text-decoration: none;
     color: var(--main-blue-dark);
     box-shadow: var(--shadow);
     transition: transform 0.2s ease;
+    transition: 0.23s;
+    border-color: white;
+    border-radius: var(--radius);
+    border-width: 1.5px;
+    border-style: solid;
 }
 
 .subcard:hover {
     transform: translateY(-4px);
+    background: rgba(17, 5, 252, 0.144);
+    transition: 0.23s;
+    backdrop-filter: blur(15px) brightness(1.9);
+    -webkit-backdrop-filter: blur(10px);
+    color: white;
+    border-color: white;
+    border-radius: var(--radius);
+    border-width: 1.5px;
+    border-style: solid;
+    
 }
 
 .grid-container a{

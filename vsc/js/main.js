@@ -29,6 +29,12 @@ app.get("/index", (req, res) => {
 app.get("/subs", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/subs.html"));
 });
+app.get("/login", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/login.html"));
+});
+app.get("/register", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/register.html"));
+});
 
 
 app.get("/api/subjects", (req, res) => {
