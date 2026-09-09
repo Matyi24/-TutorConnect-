@@ -1,4 +1,14 @@
-
+:root {
+    --main-blue: #4C6EF5;
+    --main-blue-dark: #3B5BDB;
+    --main-blue-light: #DBE4FF;
+    --main-grey: #ADB5BD;
+    --light-grey: #F1F3F5;
+    --dark-text: #212529;
+    --white: #ffffff;
+    --radius: 12px;
+    --shadow: 0 4px 16px rgba(76, 110, 245, 0.12);
+}
 /*
 HERO START
 */
@@ -60,10 +70,9 @@ HERO START
 .arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(-50%);
   font-size: 3rem;
-  background: rgba(0,0,0,0.4);
-  color: gold;
+  background: rgba(255, 255, 255, 0.4);
+  color: var(--main-blue) ;
   border: none;
   padding: 0.5rem 1rem;
   cursor: pointer;
@@ -72,7 +81,7 @@ HERO START
 }
 
 .arrow:hover {
-  background: rgba(0,0,0,0.7);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .arrow.left {
