@@ -30,6 +30,7 @@ body {
 .container {
     width: 100%;
     margin: 0 auto;
+    min-height: 1000px;
 }
 
 /* Buttons */
@@ -125,6 +126,26 @@ cta-buttons {
     color: var(--white);
     cursor: pointer;
     transition: opacity 0.15s ease;
+    position: relative;
+}
+
+/* Underline */
+.nav-links li::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 2px;
+    background-color: var(--white);
+
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.25s ease;
+}
+
+.nav-links li:hover::after {
+    transform: scaleX(1);
 }
 
 .nav-links li:hover {
@@ -180,6 +201,8 @@ cta-buttons {
     background: var(--main-blue-dark);
     text-align: center;
     width: 100%;
+    bottom: 0;
+    
 }
 
 .footer ul {
@@ -272,13 +295,15 @@ text-decoration: none;
     text-align: center;
     padding: 20px 20px;
     width: 100%;
+    color: white;
 }
 
 .subhero p {
-    color: #495057;
+    color: lightgrey;
     font-size: 1.1rem;
     max-width: 700px;
     margin: 0 auto ;
+    
 }
 
 .category {
@@ -297,6 +322,7 @@ text-decoration: none;
     gap: 8px;
 
     font-size: 18px;
+    color: white;
 }
 
 .dropdown-button {
@@ -360,6 +386,7 @@ text-decoration: none;
 
     cursor: pointer;
     font-size: 16px;
+    color: black;
 }
 
 .dropdown-item:hover {
