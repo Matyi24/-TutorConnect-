@@ -20,20 +20,3 @@ function prevSlide() {
 
 // Automatikus váltás
 let autoSlide = setInterval(nextSlide, 5000);
-
-// Nyilak
-nextBtn.addEventListener('click', () => {
-  nextSlide();
-  resetTimer();
-});
-
-prevBtn.addEventListener('click', () => {
-  prevSlide();
-  resetTimer();
-});
-
-// Újraindítja az időzítőt kattintás után
-function resetTimer() {
-  clearInterval(autoSlide);
-  autoSlide = setInterval(nextSlide, 5000);
-}
