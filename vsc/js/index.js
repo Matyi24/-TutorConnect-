@@ -109,84 +109,87 @@ function displaySubjects(subjects) {
     container.innerHTML = "";
 
 
-    subjects.forEach(subject => {
+   subjects.forEach((subject, index) => {
 
-        // ==================================
-        // LINK
-        // ==================================
+    // ==================================
+    // LINK
+    // ==================================
 
-        const link = document.createElement("a");
+    const link = document.createElement("a");
 
-        link.href = `matek.html?subject_id=${subject.id}`;
-
-
-        // ==================================
-        // KÁRTYA
-        // ==================================
-
-        const card = document.createElement("div");
-
-        card.classList.add("subcard");
+    link.href = `matek.html?subject_id=${subject.id}`;
 
 
-        // ==================================
-        // IKON
-        // ==================================
+    // ==================================
+    // KÁRTYA
+    // ==================================
 
-        const icon = document.createElement("div");
+    const card = document.createElement("div");
 
-        icon.classList.add("subject-icon");
+    card.classList.add("subcard");
 
-        icon.textContent = getSubjectIcon(subject.name);
-
-
-        // ==================================
-        // INFORMÁCIÓ
-        // ==================================
-
-        const info = document.createElement("div");
-
-        info.classList.add("subject-info");
+    // Animáció késleltetése
+    card.style.animationDelay = `${index * 0.1}s`;
 
 
-        const title = document.createElement("h2");
+    // ==================================
+    // IKON
+    // ==================================
 
-        title.textContent = subject.name;
+    const icon = document.createElement("div");
 
+    icon.classList.add("subject-icon");
 
-        const description = document.createElement("p");
-
-        description.textContent = "Elérhető korrepetitorok";
-
-
-        info.appendChild(title);
-        info.appendChild(description);
+    icon.textContent = getSubjectIcon(subject.name);
 
 
-        // ==================================
-        // NYÍL
-        // ==================================
+    // ==================================
+    // INFORMÁCIÓ
+    // ==================================
 
-        const arrow = document.createElement("span");
+    const info = document.createElement("div");
 
-        arrow.classList.add("subject-arrow");
-
-        arrow.textContent = "→";
+    info.classList.add("subject-info");
 
 
-        // ==================================
-        // KÁRTYA ÖSSZEÁLLÍTÁSA
-        // ==================================
+    const title = document.createElement("h2");
 
-        card.appendChild(icon);
-        card.appendChild(info);
-        card.appendChild(arrow);
+    title.textContent = subject.name;
 
-        link.appendChild(card);
 
-        container.appendChild(link);
+    const description = document.createElement("p");
 
-    });
+    description.textContent = "Elérhető korrepetitorok";
+
+
+    info.appendChild(title);
+    info.appendChild(description);
+
+
+    // ==================================
+    // NYÍL
+    // ==================================
+
+    const arrow = document.createElement("span");
+
+    arrow.classList.add("subject-arrow");
+
+    arrow.textContent = "→";
+
+
+    // ==================================
+    // KÁRTYA ÖSSZEÁLLÍTÁSA
+    // ==================================
+
+    card.appendChild(icon);
+    card.appendChild(info);
+    card.appendChild(arrow);
+
+    link.appendChild(card);
+
+    container.appendChild(link);
+
+});
 
 }
 
