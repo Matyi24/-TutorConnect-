@@ -105,7 +105,7 @@ cta-buttons {
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 110;
     width: 100%;
 }
 
@@ -433,7 +433,7 @@ text-decoration: none;
 }
 .subject-selector {
     position: relative;
-    z-index: 1000;
+    z-index: 101;
 
     display: flex;
     align-items: center;
