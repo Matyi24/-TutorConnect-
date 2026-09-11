@@ -1,0 +1,617 @@
+a/* ==================================================
+   ALAP
+================================================== */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+    min-height: 100vh;
+
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(25, 125, 255, 0.08),
+            transparent 30%
+        ),
+        #050b13;
+
+    color: #ffffff;
+
+    font-family:
+        Inter,
+        Arial,
+        Helvetica,
+        sans-serif;
+}
+
+
+/* ==================================================
+   CONTAINER
+================================================== */
+
+.container {
+    width: 100%;
+    min-height: 100vh;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 25px;
+}
+
+
+
+
+/* ==================================================
+   FŐ PANEL
+================================================== */
+
+.faq-panel {
+
+    width: 100%;
+    max-width: none;
+
+    min-height: calc(100vh - 50px);
+
+    display: grid;
+
+    grid-template-columns:
+        350px
+        1px
+        1fr;
+
+
+    /* háttér */
+
+    background:
+
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(37, 148, 255, 0.18),
+            transparent 35%
+        ),
+
+        radial-gradient(
+            circle at 20% 100%,
+            rgba(0, 91, 255, 0.08),
+            transparent 35%
+        ),
+
+        linear-gradient(
+            135deg,
+            #06101c,
+            #091827 50%,
+            #050d17
+        );
+
+
+    /* keret */
+
+    border:
+        1px solid
+        rgba(77, 166, 255, 0.18);
+
+
+    border-radius: 24px;
+
+
+    /* árnyék */
+
+    box-shadow:
+
+        0 30px 100px
+        rgba(0, 0, 0, 0.45),
+
+        0 0 50px
+        rgba(0, 105, 255, 0.04),
+
+        inset 0 1px 0
+        rgba(255, 255, 255, 0.05);
+
+
+    overflow: hidden;
+}
+
+
+/* ==================================================
+   BAL OLDALI MENÜ
+================================================== */
+
+.faq-menu {
+
+    padding: 40px 24px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: center;
+
+    gap: 10px;
+}
+
+
+/* ==================================================
+   MENÜ ELEM
+================================================== */
+
+.faq-item {
+
+    position: relative;
+
+    min-height: 70px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 18px;
+
+    padding:
+        18px 20px;
+
+
+    border-radius: 15px;
+
+    color: #71869d;
+
+    cursor: pointer;
+
+    user-select: none;
+
+
+    transition:
+
+        background 0.3s ease,
+
+        color 0.3s ease,
+
+        transform 0.3s ease,
+
+        box-shadow 0.3s ease;
+}
+
+
+/* hover */
+
+.faq-item:hover {
+
+    color: #dff1ff;
+
+    background:
+        rgba(37, 143, 255, 0.08);
+
+    transform:
+        translateX(5px);
+}
+
+
+/* ==================================================
+   AKTÍV MENÜ
+================================================== */
+
+.faq-item.active {
+
+    color: #ffffff;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            rgba(28, 137, 255, 0.22),
+            rgba(28, 137, 255, 0.035)
+        );
+
+
+    box-shadow:
+
+        inset 3px 0 0
+        #2696ff,
+
+        0 10px 35px
+        rgba(0, 105, 255, 0.10);
+}
+
+
+/* ==================================================
+   SZÁM
+================================================== */
+
+.faq-number {
+
+    min-width: 30px;
+
+    color: #2997ff;
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    letter-spacing: 1px;
+}
+
+
+/* ==================================================
+   MENÜ SZÖVEG
+================================================== */
+
+.faq-label {
+
+    font-size: 15px;
+
+    font-weight: 600;
+
+    line-height: 1.4;
+}
+
+
+/* ==================================================
+   NYÍL
+================================================== */
+
+.faq-arrow {
+
+    margin-left: auto;
+
+    color: #4eafff;
+
+    font-size: 20px;
+
+    opacity: 0;
+
+    transform:
+        translateX(-8px);
+
+
+    transition:
+
+        opacity 0.3s ease,
+
+        transform 0.3s ease;
+}
+
+
+.faq-item:hover .faq-arrow {
+
+    opacity: 1;
+
+    transform:
+        translateX(0);
+}
+
+
+.faq-item.active .faq-arrow {
+
+    opacity: 1;
+
+    transform:
+        translateX(0);
+}
+
+
+/* ==================================================
+   ELVÁLASZTÓ VONAL
+================================================== */
+
+.faq-divider {
+
+    width: 1px;
+
+    margin:
+        55px 0;
+
+
+    background:
+
+        linear-gradient(
+            to bottom,
+
+            transparent 0%,
+
+            rgba(37, 143, 255, 0.15) 10%,
+
+            rgba(37, 143, 255, 0.45) 25%,
+
+            #258fff 50%,
+
+            rgba(37, 143, 255, 0.45) 75%,
+
+            rgba(37, 143, 255, 0.15) 90%,
+
+            transparent 100%
+        );
+
+
+    box-shadow:
+
+        0 0 15px
+        rgba(38, 143, 255, 0.55),
+
+        0 0 35px
+        rgba(38, 143, 255, 0.15);
+}
+
+
+/* ==================================================
+   JOBB OLDAL
+================================================== */
+
+.faq-content {
+
+    position: relative;
+
+    min-width: 0;
+
+    padding:
+        70px;
+
+
+    display: flex;
+
+    align-items: center;
+}
+
+
+/* ==================================================
+   JOBB OLDALI SZÖVEG
+================================================== */
+
+.faq-text {
+
+    position: absolute;
+
+    max-width: 600px;
+
+    opacity: 0;
+
+    transform:
+        translateY(20px);
+
+
+    pointer-events: none;
+
+
+    transition:
+
+        opacity 0.4s ease,
+
+        transform 0.4s ease;
+}
+
+
+/* aktív */
+
+.faq-text.active {
+
+    position: relative;
+
+    opacity: 1;
+
+    transform:
+        translateY(0);
+
+    pointer-events: auto;
+}
+
+
+/* ==================================================
+   KIS KÉK CÍMKE
+================================================== */
+
+.faq-tag {
+
+    display: inline-block;
+
+    margin-bottom: 20px;
+
+    color: #329aff;
+
+    font-size: 11px;
+
+    font-weight: 800;
+
+    letter-spacing: 2px;
+
+    text-transform: uppercase;
+}
+
+
+/* ==================================================
+   CÍM
+================================================== */
+
+.faq-text h1 {
+
+    margin-bottom: 22px;
+
+    font-size:
+        clamp(34px, 4vw, 52px);
+
+
+    line-height: 1.05;
+
+    letter-spacing: -2px;
+
+
+    background:
+
+        linear-gradient(
+            90deg,
+            #ffffff 0%,
+            #ffffff 35%,
+            #8bc9ff 100%
+        );
+
+
+    background-clip: text;
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+}
+
+
+/* ==================================================
+   LEÍRÁS
+================================================== */
+
+.faq-text p {
+
+    max-width: 570px;
+
+    color: #8fa5ba;
+
+    font-size: 16px;
+
+    line-height: 1.8;
+}
+
+
+/* ==================================================
+   MOBIL
+================================================== */
+
+@media (max-width: 800px) {
+
+    .container {
+
+        padding:
+            25px 15px;
+    }
+
+
+    .faq-panel {
+
+        grid-template-columns:
+            1fr;
+
+        min-height: auto;
+
+        border-radius: 20px;
+    }
+
+
+    .faq-menu {
+
+        padding:
+            20px;
+    }
+
+
+    .faq-item {
+
+        min-height: 60px;
+
+        padding:
+            16px;
+    }
+
+
+    .faq-divider {
+
+        width: auto;
+
+        height: 1px;
+
+        margin:
+            0 25px;
+
+
+        background:
+
+            linear-gradient(
+                90deg,
+                transparent,
+                #258fff,
+                transparent
+            );
+
+
+        box-shadow:
+
+            0 0 15px
+            rgba(38, 143, 255, 0.45);
+    }
+
+
+    .faq-content {
+
+        min-height: 330px;
+
+        padding:
+            50px 30px;
+    }
+
+
+    .faq-text h1 {
+
+        font-size: 35px;
+
+        letter-spacing: -1px;
+    }
+
+
+    .faq-text p {
+
+        font-size: 15px;
+    }
+
+}
+
+
+/* ==================================================
+   KIS MOBIL
+================================================== */
+
+@media (max-width: 480px) {
+
+    .faq-menu {
+
+        padding:
+            15px;
+    }
+
+
+    .faq-item {
+
+        gap: 12px;
+
+        padding:
+            15px;
+    }
+
+
+    .faq-number {
+
+        min-width: 24px;
+    }
+
+
+    .faq-label {
+
+        font-size: 14px;
+    }
+
+
+    .faq-content {
+
+        padding:
+            40px 22px;
+
+        min-height: 350px;
+    }
+
+
+    .faq-text h1 {
+
+        font-size: 30px;
+    }
+
+}

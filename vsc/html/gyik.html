@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- CSS -->
+     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/gyik.css">
+    
+
+    <title>TutorConnect - Gyakori kérdések</title>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <section class="faq-panel">
+
+            <!-- =========================
+                 BAL OLDALI MENÜ
+            ========================== -->
+
+            <div class="faq-menu">
+
+                <div class="faq-item active" data-index="0">
+                    <div class="faq-number">01</div>
+                    <div class="faq-label">Mi a TutorConnect?</div>
+                    <div class="faq-arrow">→</div>
+                </div>
+
+                <div class="faq-item" data-index="1">
+                    <div class="faq-number">02</div>
+                    <div class="faq-label">Hogyan működik?</div>
+                    <div class="faq-arrow">→</div>
+                </div>
+
+                <div class="faq-item" data-index="2">
+                    <div class="faq-number">03</div>
+                    <div class="faq-label">Hogyan találok tutort?</div>
+                    <div class="faq-arrow">→</div>
+                </div>
+
+                <div class="faq-item" data-index="3">
+                    <div class="faq-number">04</div>
+                    <div class="faq-label">Mennyibe kerül?</div>
+                    <div class="faq-arrow">→</div>
+                </div>
+
+            </div>
+
+
+            <!-- =========================
+                 ELVÁLASZTÓ VONAL
+            ========================== -->
+
+            <div class="faq-divider"></div>
+
+
+            <!-- =========================
+                 JOBB OLDALI TARTALOM
+            ========================== -->
+
+            <div class="faq-content">
+
+                <div class="faq-text active">
+
+                    <div class="faq-tag">
+                        01 / GYAKORI KÉRDÉS
+                    </div>
+
+                    <h1>
+                        Mi a TutorConnect?
+                    </h1>
+
+                    <p>
+                        A TutorConnect egy olyan platform, ahol a diákok
+                        könnyedén megtalálhatják a számukra megfelelő
+                        magántanárt vagy tutort.
+                    </p>
+
+                </div>
+
+
+                <div class="faq-text">
+
+                    <div class="faq-tag">
+                        02 / GYAKORI KÉRDÉS
+                    </div>
+
+                    <h1>
+                        Hogyan működik?
+                    </h1>
+
+                    <p>
+                        Válaszd ki a számodra megfelelő tantárgyat,
+                        keresd meg a megfelelő tutort, majd vedd fel
+                        vele a kapcsolatot.
+                    </p>
+
+                </div>
+
+
+                <div class="faq-text">
+
+                    <div class="faq-tag">
+                        03 / GYAKORI KÉRDÉS
+                    </div>
+
+                    <h1>
+                        Hogyan találok tutort?
+                    </h1>
+
+                    <p>
+                        A platform segítségével egyszerűen kereshetsz
+                        a tutorok között tantárgy, helyszín és egyéb
+                        szempontok alapján.
+                    </p>
+
+                </div>
+
+
+                <div class="faq-text">
+
+                    <div class="faq-tag">
+                        04 / GYAKORI KÉRDÉS
+                    </div>
+
+                    <h1>
+                        Mennyibe kerül?
+                    </h1>
+
+                    <p>
+                        A tutorok saját maguk határozzák meg az óradíjukat,
+                        így többféle árkategória közül választhatsz.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================
+         JAVASCRIPT
+         NEM KELL KÜLÖN JS FÁJL
+    ========================== -->
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const menuItems = document.querySelectorAll(".faq-item");
+            const contents = document.querySelectorAll(".faq-text");
+
+
+            menuItems.forEach(function (item) {
+
+                item.addEventListener("click", function () {
+
+                    const index = this.getAttribute("data-index");
+
+
+                    /* Minden menüpont kikapcsolása */
+
+                    menuItems.forEach(function (menuItem) {
+
+                        menuItem.classList.remove("active");
+
+                    });
+
+
+                    /* Minden tartalom kikapcsolása */
+
+                    contents.forEach(function (content) {
+
+                        content.classList.remove("active");
+
+                    });
+
+
+                    /* Kiválasztott menüpont */
+
+                    this.classList.add("active");
+
+
+                    /* Kiválasztott tartalom */
+
+                    contents[index].classList.add("active");
+
+                });
+
+            });
+
+        });
+
+    </script>
+    <script src="/js/creator.js"></script>
+
+</body>
+
+</html>
