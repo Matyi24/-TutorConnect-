@@ -3,41 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/login.css">
     <link rel="stylesheet" href="/css/style.css">
     <title>Regisztráció</title>
-</head>
-<body>
-  <main class="container">
-    <h1 class="title">Regisztráció</h1>
-    <div class="register_text">Van már Tutor Connect fiókod? <a href="/login">Jelentkezz be.</a></div>
+  </head>
+  <body>
+    <main class="container">
+      <h1 class="title">Regisztráció</h1>
+      <div class="register_text">Van már Tutor Connect fiókod? <a href="/login">Jelentkezz be.</a></div>
 
-    <form action="/register" method="POST">
+      
+      <form action="/register" method="POST">
         <div class="field">
-            <label for="name">Név:</label>
-            <input type="text" id="name" name="name" required>
+          <label for="name">Név:</label>
+          <input type="text" id="name" name="name" required>
         </div>
-
+        
         <div class="field">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email" required>
         </div>
-
+        
+        <div class="field">
+          <label for="password">Jelszó:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        
+        <div class="field">
+          <label for="password_confirm">Jelszó megerősítése:</label>
+          <input type="password" id="password_confirm" name="password_confirm" required>
+        </div>
+        
+        
         <div class="field">
             <label for="role">Ennek regisztrálok:</label>
             <select id="role" name="role">
                 <option value="korrepetalo">Korrepetáló</option>
                 <option value="diak">Diák</option>
             </select>
-        </div>
-
-        <div class="field">
-            <label for="password">Jelszó:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-
-        <div class="field">
-            <label for="password_confirm">Jelszó megerősítése:</label>
-            <input type="password" id="password_confirm" name="password_confirm" required>
         </div>
 
         <button type="submit" class="signin-btn">Regisztrálok</button>

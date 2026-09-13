@@ -1,0 +1,135 @@
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.container .footer {
+    margin-top: auto;
+}
+
+/* Page heading */
+.title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--dark-text);
+    margin: 56px auto 12px;
+    padding-top: 5vh;
+}
+
+/* "Don't have an account? / Already have an account?" links */
+.account_create,
+.register_text {
+    text-align: center;
+    color: #495057;
+    font-size: 0.95rem;
+    margin: 0 auto 32px;
+}
+
+.account_create a,
+.register_text a {
+    color: var(--main-blue);
+    font-weight: 600;
+}
+
+.account_create a:hover,
+.register_text a:hover {
+    text-decoration: underline;
+}
+
+/* Form layout (register.html has a <form>, login.html's fields
+   sit directly in .container — both are handled by these rules) */
+form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+}
+
+.field {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto 20px;
+}
+
+.field:last-of-type {
+    margin-bottom: 28px;
+}
+
+.field label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    color: var(--dark-text);
+}
+
+.field input,
+.field select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--main-grey);
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--dark-text);
+    background: var(--white);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--main-grey) 50%),
+        linear-gradient(135deg, var(--main-grey) 50%, transparent 50%);
+    background-position: calc(100% - 20px) center, calc(100% - 15px) center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+.field input:focus,
+.field select:focus {
+    outline: none;
+    border-color: var(--main-blue);
+    box-shadow: 0 0 0 3px var(--main-blue-light);
+}
+
+/* Submit button */
+.signin-btn {
+    display: block;
+    width: 100%;
+    max-width: 380px;
+    margin: 4px auto 64px;
+    background: var(--main-blue);
+    color: var(--white);
+    font-weight: 600;
+    box-shadow: var(--shadow);
+}
+
+.signin-btn:hover {
+    background: var(--main-blue-dark);
+}
+
+/* Small screens */
+@media (max-width: 460px) {
+    form,
+    .field,
+    .signin-btn {
+        max-width: 100%;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .title {
+        margin-top: 40px;
+        font-size: 1.6rem;
+    }
+}
