@@ -14,7 +14,6 @@ body {
     margin-top: auto;
 }
 
-/* Page heading */
 .title {
     text-align: center;
     font-size: 2rem;
@@ -24,7 +23,6 @@ body {
     padding-top: 5vh;
 }
 
-/* "Don't have an account? / Already have an account?" links */
 .account_create,
 .register_text {
     text-align: center;
@@ -44,8 +42,6 @@ body {
     text-decoration: underline;
 }
 
-/* Form layout (register.html has a <form>, login.html's fields
-   sit directly in .container — both are handled by these rules) */
 form {
     display: flex;
     flex-direction: column;
@@ -118,7 +114,6 @@ form {
     background: var(--main-blue-dark);
 }
 
-/* Small screens */
 @media (max-width: 460px) {
     form,
     .field,
