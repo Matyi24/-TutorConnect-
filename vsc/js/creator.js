@@ -11,6 +11,7 @@ body.insertAdjacentHTML('afterbegin', `
         </a>
 
         <ul class="nav-links">
+
             <a href="index">
                 <li>Főoldal</li>
             </a>
@@ -21,9 +22,23 @@ body.insertAdjacentHTML('afterbegin', `
                 <li>Tantárgyak</li>
             </a>
 
+            <a href="chat">
+                <li>Beszélgetéseim</li>
+            </a>
+
+            <a href="oktatok">
+                <li>Oktatók</li>
+            </a>
+
+            <a href="foglalas">
+                <li>Foglalásaim</li>
+            </a>
+
             <a href="gyik">
                 <li>GYIK</li>
             </a>
+
+
         </ul>
 
         <div class="cta-buttons">

@@ -19,12 +19,8 @@
 body {
     font-family: 'Segoe UI', system-ui, sans-serif;
     color: var(--dark-text);
-    background: var(--main-blue-light);
+    background: var(--main-blue-light) url(/images/mainbg.png) center/cover no-repeat;
     line-height: 1.6;
-    background-image: url(/images/mainbg.png) ;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: cover;
     margin: 0;
     min-height: 100vh;
     display: flex;
@@ -34,14 +30,16 @@ body {
 .container {
     width: 100%;
     margin: 0 auto;
-
     flex: 1;
-
     display: flex;
     flex-direction: column;
+    animation: fadeSlideUp 0.7s ease-out;
 }
 
-/* Buttons */
+a {
+    text-decoration: none;
+}
+
 button {
     font-family: inherit;
     font-size: 1rem;
@@ -53,18 +51,23 @@ button {
 }
 
 button:hover {
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
-cta-buttons {
+
+.cta-buttons {
     display: flex;
     gap: 12px;
+}
+
+.cta-buttons .login,
+.cta-buttons .register {
+    padding: 10px 20px;
 }
 
 .cta-buttons .login {
     background: transparent;
     color: var(--white);
     border: 2px solid var(--white);
-    padding: 8px 20px;
 }
 
 .cta-buttons .login:hover {
@@ -75,13 +78,11 @@ cta-buttons {
     background: var(--white);
     color: var(--main-blue);
     border: none;
-    padding: 10px 20px;
 }
 
 .cta-buttons .register:hover {
     background: var(--main-blue-light);
 }
-
 
 .primary {
     background: var(--main-blue);
@@ -103,7 +104,6 @@ cta-buttons {
     background: var(--main-blue-light);
 }
 
-/* Navbar */
 .navbar {
     display: flex;
     align-items: center;
@@ -130,14 +130,13 @@ cta-buttons {
 }
 
 .nav-links li {
+    position: relative;
     font-weight: 500;
     color: var(--white);
     cursor: pointer;
     transition: opacity 0.15s ease;
-    position: relative;
 }
 
-/* Underline */
 .nav-links li::after {
     content: "";
     position: absolute;
@@ -146,7 +145,6 @@ cta-buttons {
     width: 100%;
     height: 2px;
     background-color: var(--white);
-
     transform: scaleX(0);
     transform-origin: center;
     transition: transform 0.25s ease;
@@ -166,6 +164,7 @@ cta-buttons {
         gap: 12px;
         padding: 16px 20px;
     }
+
     .nav-links {
         order: 3;
         width: 100%;
@@ -175,8 +174,6 @@ cta-buttons {
     }
 }
 
-
-/* Hero */
 .hero {
     text-align: center;
     padding: 70px 20px;
@@ -203,14 +200,11 @@ cta-buttons {
     flex-wrap: wrap;
 }
 
-/* Footer */
 .footer {
     padding: 32px 40px;
     background: var(--main-blue-dark);
     text-align: center;
     width: 100%;
-    bottom: 0;
-    
 }
 
 .footer ul {
@@ -232,193 +226,108 @@ cta-buttons {
     color: var(--white);
 }
 
-a{
-text-decoration: none;
-}
-
-/* Responsive */
 @media (max-width: 600px) {
     .slide h1 { font-size: 1.4rem; }
     .hero h2 { font-size: 1.6rem; }
 }
 
-/* =========================
-   SUBJECT GRID
-========================= */
-
 .grid-container {
     width: 90%;
     max-width: 1400px;
-
     margin: 2rem auto;
-
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-
     gap: 1.25rem;
 }
 
-
-/* =========================
-   SUBJECT CARD
-========================= */
-
-.subcard {
-    position: relative;
-
-    width: 100%;
-    height: 110px;
-
-    box-sizing: border-box;
-
-    padding: 20px 24px;
-
-    display: flex;
-    align-items: center;
-
-    background: var(--white);
-
-    border: 1.5px solid rgba(255, 255, 255, 0.9);
-    border-radius: var(--radius);
-
-    box-shadow: var(--shadow);
-
-    cursor: pointer;
-
-    overflow: hidden;
-
-    transition:
-        transform 0.25s ease,
-        box-shadow 0.25s ease,
-        background 0.25s ease;
-}
-
-
-/* =========================
-   CARD HOVER
-========================= */
-
-.subcard:hover {
-    transform: translateY(-4px);
-
-    background: rgba(255, 255, 255, 0.97);
-
-    box-shadow:
-        0 12px 30px rgba(0, 0, 0, 0.16);
-}
-
-
-/* =========================
-   LINK
-========================= */
-
 .grid-container a {
     display: block;
-
     width: 100%;
     height: 100%;
-
     color: inherit;
-
     text-decoration: none;
 }
 
+.subcard {
+    position: relative;
+    width: 100%;
+    height: 110px;
+    box-sizing: border-box;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    background: var(--white);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+}
 
-/* =========================
-   ICON
-========================= */
+.subcard:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+}
 
 .subject-icon {
     width: 48px;
     height: 48px;
-
     flex-shrink: 0;
-
     display: flex;
     align-items: center;
     justify-content: center;
-
     margin-right: 18px;
-
     border-radius: 14px;
-
     background: rgba(65, 80, 240, 0.08);
-
     color: #4155e8;
-
     font-size: 20px;
     font-weight: 700;
-
-    transition:
-        background 0.25s ease,
-        transform 0.25s ease;
+    transition: background 0.25s ease, transform 0.25s ease;
 }
 
 .subcard:hover .subject-icon {
     background: rgba(65, 80, 240, 0.13);
-
     transform: scale(1.05);
 }
-
-
-/* =========================
-   SUBJECT INFO
-========================= */
 
 .subject-info {
     display: flex;
     flex-direction: column;
-
     gap: 5px;
-
     min-width: 0;
 }
 
 .subject-info h2 {
     margin: 0;
-
     color: var(--main-blue-dark);
-
     font-size: 18px;
     font-weight: 700;
 }
 
 .subject-info p {
     margin: 0;
-
     color: rgba(10, 20, 70, 0.55);
-
     font-size: 13px;
     font-weight: 500;
 }
 
-
-/* =========================
-   ARROW
-========================= */
-
 .subject-arrow {
     margin-left: auto;
-
     color: rgba(10, 20, 70, 0.4);
-
     font-size: 22px;
-
-    transition:
-        transform 0.2s ease,
-        color 0.2s ease;
+    transition: transform 0.2s ease, color 0.2s ease;
 }
 
 .subcard:hover .subject-arrow {
     transform: translateX(5px);
-
     color: var(--main-blue-dark);
 }
 
-/* Hero (subject szekció) */
 .subhero {
     text-align: center;
-    padding: 20px 20px;
+    padding: 20px;
     width: 100%;
     color: white;
 }
@@ -427,8 +336,7 @@ text-decoration: none;
     color: lightgrey;
     font-size: 1.1rem;
     max-width: 700px;
-    margin: 0 auto ;
-    
+    margin: 0 auto;
 }
 
 .category {
@@ -436,59 +344,39 @@ text-decoration: none;
     width: 100%;
     align-items: center;
     justify-content: center;
-    justify-items: center;
-        font-family: 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Segoe UI', system-ui, sans-serif;
 }
+
 .subject-selector {
     position: relative;
     z-index: 101;
-
     display: flex;
     align-items: center;
-
     width: 220px;
     height: 46px;
-
     box-sizing: border-box;
-
     padding: 0 8px 0 16px;
-
     background: rgba(255, 255, 255, 0.08);
-
     border: 1px solid rgba(255, 255, 255, 0.20);
     border-radius: 14px;
-
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-
     color: white;
-
-    box-shadow:
-        0 6px 20px rgba(0, 0, 0, 0.12);
-
-    transition:
-        background 0.2s ease,
-        border-color 0.2s ease,
-        box-shadow 0.2s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .subject-selector:hover {
     background: rgba(255, 255, 255, 0.12);
-
     border-color: rgba(255, 255, 255, 0.30);
-
-    box-shadow:
-        0 8px 25px rgba(0, 0, 0, 0.18);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
 }
 
 #selectedSubject {
     flex: 1;
-
     color: rgba(255, 255, 255, 0.92);
-
     font-size: 14px;
     font-weight: 600;
-
     white-space: nowrap;
 }
 
@@ -496,26 +384,15 @@ text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    flex-shrink: 0;
-
-    width: 32px;
-    height: 32px;
-
+    width: 34px;
+    height: 34px;
     padding: 0;
-
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 10px;
-
     background: rgba(255, 255, 255, 0.12);
-
     color: white;
-
     cursor: pointer;
-
-    transition:
-        background 0.2s ease,
-        transform 0.2s ease;
+    transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .dropdown-button:hover {
@@ -523,97 +400,60 @@ text-decoration: none;
 }
 
 .arrow {
-    font-size: 10px;
-
-    color: white;
-
-    transition: transform 0.25s ease;
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid rgba(255, 255, 255, 0.95);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.95);
+    transform: rotate(45deg);
+    transition: transform 0.3s ease, border-color 0.2s ease;
 }
 
-/* A lenyíló menü */
-/* =========================
-   DROPDOWN MENU
-========================= */
+.dropdown-button:hover .arrow,
+.dropdown-button.active .arrow {
+    border-color: white;
+}
+
+.dropdown-button.active .arrow {
+    transform: rotate(225deg);
+}
 
 .dropdown-menu {
     position: absolute;
-
-    /* A selector alatt jelenjen meg */
     top: calc(100% + 8px);
     left: 0;
-
     width: 100%;
     min-width: 200px;
-
     box-sizing: border-box;
-
     padding: 7px;
-
     background: rgba(20, 25, 80, 0.96);
-
     border: 1px solid rgba(255, 255, 255, 0.18);
-
     border-radius: 14px;
-
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-
-    box-shadow:
-        0 15px 35px rgba(0, 0, 0, 0.25);
-
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
     display: none;
-
     z-index: 100;
 }
-
-
-/* =========================
-   WHEN DROPDOWN IS OPEN
-========================= */
 
 .dropdown-menu.open {
     display: block;
 }
 
-
-/* =========================
-   DROPDOWN ITEM
-========================= */
-
 .dropdown-item {
     padding: 11px 13px;
-
     border-radius: 9px;
-
     cursor: pointer;
-
     font-size: 14px;
     font-weight: 500;
-
     color: rgba(255, 255, 255, 0.85);
-
-    transition:
-        background 0.2s ease,
-        color 0.2s ease,
-        transform 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
-
-
-/* =========================
-   ITEM HOVER
-========================= */
 
 .dropdown-item:hover {
     background: rgba(255, 255, 255, 0.12);
-
     color: white;
-
     transform: translateX(3px);
 }
-
-/* =================================
-   Page load animation
-================================= */
 
 @keyframes fadeSlideUp {
     from {
@@ -625,10 +465,6 @@ text-decoration: none;
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-.container {
-    animation: fadeSlideUp 0.7s ease-out;
 }
 
 .grid-container .subcard {

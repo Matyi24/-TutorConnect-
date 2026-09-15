@@ -38,6 +38,9 @@ app.get("/register", (req, res) => {
 app.get("/gyik", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/gyik.html"));                                                                                                                                                                                                                                                                  
 });
+app.get("/chat", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/chat.html"));                                                                                                                                                                                                                                                                  
+});
 
 
 app.get("/api/subjects", (req, res) => {

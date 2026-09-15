@@ -7,6 +7,7 @@ const dropdownItems = document.querySelectorAll(".dropdown-item");
 // Menü megnyitása / bezárása
 dropdownButton.addEventListener("click", function () {
     dropdownMenu.classList.toggle("open");
+    dropdownButton.classList.toggle("active");
 });
 
 // Ha kiválasztunk egy tárgyat
