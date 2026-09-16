@@ -4,20 +4,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/css/substyle.css">
-    <title>TutorConnect</title>
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/chat.css">
+
+
+
+    <title>Üzenetek | TutorConnect</title>
 </head>
 
 <body>
-    <main class="container">
 
-        <!--nav-->
+    <!-- A navbar később a creator.js-ből érkezhet -->
+
+    <main class="chat-page">
+
+        <section class="chat-container">
+
+            <!-- =================================
+                 BAL OLDAL - BESZÉLGETÉSEK
+            ================================== -->
+
+            <aside class="conversation-panel">
+
+                <div class="conversation-header">
+                    <div>
+                        <h1>Üzenetek</h1>
+                        <p>Beszélgetéseid</p>
+                    </div>
+
+                    <button class="new-chat-button" title="Új beszélgetés">
+                        +
+                    </button>
+                </div>
 
 
-        <!-- Footer -->
+                <!-- Kereső -->
+
+                <div class="conversation-search">
+
+                    <span class="search-icon">⌕</span>
+
+                    <input
+                        type="text"
+                        placeholder="Keresés..."
+                    >
+
+                </div>
+
+
+                <!-- Beszélgetések -->
+
+                <div class="conversation-list">
+
+                    <div class="conversation active">
+
+                        <div class="avatar">
+                            KP
+                        </div>
+
+                        <div class="conversation-info">
+
+                            <div class="conversation-top">
+                                <h3>Kovács Péter</h3>
+                                <span>10:42</span>
+                            </div>
+
+                            <p>Rendben, akkor holnap!</p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="conversation">
+
+                        <div class="avatar">
+                            NA
+                        </div>
+
+                        <div class="conversation-info">
+
+                            <div class="conversation-top">
+                                <h3>Nagy Anna</h3>
+                                <span>09:15</span>
+                            </div>
+
+                            <p>Köszönöm a segítséget!</p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="conversation">
+
+                        <div class="avatar">
+                            TS
+                        </div>
+
+                        <div class="conversation-info">
+
+                            <div class="conversation-top">
+                                <h3>Tóth Sándor</h3>
+                                <span>Tegnap</span>
+                            </div>
+
+                            <p>Megfelelne a péntek?</p>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="conversation">
+
+                        <div class="avatar">
+                            BK
+                        </div>
+
+                        <div class="conversation-info">
+
+                            <div class="conversation-top">
+                                <h3>Balogh Krisztina</h3>
+                                <span>Tegnap</span>
+                            </div>
+
+                            <p>Szia! Lenne egy kérdésem.</p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </aside>
+
+
+            <!-- =================================
+                 JOBB OLDAL - CHAT
+            ================================== -->
+
+            <section class="chat-window">
+
+                <!-- Chat fejléc -->
+
+                <header class="chat-header">
+
+                    <div class="chat-user">
+
+                        <div class="avatar large">
+                            KP
+                        </div>
+
+                        <div>
+
+                            <h2>Kovács Péter</h2>
+
+                            <div class="online-status">
+                                <span></span>
+                                Online
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <button class="chat-options">
+                        ⋮
+                    </button>
+
+                </header>
+
+
+                <!-- =================================
+                     ÜZENETEK
+                ================================== -->
+
+                <div class="messages">
+
+                    <div class="message-group received">
+
+                        <span class="message-time">
+                            10:38
+                        </span>
+
+                        <div class="message">
+                            Szia! Tudnál segíteni matekból?
+                        </div>
+
+                    </div>
+
+
+                    <div class="message-group sent">
+
+                        <span class="message-time">
+                            10:39
+                        </span>
+
+                        <div class="message">
+                            Szia! Persze, szívesen segítek.
+                        </div>
+
+                    </div>
+
+
+                    <div class="message-group received">
+
+                        <span class="message-time">
+                            10:40
+                        </span>
+
+                        <div class="message">
+                            Főleg a másodfokú egyenletekkel van problémám.
+                        </div>
+
+                    </div>
+
+
+                    <div class="message-group sent">
+
+                        <span class="message-time">
+                            10:41
+                        </span>
+
+                        <div class="message">
+                            Rendben, akkor ezt át tudjuk nézni együtt.
+                        </div>
+
+                    </div>
+
+
+                    <div class="message-group received">
+
+                        <span class="message-time">
+                            10:42
+                        </span>
+
+                        <div class="message">
+                            Rendben, akkor holnap!
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================
+                     ÜZENET KÜLDÉS
+                ================================== -->
+
+                <form class="message-form">
+
+                    <button
+                        type="button"
+                        class="attachment-button"
+                        title="Csatolmány"
+                    >
+                        +
+                    </button>
+
+
+                    <input
+                        type="text"
+                        placeholder="Írj egy üzenetet..."
+                        autocomplete="off"
+                    >
+
+
+                    <button
+                        type="submit"
+                        class="send-button"
+                        title="Üzenet küldése"
+                    >
+                        ➤
+                    </button>
+
+                </form>
+
+            </section>
+
+        </section>
 
     </main>
+
+
+    <!-- A meglévő creator.js később ide is beteheti
+         a közös navbar/footer elemeket -->
+
+    <script src="/js/creator.js"></script>
+
 </body>
-<script src="/js/creator.js"></script>
 
 </html>

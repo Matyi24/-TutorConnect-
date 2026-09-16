@@ -16,8 +16,6 @@ body.insertAdjacentHTML('afterbegin', `
                 <li>Főoldal</li>
             </a>
 
-            <li>Oktatók</li>
-
             <a href="subs">
                 <li>Tantárgyak</li>
             </a>
