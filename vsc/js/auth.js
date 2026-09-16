@@ -1,35 +1,125 @@
+const argon2 = require("argon2");
 
-import argon2 from 'argon2';
 
-/**
- * nyers jelszó -> Argon2id titkosított szöveg izé
- * @param {string} password - Nyers jelszó (stringbe mint ha pythonba definiálnád milyen adatot kér be.)
- * @returns {Promise<string>} - Titikosítot jelszó amit majd vissza ad (Szintén string)
- */
-export async function hashPassword(password) {  //Itt lopom be a titkosításba a hülye jelszavad
-  try {
-    const hash = await argon2.hash(password, {
-      type: argon2.argon2id, // Beálitod az Argon2id mint hash algoritmus
-      memoryCost: 2 ** 15,   // 32 MB memoriát használ (2^15-en
-      timeCost: 4,           // 4 timecost (4x fut le)
-      parallelism: 1         // 1 Cpu szállat használ
-    });
-    return hash;
-  } catch (err) {
-    throw new Error('Nem sikerült titkosítani a jelszót: ' + err.message);//Error
-  }
+// ============================================================
+// HASH PASSWORD
+// ============================================================
+
+async function hashPassword(password) {
+
+    console.log("\n------------------------------------------");
+    console.log("🔐 AUTH.JS - hashPassword() CALLED");
+    console.log("------------------------------------------");
+
+    console.log("📥 RAW PASSWORD RECEIVED:");
+    console.log(password);
+
+    console.log("\n📊 PASSWORD INFORMATION:");
+    console.log("Type:", typeof password);
+    console.log("Length:", password.length);
+
+
+    try {
+
+        console.log("\n⚙️ Starting Argon2id hashing...");
+
+        console.log("Algorithm: Argon2id");
+        console.log("memoryCost:", 2 ** 15);
+        console.log("timeCost:", 4);
+        console.log("parallelism:", 1);
+
+
+        const hash = await argon2.hash(password, {
+
+            type: argon2.argon2id,
+
+            memoryCost: 2 ** 15,
+
+            timeCost: 4,
+
+            parallelism: 1
+        });
+
+
+        console.log("\n✅ ARGON2 HASHING COMPLETE");
+
+        console.log("📤 HASH GENERATED:");
+        console.log(hash);
+
+        console.log("\n📊 HASH INFORMATION:");
+        console.log("Type:", typeof hash);
+        console.log("Length:", hash.length);
+
+
+        console.log("\n📤 Returning hash to main.js...");
+        console.log("------------------------------------------\n");
+
+
+        return hash;
+
+    } catch (err) {
+
+        console.error("\n❌ ARGON2 HASHING ERROR");
+        console.error(err);
+
+        throw new Error(
+            "Nem sikerült hash-elni a jelszót.",
+            { cause: err }
+        );
+    }
 }
 
-/**
- * Jelszó ellenörzés login-ból kéne bekérni a cuccost
- * @param {string} hash - ebbe fog majd beküldeni a másik js a zsamóból a hash-elt jelszót
- * @param {string} password - sima jelszó a loginból
- * @returns {Promise<boolean>}
- */
-export async function verifyPassword(hash, password) {
-  try {
-    return await argon2.verify(hash, password);
-  } catch (err) {
-    return false;
-  }
+
+// ============================================================
+// VERIFY PASSWORD
+// ============================================================
+
+async function verifyPassword(hash, password) {
+
+    console.log("\n------------------------------------------");
+    console.log("🔍 AUTH.JS - verifyPassword() CALLED");
+    console.log("------------------------------------------");
+
+    console.log("📥 HASH RECEIVED:");
+    console.log(hash);
+
+    console.log("\n📥 RAW PASSWORD RECEIVED:");
+    console.log(password);
+
+
+    try {
+
+        console.log("\n⚙️ Argon2 verifying...");
+
+        const result = await argon2.verify(
+            hash,
+            password
+        );
+
+
+        console.log("✅ Verification finished");
+        console.log("Result:", result);
+
+        console.log("------------------------------------------\n");
+
+
+        return result;
+
+    } catch (err) {
+
+        console.error("❌ PASSWORD VERIFICATION ERROR");
+        console.error(err);
+
+        return false;
+    }
 }
+
+
+// ============================================================
+// EXPORT
+// ============================================================
+
+module.exports = {
+    hashPassword,
+    verifyPassword
+};
