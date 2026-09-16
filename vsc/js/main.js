@@ -41,6 +41,12 @@ app.get("/gyik", (req, res) => {
 app.get("/chat", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/chat.html"));                                                                                                                                                                                                                                                                  
 });
+app.get("/oktatok", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/oktatok.html"));                                                                                                                                                                                                                                                                  
+});
+app.get("/foglalas", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/foglalas.html"));                                                                                                                                                                                                                                                                  
+});
 
 
 app.get("/api/subjects", (req, res) => {
