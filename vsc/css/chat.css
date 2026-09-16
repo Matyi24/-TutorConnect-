@@ -38,19 +38,23 @@ body {
 
     color: var(--dark-text);
 
-    background:
+  background:
         radial-gradient(
-            circle at 20% 20%,
-            rgba(65, 85, 232, 0.25),
+            circle at 15% 20%,
+            rgba(92, 105, 255, 0.35),
             transparent 35%
         ),
         radial-gradient(
-            circle at 80% 80%,
-            rgba(65, 85, 232, 0.18),
+            circle at 85% 75%,
+            rgba(125, 75, 255, 0.25),
             transparent 35%
         ),
-        var(--main-blue-dark);
-
+        linear-gradient(
+            135deg,
+            #080b55 0%,
+            #1825a0 50%,
+            #4155e8 100%
+        );
     min-height: 100vh;
 }
 
@@ -744,4 +748,151 @@ body {
         padding: 20px 15px;
     }
 
+}
+
+
+/* Navbar */
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 40px;
+    background: var(--main-blue);
+    box-shadow: var(--shadow);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+}
+
+.navbar .logo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--white);
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    gap: 32px;
+}
+
+.nav-links li {
+    position: relative;
+    font-weight: 500;
+    color: var(--white);
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.nav-links li::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 100%;
+    height: 2px;
+    background-color: var(--white);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.25s ease;
+}
+
+.nav-links li:hover::after {
+    transform: scaleX(1);
+}
+
+.nav-links li:hover {
+    opacity: 0.75;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.cta-buttons .login {
+    background: transparent;
+    color: var(--white);
+    border: 2px solid var(--white);
+    padding: 8px 20px;
+}
+
+.cta-buttons .login:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.cta-buttons .register {
+    background: var(--white);
+    color: var(--main-blue);
+    border: none;
+    padding: 10px 20px;
+}
+
+.cta-buttons .register:hover {
+    background: var(--main-blue-light);
+}
+
+@media (max-width: 768px) {
+    /* Collapse the navigation into a stacked mobile layout. */
+    .navbar {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 16px 20px;
+    }
+
+    .nav-links {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+}
+
+a {
+    text-decoration: none;
+}
+
+/* Buttons */
+.navbar button {
+    font-family: inherit;
+    font-size: 1rem;
+    padding: 12px 24px;
+    border-radius: var(--radius);
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+}
+
+
+/* Footer navigation and support links. */
+.footer {
+    padding: 32px 40px;
+    background: var(--main-blue-dark);
+    text-align: center;
+    width: 100%;
+}
+
+.footer ul {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    list-style: none;
+    flex-wrap: wrap;
+}
+
+.footer li {
+    color: var(--main-blue-light);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.footer li:hover {
+    color: var(--white);
 }
