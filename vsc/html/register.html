@@ -13,39 +13,71 @@
       <div class="register_text">Van már Tutor Connect fiókod? <a href="/login">Jelentkezz be.</a></div>
 
       
-      <form action="/register" method="POST">
+      <form id="registerForm" action="/register" method="POST">
         <div class="field">
           <label for="name">Név:</label>
-          <input type="text" id="name" name="name" required>
+          <input type="text" id="name" name="name" placeholder="Pl: Arany János" required>
         </div>
         
         <div class="field">
           <label for="email">Email:</label>
-          <input type="email" id="email" name="email" required>
+          <input type="email" id="email" name="email" placeholder="példa@gmail.com" required>
         </div>
         
         <div class="field">
           <label for="password">Jelszó:</label>
-          <input type="password" id="password" name="password" required>
+          <input type="password" id="password" name="password" placeholder="Ide írd be a jelszavad" required>
         </div>
         
         <div class="field">
           <label for="password_confirm">Jelszó megerősítése:</label>
-          <input type="password" id="password_confirm" name="password_confirm" required>
+          <input type="password" id="password_confirm" name="password_confirm" placeholder="Ismételd meg a jelszavad" required>
         </div>
         
         
         <div class="field">
-            <label for="role">Ennek regisztrálok:</label>
-            <select id="role" name="role">
-                <option value="TUTOR">Korrepetáló</option>
-                <option value="STUDENT">Diák</option>
-            </select>
+          <label for="role">Ennek regisztrálok:</label>
+          <select id="role" name="role">
+            <option value="STUDENT">Diák</option>
+            <option value="TUTOR">Korrepetáló</option>
+          </select>
         </div>
+        
+        <div id="error-message" style="color: red; margin-bottom: 15px;"></div>
 
         <button type="submit" class="signin-btn">Regisztrálok</button>
     </form>
   </main>
 </body>
 <script src="/js/creator.js"></script>
+  <script>
+    const form = document.getElementById('registerForm');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('password_confirm');
+    const errorMessage = document.getElementById('error-message');
+
+    form.addEventListener('submit', function(event) {
+      const password = passwordInput.value;
+      const confirmPassword = confirmPasswordInput.value;
+
+      // Criteria:
+      // (?=.*[0-9]) -> At least one digit
+      // (?=.*[^a-zA-Z0-9]) -> At least one special character
+      // .{6,} -> Minimum 6 characters long
+      const strongPasswordPattern = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/;
+
+      if (!strongPasswordPattern.test(password)) {
+        event.preventDefault(); // no submit till password is strong^^^^^^^^^^
+        errorMessage.textContent = "A jelszónak legalább 6 karakterből kell állnia, és tartalmaznia kell legalább 1 számot és 1 speciális karaktert (!, $, stb.)!";
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        event.preventDefault(); // no submit till password is correct
+        errorMessage.textContent = "A két jelszó nem egyezik meg!";
+        return;
+      }
+      errorMessage.textContent = "";
+    });
+  </script>
 </html>

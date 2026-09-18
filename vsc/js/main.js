@@ -286,7 +286,7 @@ app.post("/register", async (req, res) => {
             <h1>Sikeres regisztráció!</h1>
             <p>Üdvözlünk, ${name}!</p>
             <p>Az adataid sikeresen bekerültek az adatbázisba.</p>
-            <a href="/login">Bejelentkezés</a>
+            <a href="/index">Vissza a főoldalra</a>
         `);
     });
 });
