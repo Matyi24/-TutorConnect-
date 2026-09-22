@@ -7,8 +7,19 @@
     --light-grey: #F1F3F5;
     --dark-text: #212529;
     --white: #ffffff;
+    --whitergba: rgba(255, 255, 255, 0.18);
     --radius: 12px;
     --shadow: 0 4px 16px rgba(76, 110, 245, 0.12);
+}
+/* Hide scrollbar for Chrome, Safari and Opera */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+*{
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 /* Prevent image dragging and text selection for decorative media elements. */
@@ -300,12 +311,12 @@ button:hover {
 }
 
 .feature-card {
-    background: var(--white);
+    background: var(--whitergba);
     border-radius: var(--radius);
     padding: 28px 20px;
     text-align: center;
     font-weight: 600;
-    color: var(--main-blue-dark);
+    color: var(--white);
     box-shadow: var(--shadow);
     transition: transform 0.2s ease;
 }

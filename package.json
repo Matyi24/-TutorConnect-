@@ -18,8 +18,11 @@
   },
   "homepage": "https://github.com/Matyi24/-TutorConnect-#readme",
   "dependencies": {
+    "argon2": "^0.45.1",
+    "better-sqlite3": "^13.0.3",
     "express": "^5.2.1",
-    "mysql2": "^3.24.3"
+    "express-session": "^1.19.0",
+    "mysql2": "^3.24.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
