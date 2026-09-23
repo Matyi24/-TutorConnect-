@@ -25,7 +25,7 @@ body.insertAdjacentHTML('afterbegin', `
             </a>
 
             <a href="oktatok">
-                <li>Oktatók</li>
+                <li>Oktatók/Foglalás</li>
             </a>
 
             <a href="foglalas">
