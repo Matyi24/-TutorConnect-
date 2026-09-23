@@ -4,190 +4,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- CSS -->
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/fogalas.css">
-
-    <title>TutorConnect - Időbeosztás és Foglalás</title>
-
-    
-
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/fogalas.css">
+    <title>TutorConnect</title>
 </head>
 
 <body>
+<div class="dashboard-section">
+        <h2 class="section-title">Válasszon egyet:</h2>
+        
+        <div class="tutor-cards-container">
+            <!-- 1. Kártya: Közelgő foglalásaim -->
+            <a href="foglalasutan" class="tutor-card">
+                <div class="card-icon">📅</div>
+                <div class="card-content">
+                    <h3>Közelgő foglalásaim</h3>
+                    <span class="card-arrow">&rarr;</span>
+                </div>
+            </a>
 
-    <div class="timetable-container">
-        <div class="timetable-header">
-            <h1>Heti Időbeosztás és Foglalás</h1>
-            <p>Kattints a megfelelő idősávra a foglaláshoz (08:00 - 20:00)</p>
-        </div>
+            <!-- 2. Kártya: Függőben lévő foglalásaim -->
+            <a href="foglalasutan" class="tutor-card">
+                <div class="card-icon">⏳</div>
+                <div class="card-content">
+                    <h3>Függőben lévő foglalásaim</h3>
+                    <span class="card-arrow">&rarr;</span>
+                </div>
+            </a>
 
-        <!-- Hétváltó vezérlő -->
-        <div class="week-nav">
-            <button id="prev-week">&larr; Előző hét</button>
-            <span id="current-week-label">Betöltés...</span>
-            <button id="next-week">Következő hét &rarr;</button>
-        </div>
+            <!-- 3. Kártya: Lemondott foglalásaim -->
+            <a href="foglalasutan" class="tutor-card">
+                <div class="card-icon">❌</div>
+                <div class="card-content">
+                    <h3>Lemondott foglalásaim</h3>
+                    <span class="card-arrow">&rarr;</span>
+                </div>
+            </a>
 
-        <div class="app-layout">
-            <!-- Naptár rács -->
-            <div class="table-wrapper">
-                <table class="timetable">
-                    <thead>
-                        <tr>
-                            <th>Időpont</th>
-                            <th id="th-mon">Hétfő</th>
-                            <th id="th-tue">Kedd</th>
-                            <th id="th-wed">Szerda</th>
-                            <th id="th-thu">Csütörtök</th>
-                            <th id="th-fri">Péntek</th>
-                            <th id="th-sat">Szombat</th>
-                            <th id="th-sun">Vasárnap</th>
-                        </tr>
-                    </thead>
-                    <tbody id="timetable-body">
-                        <!-- JS generálja 08:00 - 20:00 között -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Saját foglalások oldalsáv -->
-            <div class="sidebar-panel">
-                <h3>Saját foglalásaim</h3>
-                <ul class="booking-list" id="booking-list">
-                    <li class="no-bookings">Még nincs lefoglalt idősávod.</li>
-                </ul>
-            </div>
+            <!-- 4. Kártya: Korábbi foglalásaim -->
+            <a href="foglalasutan" class="tutor-card">
+                <div class="card-icon">📁</div>
+                <div class="card-content">
+                    <h3>Korábbi foglalásaim</h3>
+                    <span class="card-arrow">&rarr;</span>
+                </div>
+            </a>
         </div>
     </div>
 
-    <!-- JavaScript logika -->
-    <script>
-        let currentDate = new Date();
-        // Tároljuk a foglalásokat kulcs-érték párokként: "Dátum_Időpont_Nap"
-        let bookings = new Set();
-
-        function getMonday(d) {
-            d = new Date(d);
-            var day = d.getDay(),
-                diff = d.getDate() - day + (day == 0 ? -6 : 1);
-            return new Date(d.setDate(diff));
-        }
-
-        let currentMonday = getMonday(currentDate);
-
-        function updateTimetable() {
-            let sunday = new Date(currentMonday);
-            sunday.setDate(sunday.getDate() + 6);
-            
-            const options = { month: 'short', day: 'numeric' };
-            document.getElementById('current-week-label').innerText = 
-                currentMonday.toLocaleDateString('hu-HU', options) + ' - ' + 
-                sunday.toLocaleDateString('hu-HU', options);
-
-            let days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-            days.forEach((day, index) => {
-                let d = new Date(currentMonday);
-                d.setDate(d.getDate() + index);
-                let th = document.getElementById(`th-${day}`);
-                let dayName = th.innerText.split(' ')[0];
-                th.innerHTML = `${dayName}<br><small style="font-weight:normal; font-size:0.75rem;">${d.toLocaleDateString('hu-HU', { month: 'numeric', day: 'numeric' }) + '.'}</small>`;
-            });
-
-            let tbody = document.getElementById('timetable-body');
-            tbody.innerHTML = '';
-
-            // 08:00 - 20:00 közötti idősávok generálása fél óránként
-            for (let hour = 8; hour < 20; hour++) {
-                for (let minute of [0, 30]) {
-                    let timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} - ` +
-                                     `${minute === 30 ? String(hour + 1).padStart(2, '0') : String(hour).padStart(2, '0')}:${minute === 30 ? '00' : '30'}`;
-                    
-                    let row = document.createElement('tr');
-                    
-                    let timeCell = document.createElement('td');
-                    timeCell.className = 'time-slot';
-                    timeCell.innerText = timeString;
-                    row.appendChild(timeCell);
-
-                    days.forEach((dayKey, i) => {
-                        let cellDate = new Date(currentMonday);
-                        cellDate.setDate(cellDate.getDate() + i);
-                        let dateKey = cellDate.toISOString().split('T')[0];
-                        let uniqueId = `${dateKey}_${timeString}`;
-
-                        let cell = document.createElement('td');
-                        cell.className = 'slot-cell';
-
-                        // Ha már le van foglalva ezen a héten/napon
-                        if (bookings.has(uniqueId)) {
-                            cell.classList.add('booked');
-                            cell.innerText = 'Foglalt';
-                        }
-
-                        cell.onclick = function() {
-                            if (bookings.has(uniqueId)) {
-                                bookings.delete(uniqueId);
-                                cell.classList.remove('booked');
-                                cell.innerText = '';
-                            } else {
-                                bookings.add(uniqueId);
-                                cell.classList.add('booked');
-                                cell.innerText = 'Foglalt';
-                            }
-                            updateSidebar();
-                        };
-
-                        row.appendChild(cell);
-                    });
-
-                    tbody.appendChild(row);
-                }
-            }
-            updateSidebar();
-        }
-
-        function updateSidebar() {
-            let list = document.getElementById('booking-list');
-            list.innerHTML = '';
-
-            if (bookings.size === 0) {
-                list.innerHTML = '<li class="no-bookings">Még nincs lefoglalt idősávod.</li>';
-                return;
-            }
-
-            // Sorba rendezzük a foglalásokat időrendben
-            let sortedBookings = Array.from(bookings).sort();
-
-            sortedBookings.forEach(id => {
-                let parts = id.split('_');
-                let dateStr = parts[0];
-                let timeStr = parts[1];
-
-                let li = document.createElement('li');
-                li.className = 'booking-item';
-                li.innerHTML = `<span>📅 ${dateStr}</span> <strong>${timeStr}</strong>`;
-                list.appendChild(li);
-            });
-        }
-
-        document.getElementById('prev-week').addEventListener('click', () => {
-            currentMonday.setDate(currentMonday.getDate() - 7);
-            updateTimetable();
-        });
-
-        document.getElementById('next-week').addEventListener('click', () => {
-            currentMonday.setDate(currentMonday.getDate() + 7);
-            updateTimetable();
-        });
-
-        updateTimetable();
-    </script>
-
-    <!-- JavaScript -->
-    <script src="/js/creator.js"></script>
-
 </body>
+<script src="/js/creator.js"></script>
+<script src="/html/slide.js"></script>
 
 </html>

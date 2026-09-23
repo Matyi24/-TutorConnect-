@@ -79,6 +79,9 @@ app.get("/oktatok", (req, res) => {
 app.get("/foglalas", (req, res) => {
     res.sendFile(path.join(__dirname, "../html/foglalas.html"));                                                                                                                                                                                                                                                                  
 });
+app.get("/foglalasutan", (req, res) => {
+    res.sendFile(path.join(__dirname, "../html/foglalasutan.html"));
+});
 
 
 // ============================================================
