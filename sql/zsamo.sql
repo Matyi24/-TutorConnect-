@@ -6,6 +6,10 @@
 -- Létrehozás ideje: 2026. Sze 22. 09:55
 -- Kiszolgáló verziója: 10.4.32-MariaDB
 -- PHP verzió: 8.2.12
+--
+-- Javítva: minden id oszlophoz AUTO_INCREMENT az ALTER TABLE résznél
+-- (a PRIMARY KEY hozzáadása után, hogy elkerüljük az #1075 hibát),
+-- a users tábla üresen indul (junk id=0 sor és admin sor eltávolítva)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -183,12 +187,9 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `users`
+-- A tábla adatai `users` -- üresen indul, nincs seed adat
+-- (a korábbi id=0 junk sor és az admin sor is eltávolítva)
 --
-
-INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
-(0, '', '', '', '', '', 0, '2026-09-03 10:36:48'),
-(22, 'Stickeliusz the third', 'hungarrrry@gmail.com', 'nincs', 'ADMIN', 'biohair', 67, '2026-09-03 10:36:48');
 
 --
 -- Indexek a kiírt táblákhoz
@@ -259,6 +260,18 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT a táblához `availabilities`
+--
+ALTER TABLE `availabilities`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT a táblához `bookings`
+--
+ALTER TABLE `bookings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT a táblához `conversations`
 --
 ALTER TABLE `conversations`
@@ -269,6 +282,24 @@ ALTER TABLE `conversations`
 --
 ALTER TABLE `messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT a táblához `reviews`
+--
+ALTER TABLE `reviews`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT a táblához `subjects`
+--
+ALTER TABLE `subjects`
+  MODIFY `id` int(60) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+
+--
+-- AUTO_INCREMENT a táblához `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT;
 
 --
 -- Megkötések a kiírt táblákhoz
