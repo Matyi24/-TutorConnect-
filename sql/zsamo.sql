@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Gép: 127.0.0.1
--- Létrehozás ideje: 2026. Sze 24. 08:33
+-- Létrehozás ideje: 2026. Sze 24. 11:19
 -- Kiszolgáló verziója: 10.4.32-MariaDB
 -- PHP verzió: 8.2.12
 
@@ -35,6 +35,24 @@ CREATE TABLE `availabilities` (
   `is_booked` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
+--
+-- A tábla adatainak kiíratása `availabilities`
+--
+
+INSERT INTO `availabilities` (`id`, `tutor_id`, `start_time`, `end_time`, `is_booked`) VALUES
+(1, 3, '2026-09-25 16:00:00', '2026-09-25 17:00:00', 1),
+(2, 3, '2026-09-26 10:00:00', '2026-09-26 11:00:00', 0),
+(3, 3, '2026-09-27 14:00:00', '2026-09-27 15:00:00', 0),
+(4, 4, '2026-09-25 15:00:00', '2026-09-25 16:00:00', 0),
+(5, 4, '2026-09-26 13:00:00', '2026-09-26 14:00:00', 1),
+(6, 4, '2026-09-28 17:00:00', '2026-09-28 18:00:00', 0),
+(7, 5, '2026-09-25 17:00:00', '2026-09-25 18:00:00', 0),
+(8, 5, '2026-09-27 11:00:00', '2026-09-27 12:00:00', 0),
+(9, 7, '2026-09-26 15:00:00', '2026-09-26 16:00:00', 1),
+(10, 7, '2026-09-27 16:00:00', '2026-09-27 17:00:00', 0),
+(11, 8, '2026-09-25 14:00:00', '2026-09-25 15:00:00', 0),
+(12, 8, '2026-09-28 16:00:00', '2026-09-28 17:00:00', 0);
+
 -- --------------------------------------------------------
 
 --
@@ -52,6 +70,17 @@ CREATE TABLE `bookings` (
   `created_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
+--
+-- A tábla adatainak kiíratása `bookings`
+--
+
+INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_time`, `end_time`, `status_`, `created_at`) VALUES
+(1, 1, 3, 1, '2026-09-25 14:00:00', '2026-09-25 15:00:00', 'CONFIRMED', NULL),
+(2, 2, 4, 8, '2026-09-26 11:00:00', '2026-09-26 12:00:00', 'CONFIRMED', NULL),
+(3, 6, 7, 5, '2026-09-26 13:00:00', '2026-09-26 14:00:00', 'COMPLETED', NULL),
+(4, 9, 5, 3, '2026-09-25 15:00:00', '2026-09-25 16:00:00', 'PENDING', NULL),
+(5, 2, 8, 15, '2026-09-28 14:00:00', '2026-09-28 15:00:00', 'CONFIRMED', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -64,6 +93,13 @@ CREATE TABLE `conversations` (
   `tutor_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
+
+--
+-- A tábla adatainak kiíratása `conversations`
+--
+
+INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
+(1, 1, 3, '2026-09-24 07:38:40');
 
 -- --------------------------------------------------------
 
@@ -80,6 +116,18 @@ CREATE TABLE `messages` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
+--
+-- A tábla adatainak kiíratása `messages`
+--
+
+INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`) VALUES
+(1, 1, 1, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29'),
+(2, 1, 3, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29'),
+(3, 1, 1, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29'),
+(4, 1, 3, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29'),
+(5, 1, 1, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29'),
+(6, 1, 3, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 0, '2026-09-24 09:18:29');
+
 -- --------------------------------------------------------
 
 --
@@ -93,6 +141,14 @@ CREATE TABLE `reviews` (
   `comment_` text DEFAULT NULL,
   `crated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
+
+--
+-- A tábla adatainak kiíratása `reviews`
+--
+
+INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VALUES
+(2, 3, '5', 'Nagyon érthetően magyarázott, sokat segített a feladatokban.', NULL),
+(3, 1, '5', 'Nagyon jó óra volt, végre megértettem mindent amiről kérdezni szerettem volna akkoriban.', NULL);
 
 -- --------------------------------------------------------
 
@@ -165,6 +221,27 @@ CREATE TABLE `tutor_subjects` (
   `subject_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
+--
+-- A tábla adatainak kiíratása `tutor_subjects`
+--
+
+INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`) VALUES
+(3, 1),
+(3, 2),
+(3, 5),
+(4, 1),
+(4, 8),
+(4, 15),
+(5, 3),
+(5, 6),
+(5, 22),
+(7, 4),
+(7, 5),
+(7, 7),
+(8, 15),
+(8, 16),
+(8, 18);
+
 -- --------------------------------------------------------
 
 --
@@ -187,9 +264,16 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
-(1, 'Kassadin', 'Kassadin@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$GCDoNm/eGjFZSX8gFoTRxA$y6486S6xuaMxa3OvDVNCXCzX3g6KOpU4txrTO+JRtt0', 'STUDENT', '', 0, '2026-09-23 07:30:02'),
-(2, 'Malzahar János', 'Malzahar@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$d/lx7UFMV5/EwE7a3krNAw$nR5zDUIG4DkTdhQGDSZiaoLqnO/HVVFYvJpxItqKkYc', 'STUDENT', '', 0, '2026-09-23 07:34:35'),
-(3, 'Skipykee Skipy', 'skipy@skipydev.hu', '$argon2id$v=19$m=32768,p=1,t=4$0NY9HarOhW2fQkyBJCG9fg$htSNK8EM0lap29Htc68a+dJvorDhdEzvEaOdb/kZh6A', 'STUDENT', '', 0, '2026-09-23 08:52:51');
+(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13'),
+(2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', 0, '2026-09-24 07:34:13'),
+(3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', 3500, '2026-09-24 07:34:13'),
+(4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', 3000, '2026-09-24 07:34:13'),
+(5, 'Horváth Dávid', 'david.horvath@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Programozás, algoritmusok és adatstruktúrák oktatása.', 4000, '2026-09-24 07:34:13'),
+(6, 'Varga Eszter', 'eszter.varga@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Egyetemi hallgató, jelenleg webfejlesztést tanulok.', 0, '2026-09-24 07:34:13'),
+(7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', 2800, '2026-09-24 07:34:13'),
+(8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', 3200, '2026-09-24 07:34:13'),
+(9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', 0, '2026-09-24 07:34:13'),
+(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13');
 
 --
 -- Indexek a kiírt táblákhoz
@@ -263,31 +347,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT a táblához `availabilities`
 --
 ALTER TABLE `availabilities`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
 -- AUTO_INCREMENT a táblához `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT a táblához `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT a táblához `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT a táblához `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT a táblához `subjects`
@@ -299,7 +383,7 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT a táblához `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Megkötések a kiírt táblákhoz
