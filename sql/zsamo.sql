@@ -174,7 +174,7 @@ CREATE TABLE `tutor_subjects` (
 CREATE TABLE `users` (
   `id` int(10) NOT NULL,
   `full_name` varchar(60) NOT NULL,
-  `email` varchar(30) NOT NULL,
+  `email` varchar(255) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('STUDENT','TUTOR','ADMIN','') NOT NULL,
   `bio` text NOT NULL,
