@@ -7,7 +7,7 @@
 
     <!-- CSS -->
      <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/gyik.css">
+    <link rel="stylesheet" href="../css/oktatok.css">
     
 
     <title>TutorConnect - Gyakori kérdések</title>
@@ -15,11 +15,617 @@
 
 <body>
 
-    <div>
-        <div></div>
-        <div></div>
-    </div>
+    <body>
 
+    <main class="tutor-page">
+
+        <!-- FEJLÉC -->
+        <section class="tutor-header">
+            <div class="header-content">
+                <div>
+                    <span class="eyebrow">TUTORCONNECT</span>
+                    <h1>Találd meg a számodra<br>megfelelő oktatót.</h1>
+                    <p>
+                        Válassz több száz képzett oktató közül,
+                        és találd meg azt, aki hozzád illik.
+                    </p>
+                </div>
+
+                <div class="header-icon">
+                    <span>🎓</span>
+                </div>
+            </div>
+
+            <!-- KERESŐ -->
+            <div class="search-box">
+                <span class="search-icon">⌕</span>
+                <input
+                    type="text"
+                    id="searchInput"
+                    placeholder="Keresés oktató neve vagy tantárgy alapján..."
+                >
+            </div>
+        </section>
+
+
+        <!-- SZŰRÉS -->
+        <section class="filters">
+
+            <div class="filter-title">
+                <span>Szűrés</span>
+                <button id="resetFilters" type="button">
+                    Szűrők törlése
+                </button>
+            </div>
+
+            <div class="filter-grid">
+
+                <div class="filter-group">
+                    <label for="subject">Tantárgy</label>
+                    <select id="subject">
+                        <option value="all">Összes tantárgy</option>
+                        <option value="Matematika">Matematika</option>
+                        <option value="Fizika">Fizika</option>
+                        <option value="Angol">Angol</option>
+                        <option value="Magyar">Magyar</option>
+                        <option value="Programozás">Programozás</option>
+                        <option value="Kémia">Kémia</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="rating">Értékelés</label>
+                    <select id="rating">
+                        <option value="0">Bármilyen</option>
+                        <option value="4.5">4.5+ ⭐</option>
+                        <option value="4.7">4.7+ ⭐</option>
+                        <option value="4.9">4.9+ ⭐</option>
+                    </select>
+                </div>
+
+                <div class="filter-group price-filter">
+                    <label>Óradíj</label>
+
+                    <div class="price-inputs">
+                        <input
+                            type="number"
+                            id="minPrice"
+                            placeholder="0 Ft"
+                            min="0"
+                        >
+
+                        <span>—</span>
+
+                        <input
+                            type="number"
+                            id="maxPrice"
+                            placeholder="5000 Ft"
+                            min="0"
+                        >
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label for="availability">Elérhetőség</label>
+                    <select id="availability">
+                        <option value="all">Bármikor</option>
+                        <option value="available">Elérhető</option>
+                        <option value="unavailable">Nem elérhető</option>
+                    </select>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- TALÁLATOK -->
+        <section class="results-section">
+
+            <div class="results-top">
+                <div>
+                    <span class="results-count" id="resultsCount">
+                        8 oktató található
+                    </span>
+                    <p>Találd meg a neked megfelelő tanárt.</p>
+                </div>
+
+                <select id="sortSelect" class="sort-select">
+                    <option value="default">Alapértelmezett</option>
+                    <option value="rating">Legjobb értékelés</option>
+                    <option value="priceLow">Ár szerint növekvő</option>
+                    <option value="priceHigh">Ár szerint csökkenő</option>
+                </select>
+            </div>
+
+
+            <div class="tutor-grid" id="tutorGrid">
+
+                <!-- 1 -->
+                <article
+                    class="tutor-card"
+                    data-name="Kovács Péter"
+                    data-subject="Matematika"
+                    data-rating="4.8"
+                    data-price="2500"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-blue">KP</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Kovács Péter</h2>
+                    <span class="subject">Matematika</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.8</strong>
+                        <small>(24 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>2 500 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Középiskolai matematika, érettségi és felvételi felkészítés.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 2 -->
+                <article
+                    class="tutor-card"
+                    data-name="Nagy Anna"
+                    data-subject="Fizika"
+                    data-rating="4.9"
+                    data-price="3000"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-purple">NA</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Nagy Anna</h2>
+                    <span class="subject">Fizika</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.9</strong>
+                        <small>(18 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>3 000 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Fizika közérthetően, sok gyakorlattal és személyre szabottan.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 3 -->
+                <article
+                    class="tutor-card"
+                    data-name="Szabó Bence"
+                    data-subject="Programozás"
+                    data-rating="5.0"
+                    data-price="4000"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-green">SB</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Szabó Bence</h2>
+                    <span class="subject">Programozás</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>5.0</strong>
+                        <small>(31 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>4 000 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        HTML, CSS, JavaScript és kezdő programozás gyakorlatorientáltan.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 4 -->
+                <article
+                    class="tutor-card"
+                    data-name="Tóth Eszter"
+                    data-subject="Angol"
+                    data-rating="4.7"
+                    data-price="2800"
+                    data-available="false"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-orange">TE</div>
+
+                        <span class="offline">
+                            <i></i> Hamarosan
+                        </span>
+                    </div>
+
+                    <h2>Tóth Eszter</h2>
+                    <span class="subject">Angol</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.7</strong>
+                        <small>(16 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>2 800 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Angol beszédfejlesztés, nyelvvizsga és iskolai felkészítés.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 5 -->
+                <article
+                    class="tutor-card"
+                    data-name="Varga Dániel"
+                    data-subject="Kémia"
+                    data-rating="4.9"
+                    data-price="3500"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-red">VD</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Varga Dániel</h2>
+                    <span class="subject">Kémia</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.9</strong>
+                        <small>(27 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>3 500 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Kémia érettségihez és egyetemi alapozáshoz, érthető magyarázatokkal.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 6 -->
+                <article
+                    class="tutor-card"
+                    data-name="Horváth Lilla"
+                    data-subject="Magyar"
+                    data-rating="4.8"
+                    data-price="2200"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-pink">HL</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Horváth Lilla</h2>
+                    <span class="subject">Magyar</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.8</strong>
+                        <small>(21 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>2 200 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Magyar nyelv és irodalom, szövegértés és érettségi felkészítés.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 7 -->
+                <article
+                    class="tutor-card"
+                    data-name="Farkas Márk"
+                    data-subject="Matematika"
+                    data-rating="4.6"
+                    data-price="2400"
+                    data-available="false"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-cyan">FM</div>
+
+                        <span class="offline">
+                            <i></i> Hamarosan
+                        </span>
+                    </div>
+
+                    <h2>Farkas Márk</h2>
+                    <span class="subject">Matematika</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>4.6</strong>
+                        <small>(12 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>2 400 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Algebra, geometria és matek korrepetálás általános iskolától.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+
+                <!-- 8 -->
+                <article
+                    class="tutor-card"
+                    data-name="Molnár Réka"
+                    data-subject="Angol"
+                    data-rating="5.0"
+                    data-price="3200"
+                    data-available="true"
+                >
+                    <div class="card-top">
+                        <div class="avatar avatar-indigo">MR</div>
+
+                        <span class="online">
+                            <i></i> Elérhető
+                        </span>
+                    </div>
+
+                    <h2>Molnár Réka</h2>
+                    <span class="subject">Angol</span>
+
+                    <div class="rating">
+                        <span>★</span>
+                        <strong>5.0</strong>
+                        <small>(35 értékelés)</small>
+                    </div>
+
+                    <div class="price">
+                        <strong>3 200 Ft</strong>
+                        <span>/ óra</span>
+                    </div>
+
+                    <p class="description">
+                        Kommunikációközpontú angol, nyelvvizsga és állásinterjú felkészítés.
+                    </p>
+
+                    <button class="profile-btn">
+                        Profil megtekintése <span>→</span>
+                    </button>
+                </article>
+
+            </div>
+
+
+            <!-- NINCS TALÁLAT -->
+            <div class="no-results" id="noResults">
+                <div>🔎</div>
+                <h3>Nem található oktató</h3>
+                <p>
+                    Próbálj más keresési feltételeket vagy töröld a szűrőket.
+                </p>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- SZŰRÉS / KERESÉS JAVASCRIPT -->
+    <script>
+        const searchInput = document.getElementById("searchInput");
+        const subject = document.getElementById("subject");
+        const rating = document.getElementById("rating");
+        const minPrice = document.getElementById("minPrice");
+        const maxPrice = document.getElementById("maxPrice");
+        const availability = document.getElementById("availability");
+        const sortSelect = document.getElementById("sortSelect");
+
+        const tutorGrid = document.getElementById("tutorGrid");
+        const cards = [...document.querySelectorAll(".tutor-card")];
+
+        const resultsCount = document.getElementById("resultsCount");
+        const noResults = document.getElementById("noResults");
+        const resetFilters = document.getElementById("resetFilters");
+
+
+        function filterTutors() {
+
+            const search = searchInput.value.toLowerCase().trim();
+            const selectedSubject = subject.value;
+            const min = Number(minPrice.value) || 0;
+            const max = Number(maxPrice.value) || Infinity;
+            const minRating = Number(rating.value);
+            const selectedAvailability = availability.value;
+
+            let visibleCards = cards.filter(card => {
+
+                const name = card.dataset.name.toLowerCase();
+                const cardSubject = card.dataset.subject;
+                const cardRating = Number(card.dataset.rating);
+                const cardPrice = Number(card.dataset.price);
+                const cardAvailable = card.dataset.available === "true";
+
+                const matchesSearch =
+                    name.includes(search) ||
+                    cardSubject.toLowerCase().includes(search);
+
+                const matchesSubject =
+                    selectedSubject === "all" ||
+                    cardSubject === selectedSubject;
+
+                const matchesRating =
+                    cardRating >= minRating;
+
+                const matchesPrice =
+                    cardPrice >= min &&
+                    cardPrice <= max;
+
+                const matchesAvailability =
+                    selectedAvailability === "all" ||
+                    (selectedAvailability === "available" && cardAvailable) ||
+                    (selectedAvailability === "unavailable" && !cardAvailable);
+
+                return (
+                    matchesSearch &&
+                    matchesSubject &&
+                    matchesRating &&
+                    matchesPrice &&
+                    matchesAvailability
+                );
+            });
+
+
+            // RENDEZÉS
+            if (sortSelect.value === "rating") {
+                visibleCards.sort(
+                    (a, b) =>
+                        Number(b.dataset.rating) -
+                        Number(a.dataset.rating)
+                );
+            }
+
+            if (sortSelect.value === "priceLow") {
+                visibleCards.sort(
+                    (a, b) =>
+                        Number(a.dataset.price) -
+                        Number(b.dataset.price)
+                );
+            }
+
+            if (sortSelect.value === "priceHigh") {
+                visibleCards.sort(
+                    (a, b) =>
+                        Number(b.dataset.price) -
+                        Number(a.dataset.price)
+                );
+            }
+
+
+            // ÖSSZES ELREJTÉSE
+            cards.forEach(card => {
+                card.style.display = "none";
+            });
+
+
+            // TALÁLATOK MEGJELENÍTÉSE
+            visibleCards.forEach(card => {
+                card.style.display = "flex";
+                tutorGrid.appendChild(card);
+            });
+
+
+            // DARABSZÁM
+            resultsCount.textContent =
+                `${visibleCards.length} oktató található`;
+
+
+            // NINCS TALÁLAT
+            noResults.style.display =
+                visibleCards.length === 0
+                    ? "block"
+                    : "none";
+        }
+
+
+        searchInput.addEventListener("input", filterTutors);
+        subject.addEventListener("change", filterTutors);
+        rating.addEventListener("change", filterTutors);
+        minPrice.addEventListener("input", filterTutors);
+        maxPrice.addEventListener("input", filterTutors);
+        availability.addEventListener("change", filterTutors);
+        sortSelect.addEventListener("change", filterTutors);
+
+
+        resetFilters.addEventListener("click", () => {
+
+            searchInput.value = "";
+            subject.value = "all";
+            rating.value = "0";
+            minPrice.value = "";
+            maxPrice.value = "";
+            availability.value = "all";
+            sortSelect.value = "default";
+
+            filterTutors();
+        });
+
+
+        filterTutors();
+    </script>
     <script src="/js/creator.js"></script>
 
 </body>
