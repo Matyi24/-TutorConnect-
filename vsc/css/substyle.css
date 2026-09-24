@@ -231,243 +231,815 @@ button:hover {
     .hero h2 { font-size: 1.6rem; }
 }
 
-.grid-container {
-    width: 90%;
-    max-width: 1400px;
-    margin: 2rem auto;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
+
+
+/* =========================================================
+   SUBJECT PAGE
+   ========================================================= */
+
+.subjects-page {
+    min-height: calc(100vh - 80px);
+    padding: 40px 0 70px;
+    background: #f5f5fc;
 }
 
-.grid-container a {
-    display: block;
-    width: 100%;
-    height: 100%;
-    color: inherit;
-    text-decoration: none;
-}
 
-.subcard {
+/* =========================================================
+   HERO
+   ========================================================= */
+
+.subjects-hero {
+
     position: relative;
-    width: 100%;
-    height: 110px;
-    box-sizing: border-box;
-    padding: 20px 24px;
-    display: flex;
-    align-items: center;
-    background: var(--white);
-    border: 1.5px solid rgba(255, 255, 255, 0.9);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    cursor: pointer;
+
+    width: min(1350px, calc(100% - 80px));
+    margin: 0 auto 26px;
+
+    padding: 60px 54px 54px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff 0%,
+            #f7f5ff 100%
+        );
+
     overflow: hidden;
-    transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+
+    box-shadow:
+        0 20px 50px rgba(60, 55, 130, 0.08);
 }
 
-.subcard:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.97);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+
+/* Hero tartalom */
+
+.hero-content {
+    position: relative;
+    z-index: 2;
 }
 
-.subject-icon {
-    width: 48px;
-    height: 48px;
-    flex-shrink: 0;
+
+/* Kis TutorConnect felirat */
+
+.hero-label {
+
+    display: block;
+
+    margin-bottom: 18px;
+
+    font-size: 14px;
+    font-weight: 800;
+
+    letter-spacing: 2px;
+
+    color: #536dfe;
+}
+
+
+/* H1 */
+
+.subjects-hero h1 {
+
+    margin: 0 0 18px;
+
+    font-size: clamp(38px, 4vw, 58px);
+
+    line-height: 1.05;
+
+    font-weight: 800;
+
+    letter-spacing: -1.5px;
+
+    color: #17172f;
+}
+
+
+/* Hero leírás */
+
+.subjects-hero p {
+
+    margin: 0 0 34px;
+
+    max-width: 700px;
+
+    font-size: 17px;
+    line-height: 1.6;
+
+    color: #73769b;
+}
+
+
+/* =========================================================
+   HERO DECORATION
+   ========================================================= */
+
+.hero-decoration {
+
+    position: absolute;
+
+    border-radius: 50%;
+
+    pointer-events: none;
+}
+
+
+.hero-decoration-top {
+
+    width: 260px;
+    height: 260px;
+
+    top: -130px;
+    right: -40px;
+
+    background: rgba(112, 94, 255, 0.10);
+}
+
+
+.hero-decoration-bottom {
+
+    width: 150px;
+    height: 150px;
+
+    bottom: -90px;
+    left: -30px;
+
+    background: rgba(67, 200, 170, 0.08);
+}
+
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
+
+.subject-search {
+
     display: flex;
+
+    align-items: center;
+
+    width: 100%;
+    max-width: 100%;
+
+    height: 60px;
+
+    padding: 0 20px;
+
+    background: white;
+
+    border: 1px solid #e5e5f2;
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 8px 25px rgba(80, 70, 150, 0.06);
+
+    transition: 0.2s ease;
+}
+
+
+.subject-search:focus-within {
+
+    border-color: #6377ff;
+
+    box-shadow:
+        0 0 0 4px rgba(99, 119, 255, 0.10);
+}
+
+
+.search-icon {
+
+    margin-right: 12px;
+
+    font-size: 27px;
+
+    color: #536dfe;
+}
+
+
+.subject-search input {
+
+    width: 100%;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    font-size: 15px;
+
+    color: #25253d;
+}
+
+
+.subject-search input::placeholder {
+
+    color: #a4a5bd;
+}
+
+
+/* =========================================================
+   FILTER
+   ========================================================= */
+
+.subject-filter {
+
+    width: min(1350px, calc(100% - 80px));
+
+    margin: 0 auto 42px;
+
+    padding: 30px;
+
+    background: white;
+
+    border: 1px solid #e8e8f2;
+
+    border-radius: 22px;
+
+    box-shadow:
+        0 12px 30px rgba(70, 65, 130, 0.05);
+}
+
+
+/* Filter fejléc */
+
+.filter-header {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    margin-bottom: 24px;
+}
+
+
+.filter-header h2 {
+
+    margin: 0;
+
+    font-size: 20px;
+
+    color: #17172f;
+}
+
+
+.filter-header button {
+
+    border: none;
+
+    background: transparent;
+
+    color: #5b55f6;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: 0.2s ease;
+}
+
+
+.filter-header button:hover {
+
+    color: #3731d6;
+
+}
+
+
+/* =========================================================
+   FILTER CONTENT
+   ========================================================= */
+
+.filter-content {
+
+    display: flex;
+
+    gap: 20px;
+}
+
+
+.filter-group {
+
+    flex: 1;
+}
+
+
+.filter-group label {
+
+    display: block;
+
+    margin-bottom: 9px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    color: #70718f;
+}
+
+
+/* =========================================================
+   CATEGORY SELECTOR
+   ========================================================= */
+
+.category {
+
+    position: relative;
+
+    width: 100%;
+}
+
+
+.subject-selector {
+
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    width: 100%;
+
+    height: 50px;
+
+    padding-left: 16px;
+
+    background: #fafaff;
+
+    border: 1px solid #dedff0;
+
+    border-radius: 12px;
+
+    color: #292944;
+
+    font-size: 14px;
+
+    font-weight: 600;
+}
+
+
+/* =========================================================
+   DROPDOWN BUTTON
+   ========================================================= */
+
+.dropdown-button {
+
+    display: flex;
+
     align-items: center;
     justify-content: center;
-    margin-right: 18px;
-    border-radius: 14px;
-    background: rgba(65, 80, 240, 0.08);
-    color: #4155e8;
-    font-size: 20px;
-    font-weight: 700;
-    transition: background 0.25s ease, transform 0.25s ease;
+
+    width: 40px;
+    height: 40px;
+
+    margin-right: 5px;
+
+    border: none;
+
+    border-radius: 10px;
+
+    background: #e9e9fb;
+
+    color: #5258d9;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
-.subcard:hover .subject-icon {
-    background: rgba(65, 80, 240, 0.13);
-    transform: scale(1.05);
+
+.dropdown-button:hover {
+
+    background: #dedeff;
+
 }
 
-.subject-info {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    min-width: 0;
-}
 
-.subject-info h2 {
-    margin: 0;
-    color: var(--main-blue-dark);
+.dropdown-button .arrow {
+
     font-size: 18px;
-    font-weight: 700;
+
+    line-height: 1;
+
+    transition: transform 0.25s ease;
 }
 
-.subject-info p {
-    margin: 0;
-    color: rgba(10, 20, 70, 0.55);
-    font-size: 13px;
-    font-weight: 500;
-}
 
-.subject-arrow {
-    margin-left: auto;
-    color: rgba(10, 20, 70, 0.4);
-    font-size: 22px;
-    transition: transform 0.2s ease, color 0.2s ease;
-}
+/* =========================================================
+   DROPDOWN
+   ========================================================= */
 
-.subcard:hover .subject-arrow {
-    transform: translateX(5px);
-    color: var(--main-blue-dark);
-}
+.dropdown-menu {
 
-.subhero {
-    text-align: center;
-    padding: 20px;
+    position: absolute;
+
+    top: calc(100% + 8px);
+
+    left: 0;
+
     width: 100%;
-    color: white;
+
+    padding: 7px;
+
+    background: white;
+
+    border: 1px solid #e3e3f0;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 15px 35px rgba(40, 40, 90, 0.14);
+
+    display: none;
+
+    z-index: 1000;
+
+    overflow: hidden;
 }
 
-.subhero p {
-    color: lightgrey;
-    font-size: 1.1rem;
-    max-width: 700px;
+
+.dropdown-menu.open {
+
+    display: block;
+
+}
+
+
+/* Dropdown item */
+
+.dropdown-item {
+
+    padding: 12px 14px;
+
+    border-radius: 9px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    font-weight: 500;
+
+    color: #34344e;
+
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+
+.dropdown-item:hover {
+
+    background: #f0efff;
+
+    color: #4f5cf5;
+
+}
+
+
+/* =========================================================
+   SUBJECT SECTION
+   ========================================================= */
+
+.subjects-section {
+
+    width: min(1350px, calc(100% - 80px));
+
     margin: 0 auto;
 }
 
-.category {
+
+/* Header */
+
+.subjects-header {
+
     display: flex;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Segoe UI', system-ui, sans-serif;
+
+    align-items: flex-end;
+
+    justify-content: space-between;
+
+    margin-bottom: 22px;
 }
 
-.subject-selector {
-    position: relative;
-    z-index: 101;
-    display: flex;
-    align-items: center;
-    width: 220px;
-    height: 46px;
-    box-sizing: border-box;
-    padding: 0 8px 0 16px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.20);
-    border-radius: 14px;
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    color: white;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+
+.subjects-header h2 {
+
+    margin: 0 0 5px;
+
+    font-size: 25px;
+
+    color: #17172f;
 }
 
-.subject-selector:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.30);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
-}
 
-#selectedSubject {
-    flex: 1;
-    color: rgba(255, 255, 255, 0.92);
+.subjects-header p {
+
+    margin: 0;
+
     font-size: 14px;
+
+    color: #7a7b99;
+}
+
+
+#subjectCount {
+
+    padding: 8px 14px;
+
+    border-radius: 20px;
+
+    background: #ececff;
+
+    color: #565cf0;
+
+    font-size: 13px;
+
     font-weight: 600;
-    white-space: nowrap;
 }
 
-.dropdown-button {
+
+/* =========================================================
+   SUBJECT GRID
+   ========================================================= */
+
+.grid-container {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 20px;
+
+    width: 100%;
+}
+
+
+/* =========================================================
+   SUBJECT CARD
+   ========================================================= */
+
+.grid-container a {
+
+    text-decoration: none;
+
+    color: inherit;
+}
+
+
+.subcard {
+
+    position: relative;
+
     display: flex;
+
+    align-items: center;
+
+    min-height: 125px;
+
+    width: 100%;
+
+    padding: 24px;
+
+    background: white;
+
+    border: 1px solid #e7e7f0;
+
+    border-radius: 18px;
+
+    box-shadow:
+        0 8px 25px rgba(65, 60, 130, 0.05);
+
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+
+    animation: subjectAppear 0.5s ease both;
+}
+
+
+.subcard:hover {
+
+    transform: translateY(-5px);
+
+    border-color: #d8d8ff;
+
+    box-shadow:
+        0 16px 35px rgba(75, 70, 160, 0.12);
+}
+
+
+/* =========================================================
+   SUBJECT ICON
+   ========================================================= */
+
+.subject-icon {
+
+    display: flex;
+
     align-items: center;
     justify-content: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.12);
-    color: white;
-    cursor: pointer;
-    transition: background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+
+    flex-shrink: 0;
+
+    width: 56px;
+    height: 56px;
+
+    margin-right: 16px;
+
+    border-radius: 15px;
+
+    background: #eef0ff;
+
+    color: #5265f5;
+
+    font-size: 21px;
+
+    font-weight: 700;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
-.dropdown-button:hover {
-    background: rgba(255, 255, 255, 0.20);
+
+.subcard:hover .subject-icon {
+
+    background: #e3e6ff;
+
+    transform: scale(1.05);
 }
 
-.arrow {
-    width: 6px;
-    height: 6px;
-    border-right: 2px solid rgba(255, 255, 255, 0.95);
-    border-bottom: 2px solid rgba(255, 255, 255, 0.95);
-    transform: rotate(45deg);
-    transition: transform 0.3s ease, border-color 0.2s ease;
+
+/* =========================================================
+   SUBJECT INFO
+   ========================================================= */
+
+.subject-info {
+
+    min-width: 0;
+
+    flex: 1;
 }
 
-.dropdown-button:hover .arrow,
-.dropdown-button.active .arrow {
-    border-color: white;
+
+.subject-info h2 {
+
+    margin: 0 0 6px;
+
+    font-size: 17px;
+
+    line-height: 1.3;
+
+    color: #405be4;
+
+    font-weight: 700;
 }
 
-.dropdown-button.active .arrow {
-    transform: rotate(225deg);
+
+.subject-info p {
+
+    margin: 0;
+
+    font-size: 13px;
+
+    color: #7b7d9d;
 }
 
-.dropdown-menu {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    width: 100%;
-    min-width: 200px;
-    box-sizing: border-box;
-    padding: 7px;
-    background: rgba(20, 25, 80, 0.96);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 14px;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
-    display: none;
-    z-index: 100;
+
+/* =========================================================
+   ARROW
+   ========================================================= */
+
+.subject-arrow {
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    margin-left: 12px;
+
+    font-size: 20px;
+
+    color: #8b8fae;
+
+    transition:
+        transform 0.2s ease,
+        color 0.2s ease;
 }
 
-.dropdown-menu.open {
-    display: block;
+
+.subcard:hover .subject-arrow {
+
+    transform: translateX(5px);
+
+    color: #536dfe;
 }
 
-.dropdown-item {
-    padding: 11px 13px;
-    border-radius: 9px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.85);
-    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
-}
 
-.dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.12);
-    color: white;
-    transform: translateX(3px);
-}
+/* =========================================================
+   ANIMATION
+   ========================================================= */
 
-@keyframes fadeSlideUp {
+@keyframes subjectAppear {
+
     from {
+
         opacity: 0;
-        transform: translateY(20px);
+
+        transform:
+            translateY(12px);
+
     }
 
     to {
+
         opacity: 1;
-        transform: translateY(0);
+
+        transform:
+            translateY(0);
+
     }
+
 }
 
-.grid-container .subcard {
-    opacity: 0;
-    animation: fadeSlideUp 0.6s ease-out forwards;
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1000px) {
+
+    .grid-container {
+
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+    }
+
+}
+
+
+@media (max-width: 700px) {
+
+    .subjects-hero,
+    .subject-filter,
+    .subjects-section {
+
+        width: calc(100% - 30px);
+
+    }
+
+
+    .subjects-hero {
+
+        padding: 40px 25px;
+
+    }
+
+
+    .subjects-hero h1 {
+
+        font-size: 36px;
+
+    }
+
+
+    .grid-container {
+
+        grid-template-columns: 1fr;
+
+    }
+
+
+    .subject-filter {
+
+        padding: 22px;
+
+    }
+
+
+    .subjects-header {
+
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 12px;
+
+    }
+
 }
