@@ -3,13 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Gép: 127.0.0.1
--- Létrehozás ideje: 2026. Sze 22. 09:55
+-- Létrehozás ideje: 2026. Sze 24. 08:33
 -- Kiszolgáló verziója: 10.4.32-MariaDB
 -- PHP verzió: 8.2.12
---
--- Javítva: minden id oszlophoz AUTO_INCREMENT az ALTER TABLE résznél
--- (a PRIMARY KEY hozzáadása után, hogy elkerüljük az #1075 hibát),
--- a users tábla üresen indul (junk id=0 sor és admin sor eltávolítva)
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -187,9 +183,13 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatai `users` -- üresen indul, nincs seed adat
--- (a korábbi id=0 junk sor és az admin sor is eltávolítva)
+-- A tábla adatainak kiíratása `users`
 --
+
+INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
+(1, 'Kassadin', 'Kassadin@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$GCDoNm/eGjFZSX8gFoTRxA$y6486S6xuaMxa3OvDVNCXCzX3g6KOpU4txrTO+JRtt0', 'STUDENT', '', 0, '2026-09-23 07:30:02'),
+(2, 'Malzahar János', 'Malzahar@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$d/lx7UFMV5/EwE7a3krNAw$nR5zDUIG4DkTdhQGDSZiaoLqnO/HVVFYvJpxItqKkYc', 'STUDENT', '', 0, '2026-09-23 07:34:35'),
+(3, 'Skipykee Skipy', 'skipy@skipydev.hu', '$argon2id$v=19$m=32768,p=1,t=4$0NY9HarOhW2fQkyBJCG9fg$htSNK8EM0lap29Htc68a+dJvorDhdEzvEaOdb/kZh6A', 'STUDENT', '', 0, '2026-09-23 08:52:51');
 
 --
 -- Indexek a kiírt táblákhoz
@@ -299,7 +299,7 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT a táblához `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Megkötések a kiírt táblákhoz
