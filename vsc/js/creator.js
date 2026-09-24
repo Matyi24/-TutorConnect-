@@ -81,7 +81,7 @@ async function createNavbar() {
 
     if (!isLoggedIn) {
 
-        navLinks = `
+        /*navLinks = `
 
             <a href="/index">
                 <li>Főoldal</li>
@@ -97,8 +97,34 @@ async function createNavbar() {
                 <li>GYIK</li>
             </a>
 
-        `;
+        `;*/
+        navLinks = `
+            <a href="/index">
+                <li>Főoldal</li>
+            </a>
 
+
+            <a href="/chat">
+                <li>Chat</li>
+            </a>
+
+
+            <a href="/subs">
+                <li>Tantárgyak</li>
+            </a>
+
+            <a href="/gyik">
+                <li>GYIK</li>
+            </a>
+
+            <a href="/oktatok">
+                <li>Oktatok</li>
+            </a>
+
+            <a href="/foglalas">
+                <li>Foglalas</li>
+            </a>
+        `;
 
         accountArea = `
 
@@ -148,6 +174,7 @@ async function createNavbar() {
             <a href="/subs">
                 <li>Tantárgyak</li>
             </a>
+            
 
         `;
 
