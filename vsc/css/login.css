@@ -9,7 +9,7 @@ body {
     display: flex;
     flex-direction: column;
     background: #4C6EF5;
-    background: linear-gradient(157deg, rgba(76, 110, 245, 1) 41%, rgba(245, 76, 93, 1) 62%);
+    background: linear-gradient(157deg, rgba(245, 76, 93, 1) 41%, rgba(76, 110, 245, 1) 62%);
 }
 
 .container .footer {
