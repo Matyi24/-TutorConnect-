@@ -792,3 +792,30 @@ app.listen(
     console.log("==========================================\n");
 
 });
+
+// ============================================================
+// CONVERSATIONS API
+// ============================================================
+
+app.get("/api/conversations", (req, res) => {
+
+    console.log("💬 GET /api/conversations");
+
+    const sql = "SELECT * FROM conversations";
+
+    db.query(sql, (err, results) => {
+
+        if (err) {
+
+            console.error("❌ SQL hiba:", err);
+
+            return res.status(500).json({
+                error: "Adatbázis hiba"
+            });
+        }
+
+        console.log("✅ Beszélgetések lekérve:", results.length);
+
+        res.json(results);
+    });
+});
