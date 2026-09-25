@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Gép: 127.0.0.1
--- Létrehozás ideje: 2026. Sze 24. 11:19
--- Kiszolgáló verziója: 10.4.32-MariaDB
--- PHP verzió: 8.2.12
+-- Host: 127.0.0.1
+-- Generation Time: Sep 25, 2026 at 10:16 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Adatbázis: `zsamo`
+-- Database: `zsamo`
 --
 
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `availabilities`
+-- Table structure for table `availabilities`
 --
 
 CREATE TABLE `availabilities` (
@@ -36,7 +36,7 @@ CREATE TABLE `availabilities` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `availabilities`
+-- Dumping data for table `availabilities`
 --
 
 INSERT INTO `availabilities` (`id`, `tutor_id`, `start_time`, `end_time`, `is_booked`) VALUES
@@ -56,7 +56,7 @@ INSERT INTO `availabilities` (`id`, `tutor_id`, `start_time`, `end_time`, `is_bo
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `bookings`
+-- Table structure for table `bookings`
 --
 
 CREATE TABLE `bookings` (
@@ -71,7 +71,7 @@ CREATE TABLE `bookings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `bookings`
+-- Dumping data for table `bookings`
 --
 
 INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_time`, `end_time`, `status_`, `created_at`) VALUES
@@ -84,7 +84,7 @@ INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_tim
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `conversations`
+-- Table structure for table `conversations`
 --
 
 CREATE TABLE `conversations` (
@@ -95,7 +95,7 @@ CREATE TABLE `conversations` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `conversations`
+-- Dumping data for table `conversations`
 --
 
 INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
@@ -104,7 +104,7 @@ INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUE
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `messages`
+-- Table structure for table `messages`
 --
 
 CREATE TABLE `messages` (
@@ -117,7 +117,7 @@ CREATE TABLE `messages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `messages`
+-- Dumping data for table `messages`
 --
 
 INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`) VALUES
@@ -131,7 +131,7 @@ INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_rea
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `reviews`
+-- Table structure for table `reviews`
 --
 
 CREATE TABLE `reviews` (
@@ -143,7 +143,7 @@ CREATE TABLE `reviews` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `reviews`
+-- Dumping data for table `reviews`
 --
 
 INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VALUES
@@ -153,7 +153,7 @@ INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VA
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `subjects`
+-- Table structure for table `subjects`
 --
 
 CREATE TABLE `subjects` (
@@ -163,7 +163,7 @@ CREATE TABLE `subjects` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `subjects`
+-- Dumping data for table `subjects`
 --
 
 INSERT INTO `subjects` (`id`, `name`, `category`) VALUES
@@ -213,7 +213,7 @@ INSERT INTO `subjects` (`id`, `name`, `category`) VALUES
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `tutor_subjects`
+-- Table structure for table `tutor_subjects`
 --
 
 CREATE TABLE `tutor_subjects` (
@@ -222,7 +222,7 @@ CREATE TABLE `tutor_subjects` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `tutor_subjects`
+-- Dumping data for table `tutor_subjects`
 --
 
 INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`) VALUES
@@ -245,13 +245,13 @@ INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`) VALUES
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `users`
+-- Table structure for table `users`
 --
 
 CREATE TABLE `users` (
   `id` int(10) NOT NULL,
   `full_name` varchar(60) NOT NULL,
-  `email` varchar(255) NOT NULL,
+  `email` varchar(30) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('STUDENT','TUTOR','ADMIN','') NOT NULL,
   `bio` text NOT NULL,
@@ -260,7 +260,7 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
--- A tábla adatainak kiíratása `users`
+-- Dumping data for table `users`
 --
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
@@ -273,21 +273,23 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`,
 (7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', 2800, '2026-09-24 07:34:13'),
 (8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', 3200, '2026-09-24 07:34:13'),
 (9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', 0, '2026-09-24 07:34:13'),
-(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13');
+(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13'),
+(11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', 3500, '2026-09-25 08:15:14'),
+(12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', 3000, '2026-09-25 08:15:14');
 
 --
--- Indexek a kiírt táblákhoz
+-- Indexes for dumped tables
 --
 
 --
--- A tábla indexei `availabilities`
+-- Indexes for table `availabilities`
 --
 ALTER TABLE `availabilities`
   ADD PRIMARY KEY (`id`),
   ADD KEY `tutor_id` (`tutor_id`);
 
 --
--- A tábla indexei `bookings`
+-- Indexes for table `bookings`
 --
 ALTER TABLE `bookings`
   ADD PRIMARY KEY (`id`),
@@ -296,7 +298,7 @@ ALTER TABLE `bookings`
   ADD KEY `subject_id` (`subject_id`);
 
 --
--- A tábla indexei `conversations`
+-- Indexes for table `conversations`
 --
 ALTER TABLE `conversations`
   ADD PRIMARY KEY (`id`),
@@ -304,7 +306,7 @@ ALTER TABLE `conversations`
   ADD KEY `fk_conversation_tutor` (`tutor_id`);
 
 --
--- A tábla indexei `messages`
+-- Indexes for table `messages`
 --
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
@@ -312,91 +314,91 @@ ALTER TABLE `messages`
   ADD KEY `fk_message_sender` (`sender_id`);
 
 --
--- A tábla indexei `reviews`
+-- Indexes for table `reviews`
 --
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `booking_id` (`booking_id`);
 
 --
--- A tábla indexei `subjects`
+-- Indexes for table `subjects`
 --
 ALTER TABLE `subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name` (`name`);
 
 --
--- A tábla indexei `tutor_subjects`
+-- Indexes for table `tutor_subjects`
 --
 ALTER TABLE `tutor_subjects`
   ADD PRIMARY KEY (`tutor_id`,`subject_id`),
   ADD KEY `subject_id` (`subject_id`);
 
 --
--- A tábla indexei `users`
+-- Indexes for table `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
 
 --
--- A kiírt táblák AUTO_INCREMENT értéke
+-- AUTO_INCREMENT for dumped tables
 --
 
 --
--- AUTO_INCREMENT a táblához `availabilities`
+-- AUTO_INCREMENT for table `availabilities`
 --
 ALTER TABLE `availabilities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- AUTO_INCREMENT a táblához `bookings`
+-- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
--- AUTO_INCREMENT a táblához `conversations`
+-- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT a táblához `messages`
+-- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT a táblához `reviews`
+-- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
--- AUTO_INCREMENT a táblához `subjects`
+-- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
   MODIFY `id` int(60) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
--- AUTO_INCREMENT a táblához `users`
+-- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
 --
--- Megkötések a kiírt táblákhoz
+-- Constraints for dumped tables
 --
 
 --
--- Megkötések a táblához `availabilities`
+-- Constraints for table `availabilities`
 --
 ALTER TABLE `availabilities`
   ADD CONSTRAINT `availabilities_ibfk_1` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`);
 
 --
--- Megkötések a táblához `bookings`
+-- Constraints for table `bookings`
 --
 ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`),
@@ -404,27 +406,27 @@ ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`);
 
 --
--- Megkötések a táblához `conversations`
+-- Constraints for table `conversations`
 --
 ALTER TABLE `conversations`
   ADD CONSTRAINT `fk_conversation_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_conversation_tutor` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Megkötések a táblához `messages`
+-- Constraints for table `messages`
 --
 ALTER TABLE `messages`
   ADD CONSTRAINT `fk_message_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Megkötések a táblához `reviews`
+-- Constraints for table `reviews`
 --
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`);
 
 --
--- Megkötések a táblához `tutor_subjects`
+-- Constraints for table `tutor_subjects`
 --
 ALTER TABLE `tutor_subjects`
   ADD CONSTRAINT `tutor_subjects_ibfk_1` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
