@@ -778,6 +778,135 @@ db.connect(
 );
 
 
+
+
+
+app.get("/api/tutors", (req, res) => {
+
+    const sql = `
+        SELECT
+            u.id,
+            u.full_name,
+            u.email,
+            u.bio,
+            u.hourly_rate,
+
+            COALESCE(
+                AVG(CAST(r.rating AS DECIMAL(2,1))),
+                0
+            ) AS average_rating,
+
+            COUNT(r.id) AS review_count,
+
+            GROUP_CONCAT(
+                DISTINCT s.name
+                ORDER BY s.name
+                SEPARATOR ', '
+            ) AS subjects
+
+        FROM users u
+
+        LEFT JOIN tutor_subjects ts
+            ON ts.tutor_id = u.id
+
+        LEFT JOIN subjects s
+            ON s.id = ts.subject_id
+
+        LEFT JOIN bookings b
+            ON b.tutor_id = u.id
+
+        LEFT JOIN reviews r
+            ON r.booking_id = b.id
+
+        WHERE u.role = 'TUTOR'
+
+        GROUP BY
+            u.id,
+            u.full_name,
+            u.email,
+            u.bio,
+            u.hourly_rate
+
+        ORDER BY u.full_name ASC
+    `;
+
+    db.query(sql, (err, results) => {
+
+        if (err) {
+
+            console.error(
+                "❌ /api/tutors SQL ERROR:",
+                err
+            );
+
+            return res.status(500).json({
+                error: "Adatbázis hiba"
+            });
+        }
+
+        console.log(
+            "✅ Tutorok lekérve:",
+            results.length
+        );
+
+        res.json(results);
+    });
+});
+
+app.get("/api/tutors/:id/reviews", (req, res) => {
+
+    const tutorId = Number(req.params.id);
+
+    if (!Number.isInteger(tutorId)) {
+        return res.status(400).json({
+            error: "Érvénytelen oktató ID."
+        });
+    }
+
+    const sql = `
+        SELECT
+            r.id,
+            r.rating,
+            r.comment,
+            r.created_at,
+            u.full_name AS reviewer_name
+
+        FROM reviews r
+
+        INNER JOIN bookings b
+            ON b.id = r.booking_id
+
+        LEFT JOIN users u
+            ON u.id = b.student_id
+
+        WHERE b.tutor_id = ?
+
+        ORDER BY r.created_at DESC
+    `;
+
+    db.query(
+        sql,
+        [tutorId],
+        (err, results) => {
+
+            if (err) {
+
+                console.error(
+                    "❌ /api/tutors/:id/reviews SQL ERROR:",
+                    err
+                );
+
+                return res.status(500).json({
+                    error: "Adatbázis hiba."
+                });
+            }
+
+            res.json(results);
+        }
+    );
+});
+
+
 // ============================================================
 // START SERVER
 // ============================================================
