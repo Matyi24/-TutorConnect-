@@ -51,6 +51,12 @@
 </body>
 <script src="/js/creator.js"></script>
   <script>
+  const params = new URLSearchParams(window.location.search);
+  const role = params.get('role');
+  if (role) {
+    document.getElementById('role').value = role;
+  }
+
     const form = document.getElementById('registerForm');
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('password_confirm');

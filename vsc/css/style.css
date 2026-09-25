@@ -158,7 +158,14 @@ button:hover {
     display: flex;
     gap: 12px;
 }
-
+.logout{
+    
+}
+.user-name{
+    color: orange;
+    font-size: large;
+    gap: 20px;
+}
 .cta-buttons .login {
     background: transparent;
     color: var(--white);
@@ -463,6 +470,7 @@ button:hover {
 
 .footer ul {
     display: flex;
+    list-style: none;
     justify-content: center;
     gap: 28px;
     list-style: none;

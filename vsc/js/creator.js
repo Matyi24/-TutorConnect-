@@ -118,11 +118,11 @@ async function createNavbar() {
             </a>
 
             <a href="/oktatok">
-                <li>Oktatok</li>
+                <li>Oktatók</li>
             </a>
 
             <a href="/foglalas">
-                <li>Foglalas</li>
+                <li>Foglalás</li>
             </a>
         `;
 
@@ -243,7 +243,7 @@ async function createNavbar() {
 
 
     // ========================================================
-    // INSERT NAVBAR
+    //  NAVBAR
     // ========================================================
 
     body.insertAdjacentHTML(
@@ -419,7 +419,9 @@ body.insertAdjacentHTML(
             </li>
 
             <li>
-                GYIK
+                <a href="gyik">
+                    GYIK
+                </a>
             </li>
 
             <li>
