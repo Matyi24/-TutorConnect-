@@ -1,10 +1,5 @@
 const argon2 = require("argon2");
 
-
-// ============================================================
-// HASH PASSWORD
-// ============================================================
-
 async function hashPassword(password) {
 
     console.log("\n------------------------------------------");
@@ -93,11 +88,6 @@ async function verifyPassword(hash, password) {
         return false;
     }
 }
-
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 module.exports = {
     hashPassword,

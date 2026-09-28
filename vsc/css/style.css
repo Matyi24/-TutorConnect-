@@ -484,6 +484,10 @@ button:hover {
     transition: color 0.15s ease;
 }
 
+a, a:visited, a:hover, a:active {
+  color: inherit;
+}
+
 .footer li:hover {
     color: var(--white);
 }
