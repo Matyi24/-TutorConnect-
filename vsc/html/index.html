@@ -106,11 +106,11 @@
 </div>
 
         <!-- Statisztikák -->
-        <section class="stats">
-            <div class="stat">#+ aktív oktató</div> <!--Ide majd a # helyett az okatatok számát kérd ki a databaseböl-->
-            <div class="stat">#+ sikeres korrepetálás</div> <!--Szintugy-->
-            <div class="stat">#% elégedettség</div> <!--Szintugy-->
-        </section>
+<section class="stats">
+    <div class="stat"><span id="statTutors">0</span>+ aktív oktató</div>
+    <div class="stat"><span id="statBookings">0</span>+ sikeres korrepetálás</div>
+    <div class="stat"><span id="statSatisfaction">0</span>% elégedettség</div>
+</section>
 
         <!-- Footer -->
 
@@ -118,5 +118,16 @@
 </body>
 <script src="/js/creator.js"></script>
 <script src="/html/slide.js"></script>
+
+<script>
+    fetch("/api/stats")
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("statTutors").textContent = data.tutors;
+            document.getElementById("statBookings").textContent = data.bookings;
+            document.getElementById("statSatisfaction").textContent = data.satisfaction;
+        })
+        .catch(err => console.error("Statisztikák betöltése sikertelen:", err));
+</script>
 
 </html>

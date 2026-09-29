@@ -931,6 +931,35 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
 
 });
 
+//stats
+
+app.get("/api/stats", (req, res) => {
+
+    const sql = `
+        SELECT
+            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR') AS tutor_count,
+            (SELECT COUNT(*) FROM bookings) AS booking_count,
+            (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
+    `;
+
+    db.query(sql, (err, results) => {
+
+        if (err) {
+            console.error("❌ /api/stats SQL ERROR:", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        const row = results[0];
+
+        res.json({
+            tutors: row.tutor_count,
+            bookings: row.booking_count,
+
+            satisfaction: Math.round((Number(row.avg_rating) / 5) * 100)
+        });
+    });
+});
+
 
 
 // ============================================================

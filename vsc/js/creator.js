@@ -419,17 +419,21 @@ body.insertAdjacentHTML(
             </li>
 
             <li>
-                <a href="gyik">
+                <a style="color: inherit;" href="gyik">
                     GYIK
                 </a>
             </li>
 
             <li>
-                Adatvédelem
+                <a style="color: inherit;" href="gyik">
+                    Adatvédelem
+                </a>
             </li>
 
             <li>
-                Felhasználási feltételek
+                <a style="color: inherit;" href="gyik">
+                    Felhasználási feltételek
+                </a>
             </li>
 
         </ul>
