@@ -86,7 +86,9 @@ app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 app.use("/images", express.static(path.join(__dirname, "../images")));
 
-app.use(express.static("vsc"));
+// Serve the project root from the actual vsc folder regardless of
+// the terminal's current working directory.
+app.use(express.static(path.join(__dirname, "..")));
 
 // ============================================================
 // MYSQL CONNECTION
