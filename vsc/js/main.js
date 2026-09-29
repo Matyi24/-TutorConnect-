@@ -907,32 +907,76 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
 });
 
 
-// ============================================================
-// CONVERSATIONS API
-// ============================================================
+
+//convo prototype
 
 app.get("/api/conversations", (req, res) => {
 
     console.log("💬 GET /api/conversations");
 
-    const sql = "SELECT * FROM conversations";
 
-    db.query(sql, (err, results) => {
+    // 1. Megnézzük, hogy be van-e jelentkezve valaki
 
-        if (err) {
+    if (!req.session.user) {
 
-            console.error("❌ SQL hiba:", err);
+        return res.status(401).json({
+            error: "Nincs bejelentkezve."
+        });
+    }
 
-            return res.status(500).json({
-                error: "Adatbázis hiba"
-            });
+
+    // 2. Megszerezzük a bejelentkezett user ID-ját
+
+    const userId = req.session.user.id;
+
+    console.log(
+        "👤 Bejelentkezett user ID:",
+        userId
+    );
+
+
+    // 3. Csak azokat a conversationöket kérjük le,
+    //    amelyekben a user részt vesz
+
+    const sql = `
+        SELECT *
+        FROM conversations
+        WHERE student_id = ?
+           OR tutor_id = ?
+    `;
+
+
+    // 4. A user ID-ját átadjuk a két ? helyére
+
+    db.query(
+        sql,
+        [userId, userId],
+        (err, results) => {
+
+            if (err) {
+
+                console.error(
+                    "❌ SQL hiba:",
+                    err
+                );
+
+                return res.status(500).json({
+                    error: "Adatbázis hiba"
+                });
+            }
+
+
+            console.log(
+                "✅ Saját beszélgetések lekérve:",
+                results.length
+            );
+
+
+            res.json(results);
         }
-
-        console.log("✅ Beszélgetések lekérve:", results.length);
-
-        res.json(results);
-    });
+    );
 });
+
 
 // ============================================================
 // START SERVER
