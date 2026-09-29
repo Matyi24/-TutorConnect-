@@ -2,7 +2,7 @@
 
 
 /* =====================================================
-   ELEMEK
+   ALAP ELEMEK
 ===================================================== */
 
 const searchInput =
@@ -19,9 +19,6 @@ const minPriceInput =
 
 const maxPriceInput =
     document.getElementById("maxPrice");
-
-const availabilitySelect =
-    document.getElementById("availability");
 
 const sortSelect =
     document.getElementById("sortSelect");
@@ -40,32 +37,53 @@ const resetFilters =
 
 
 /* =====================================================
-   REVIEW MODAL ELEMEK
+   PROFIL MODAL ELEMEK
 ===================================================== */
 
-const reviewsModal =
-    document.getElementById("reviewsModal");
+const profileModal =
+    document.getElementById("profileModal");
 
-const reviewsOverlay =
-    document.getElementById("reviewsOverlay");
+const profileOverlay =
+    document.getElementById("profileOverlay");
 
-const reviewsClose =
-    document.getElementById("reviewsClose");
+const profileClose =
+    document.getElementById("profileClose");
 
-const reviewsTutorName =
-    document.getElementById("reviewsTutorName");
+const profileAvatar =
+    document.getElementById("profileAvatar");
 
-const reviewsAvatar =
-    document.getElementById("reviewsAvatar");
+const profileTutorName =
+    document.getElementById("profileTutorName");
 
-const reviewsAverage =
-    document.getElementById("reviewsAverage");
+const profileTutorSubjects =
+    document.getElementById("profileTutorSubjects");
 
-const reviewsTotal =
-    document.getElementById("reviewsTotal");
+const profileAverage =
+    document.getElementById("profileAverage");
 
-const reviewsList =
-    document.getElementById("reviewsList");
+const profileReviewCount =
+    document.getElementById("profileReviewCount");
+
+const profilePrice =
+    document.getElementById("profilePrice");
+
+const profileSubjects =
+    document.getElementById("profileSubjects");
+
+const profileReviewsNumber =
+    document.getElementById("profileReviewsNumber");
+
+const profileEmail =
+    document.getElementById("profileEmail");
+
+const profileBio =
+    document.getElementById("profileBio");
+
+const profileReviewBadge =
+    document.getElementById("profileReviewBadge");
+
+const profileReviewsList =
+    document.getElementById("profileReviewsList");
 
 
 /* =====================================================
@@ -113,15 +131,26 @@ function getInitials(name) {
 function getStars(rating) {
 
     const rounded =
-        Math.round(Number(rating) || 0);
+        Math.max(
+            0,
+            Math.min(
+                5,
+                Math.round(
+                    Number(rating) || 0
+                )
+            )
+        );
 
-    return "★".repeat(rounded) +
-        "☆".repeat(5 - rounded);
+
+    return (
+        "★".repeat(rounded) +
+        "☆".repeat(5 - rounded)
+    );
 }
 
 
 /* =====================================================
-   TANTÁRGYAK
+   TANTÁRGYAK BETÖLTÉSE
 ===================================================== */
 
 async function loadSubjects() {
@@ -131,14 +160,19 @@ async function loadSubjects() {
         const response =
             await fetch("/api/subjects");
 
+
         if (!response.ok) {
+
             throw new Error(
                 "Nem sikerült betölteni a tantárgyakat."
             );
+
         }
+
 
         const subjects =
             await response.json();
+
 
         subjectSelect.innerHTML = `
             <option value="all">
@@ -146,20 +180,32 @@ async function loadSubjects() {
             </option>
         `;
 
+
+        if (!Array.isArray(subjects)) {
+            return;
+        }
+
+
         subjects.forEach(subject => {
 
             const option =
                 document.createElement("option");
 
+
             option.value =
                 subject.name;
+
 
             option.textContent =
                 subject.name;
 
-            subjectSelect.appendChild(option);
+
+            subjectSelect.appendChild(
+                option
+            );
 
         });
+
 
     } catch (error) {
 
@@ -167,6 +213,7 @@ async function loadSubjects() {
             "❌ Tantárgyak betöltési hiba:",
             error
         );
+
     }
 }
 
@@ -182,34 +229,44 @@ async function loadTutors() {
         resultsCount.textContent =
             "Oktatók betöltése...";
 
+
         const response =
             await fetch("/api/tutors");
+
 
         if (!response.ok) {
 
             throw new Error(
                 "A szerver nem tudta lekérni az oktatókat."
             );
+
         }
+
 
         const data =
             await response.json();
+
 
         if (!Array.isArray(data)) {
 
             throw new Error(
                 "Érvénytelen válasz érkezett a szervertől."
             );
+
         }
 
+
         tutors = data;
+
 
         console.log(
             "✅ Adatbázisból betöltött oktatók:",
             tutors
         );
 
+
         renderTutors();
+
 
     } catch (error) {
 
@@ -218,8 +275,10 @@ async function loadTutors() {
             error
         );
 
+
         resultsCount.textContent =
             "Hiba az oktatók betöltésekor";
+
 
         tutorGrid.innerHTML = `
 
@@ -238,8 +297,10 @@ async function loadTutors() {
 
         `;
 
+
         noResults.style.display =
             "none";
+
     }
 }
 
@@ -254,28 +315,41 @@ function createTutorCard(tutor) {
         tutor.full_name ||
         "Ismeretlen oktató";
 
+
     const bio =
         tutor.bio ||
         "Az oktató még nem adott meg bemutatkozást.";
 
+
     const price =
-        Number(tutor.hourly_rate || 0);
+        Number(
+            tutor.hourly_rate || 0
+        );
+
 
     const rating =
-        Number(tutor.average_rating || 0);
+        Number(
+            tutor.average_rating || 0
+        );
+
 
     const reviewCount =
-        Number(tutor.review_count || 0);
+        Number(
+            tutor.review_count || 0
+        );
+
 
     const subjects =
         tutor.subjects ||
         "Nincs megadott tantárgy";
+
 
     const initials =
         getInitials(name);
 
 
     const avatarColors = [
+
         "avatar-blue",
         "avatar-purple",
         "avatar-green",
@@ -284,6 +358,7 @@ function createTutorCard(tutor) {
         "avatar-pink",
         "avatar-cyan",
         "avatar-indigo"
+
     ];
 
 
@@ -291,29 +366,13 @@ function createTutorCard(tutor) {
         Number(tutor.id);
 
 
+    const colorIndex =
+        Math.abs(tutorId) %
+        avatarColors.length;
+
+
     const colorClass =
-        avatarColors[
-            Math.abs(tutorId) %
-            avatarColors.length
-        ];
-
-
-    const isAvailable =
-        tutor.is_available === true ||
-        tutor.is_available === 1 ||
-        tutor.is_available === "1";
-
-
-    const availabilityClass =
-        isAvailable
-            ? "online"
-            : "offline";
-
-
-    const availabilityText =
-        isAvailable
-            ? "Elérhető"
-            : "Nem elérhető";
+        avatarColors[colorIndex];
 
 
     const card =
@@ -327,23 +386,10 @@ function createTutorCard(tutor) {
     card.dataset.id =
         tutor.id;
 
-    card.dataset.name =
-        name;
-
-    card.dataset.subject =
-        subjects;
-
-    card.dataset.rating =
-        rating;
-
-    card.dataset.price =
-        price;
-
-    card.dataset.available =
-        isAvailable;
-
 
     card.innerHTML = `
+
+        <!-- KÁRTYA FEJLÉC -->
 
         <div class="card-top">
 
@@ -351,26 +397,24 @@ function createTutorCard(tutor) {
                 ${escapeHtml(initials)}
             </div>
 
-            <span class="${availabilityClass}">
-
-                <i></i>
-
-                ${availabilityText}
-
-            </span>
-
         </div>
 
+
+        <!-- NÉV -->
 
         <h2>
             ${escapeHtml(name)}
         </h2>
 
 
+        <!-- TANTÁRGY -->
+
         <span class="subject">
             ${escapeHtml(subjects)}
         </span>
 
+
+        <!-- ÉRTÉKELÉS -->
 
         <div class="rating">
 
@@ -379,23 +423,31 @@ function createTutorCard(tutor) {
             </span>
 
             <strong>
+
                 ${
                     rating > 0
                         ? rating.toFixed(1)
                         : "Nincs"
                 }
+
             </strong>
 
+
             <small>
+
+                ${reviewCount}
                 ${
                     reviewCount === 1
-                        ? "(1 értékelés)"
-                        : `(${reviewCount} értékelés)`
+                        ? " értékelés"
+                        : " értékelés"
                 }
+
             </small>
 
         </div>
 
+
+        <!-- ÁR -->
 
         <div class="price">
 
@@ -410,19 +462,23 @@ function createTutorCard(tutor) {
         </div>
 
 
+        <!-- BEMUTATKOZÁS -->
+
         <p class="description">
             ${escapeHtml(bio)}
         </p>
 
 
+        <!-- PROFIL GOMB -->
+
         <button
             class="profile-btn"
             type="button"
-            data-tutor-id="${tutor.id}"
+            data-tutor-id="${escapeHtml(tutor.id)}"
         >
 
             <span>
-                Értékelések megtekintése
+                Profil megtekintése
             </span>
 
             <span>
@@ -449,49 +505,59 @@ function getFilteredTutors() {
             .toLowerCase()
             .trim();
 
+
     const selectedSubject =
         subjectSelect.value;
 
+
     const minPrice =
-        Number(minPriceInput.value) || 0;
+        Number(
+            minPriceInput.value
+        ) || 0;
+
 
     const maxPrice =
         maxPriceInput.value.trim() === ""
             ? Infinity
-            : Number(maxPriceInput.value);
+            : Number(
+                maxPriceInput.value
+            );
+
 
     const minimumRating =
-        Number(ratingSelect.value) || 0;
-
-    const selectedAvailability =
-        availabilitySelect.value;
+        Number(
+            ratingSelect.value
+        ) || 0;
 
 
     return tutors.filter(tutor => {
 
+
         const name =
-            String(tutor.full_name || "")
-                .toLowerCase();
+            String(
+                tutor.full_name || ""
+            ).toLowerCase();
+
 
         const subjects =
-            String(tutor.subjects || "")
-                .toLowerCase();
+            String(
+                tutor.subjects || ""
+            ).toLowerCase();
+
 
         const rating =
             Number(
                 tutor.average_rating || 0
             );
 
+
         const price =
             Number(
                 tutor.hourly_rate || 0
             );
 
-        const isAvailable =
-            tutor.is_available === true ||
-            tutor.is_available === 1 ||
-            tutor.is_available === "1";
 
+        /* KERESÉS */
 
         const matchesSearch =
             search === "" ||
@@ -499,18 +565,27 @@ function getFilteredTutors() {
             subjects.includes(search);
 
 
-        let matchesSubject = true;
+        /* TANTÁRGY */
+
+        let matchesSubject =
+            true;
 
 
-        if (selectedSubject !== "all") {
+        if (
+            selectedSubject !== "all"
+        ) {
 
             const tutorSubjectList =
-                String(tutor.subjects || "")
-                    .split(",")
-                    .map(item =>
-                        item.trim()
-                            .toLowerCase()
-                    );
+                String(
+                    tutor.subjects || ""
+                )
+                .split(",")
+                .map(item =>
+                    item
+                        .trim()
+                        .toLowerCase()
+                );
+
 
             matchesSubject =
                 tutorSubjectList.includes(
@@ -518,45 +593,28 @@ function getFilteredTutors() {
                         .trim()
                         .toLowerCase()
                 );
+
         }
 
+
+        /* ÉRTÉKELÉS */
 
         const matchesRating =
             rating >= minimumRating;
 
+
+        /* ÁR */
 
         const matchesPrice =
             price >= minPrice &&
             price <= maxPrice;
 
 
-        let matchesAvailability = true;
-
-
-        if (
-            selectedAvailability ===
-            "available"
-        ) {
-
-            matchesAvailability =
-                isAvailable;
-
-        } else if (
-            selectedAvailability ===
-            "unavailable"
-        ) {
-
-            matchesAvailability =
-                !isAvailable;
-        }
-
-
         return (
             matchesSearch &&
             matchesSubject &&
             matchesRating &&
-            matchesPrice &&
-            matchesAvailability
+            matchesPrice
         );
 
     });
@@ -573,54 +631,58 @@ function sortTutors(list) {
         [...list];
 
 
-    if (
-        sortSelect.value ===
-        "rating"
-    ) {
-
-        sorted.sort(
-            (a, b) =>
-                Number(
-                    b.average_rating || 0
-                ) -
-                Number(
-                    a.average_rating || 0
-                )
-        );
-    }
+    switch (sortSelect.value) {
 
 
-    if (
-        sortSelect.value ===
-        "priceLow"
-    ) {
+        case "rating":
 
-        sorted.sort(
-            (a, b) =>
-                Number(
-                    a.hourly_rate || 0
-                ) -
-                Number(
-                    b.hourly_rate || 0
-                )
-        );
-    }
+            sorted.sort(
+                (a, b) =>
+                    Number(
+                        b.average_rating || 0
+                    ) -
+                    Number(
+                        a.average_rating || 0
+                    )
+            );
+
+            break;
 
 
-    if (
-        sortSelect.value ===
-        "priceHigh"
-    ) {
+        case "priceLow":
 
-        sorted.sort(
-            (a, b) =>
-                Number(
-                    b.hourly_rate || 0
-                ) -
-                Number(
-                    a.hourly_rate || 0
-                )
-        );
+            sorted.sort(
+                (a, b) =>
+                    Number(
+                        a.hourly_rate || 0
+                    ) -
+                    Number(
+                        b.hourly_rate || 0
+                    )
+            );
+
+            break;
+
+
+        case "priceHigh":
+
+            sorted.sort(
+                (a, b) =>
+                    Number(
+                        b.hourly_rate || 0
+                    ) -
+                    Number(
+                        a.hourly_rate || 0
+                    )
+            );
+
+            break;
+
+
+        default:
+
+            break;
+
     }
 
 
@@ -637,6 +699,7 @@ function renderTutors() {
     const filtered =
         getFilteredTutors();
 
+
     const sorted =
         sortTutors(filtered);
 
@@ -647,10 +710,9 @@ function renderTutors() {
 
     sorted.forEach(tutor => {
 
-        const card =
-            createTutorCard(tutor);
-
-        tutorGrid.appendChild(card);
+        tutorGrid.appendChild(
+            createTutorCard(tutor)
+        );
 
     });
 
@@ -667,10 +729,10 @@ function renderTutors() {
 
 
 /* =====================================================
-   REVIEW MODAL MEGNYITÁSA
+   PROFIL MEGNYITÁSA
 ===================================================== */
 
-async function openReviews(tutorId) {
+async function openProfile(tutorId) {
 
     const tutor =
         tutors.find(
@@ -681,13 +743,44 @@ async function openReviews(tutorId) {
 
 
     if (!tutor) {
+
+        console.error(
+            "❌ Az oktató nem található:",
+            tutorId
+        );
+
         return;
     }
 
 
+    /* =================================================
+       ALAPADATOK
+    ================================================== */
+
     const name =
         tutor.full_name ||
         "Ismeretlen oktató";
+
+
+    const subjects =
+        tutor.subjects ||
+        "Nincs megadott tantárgy";
+
+
+    const bio =
+        tutor.bio ||
+        "Az oktató még nem adott meg bemutatkozást.";
+
+
+    const email =
+        tutor.email ||
+        "Nincs megadva";
+
+
+    const price =
+        Number(
+            tutor.hourly_rate || 0
+        );
 
 
     const rating =
@@ -702,36 +795,66 @@ async function openReviews(tutorId) {
         );
 
 
-    reviewsTutorName.textContent =
-        name;
+    /* =================================================
+       PROFIL ADATOK KIÍRÁSA
+    ================================================== */
 
-
-    reviewsAvatar.textContent =
+    profileAvatar.textContent =
         getInitials(name);
 
 
-    reviewsAverage.textContent =
+    profileTutorName.textContent =
+        name;
+
+
+    profileTutorSubjects.textContent =
+        subjects;
+
+
+    profileAverage.textContent =
         rating > 0
             ? rating.toFixed(1)
             : "0.0";
 
 
-    reviewsTotal.textContent =
-        reviewCount === 1
-            ? "1 értékelés"
-            : `${reviewCount} értékelés`;
+    profileReviewCount.textContent =
+        `${reviewCount} értékelés`;
 
 
-    reviewsList.innerHTML = `
-        <div class="reviews-loading">
-            Értékelések betöltése...
-        </div>
-    `;
+    profilePrice.textContent =
+        `${price.toLocaleString("hu-HU")} Ft / óra`;
 
 
-    reviewsModal.classList.add("active");
+    profileSubjects.textContent =
+        subjects;
 
-    reviewsModal.setAttribute(
+
+    profileReviewsNumber.textContent =
+        reviewCount;
+
+
+    profileReviewBadge.textContent =
+        `${reviewCount} értékelés`;
+
+
+    profileEmail.textContent =
+        email;
+
+
+    profileBio.textContent =
+        bio;
+
+
+    /* =================================================
+       MODAL MEGNYITÁSA
+    ================================================== */
+
+    profileModal.classList.add(
+        "active"
+    );
+
+
+    profileModal.setAttribute(
         "aria-hidden",
         "false"
     );
@@ -739,6 +862,21 @@ async function openReviews(tutorId) {
 
     document.body.style.overflow =
         "hidden";
+
+
+    /* =================================================
+       ÉRTÉKELÉSEK BETÖLTÉSE
+    ================================================== */
+
+    profileReviewsList.innerHTML = `
+
+        <div class="profile-reviews-loading">
+
+            Értékelések betöltése...
+
+        </div>
+
+    `;
 
 
     try {
@@ -754,6 +892,7 @@ async function openReviews(tutorId) {
             throw new Error(
                 "Nem sikerült lekérni az értékeléseket."
             );
+
         }
 
 
@@ -761,20 +900,22 @@ async function openReviews(tutorId) {
             await response.json();
 
 
-        renderReviews(reviews);
+        renderProfileReviews(
+            reviews
+        );
 
 
     } catch (error) {
 
         console.error(
-            "❌ Review betöltési hiba:",
+            "❌ Értékelések betöltési hiba:",
             error
         );
 
 
-        reviewsList.innerHTML = `
+        profileReviewsList.innerHTML = `
 
-            <div class="reviews-error">
+            <div class="profile-reviews-error">
 
                 ⚠️ Nem sikerült betölteni
                 az értékeléseket.
@@ -782,22 +923,28 @@ async function openReviews(tutorId) {
             </div>
 
         `;
+
     }
 }
 
 
 /* =====================================================
-   REVIEW-K MEGJELENÍTÉSE
+   PROFIL ÉRTÉKELÉSEK
 ===================================================== */
 
-function renderReviews(reviews) {
+function renderProfileReviews(reviews) {
 
     if (!Array.isArray(reviews)) {
 
-        reviewsList.innerHTML = `
-            <div class="reviews-error">
-                Hibás válasz érkezett a szervertől.
+        profileReviewsList.innerHTML = `
+
+            <div class="profile-reviews-error">
+
+                Hibás válasz érkezett
+                a szervertől.
+
             </div>
+
         `;
 
         return;
@@ -806,132 +953,191 @@ function renderReviews(reviews) {
 
     if (reviews.length === 0) {
 
-        reviewsList.innerHTML = `
-            <div class="reviews-empty">
-                ⭐ Ennek az oktatónak még nincs értékelése.
+        profileReviewsList.innerHTML = `
+
+            <div class="profile-reviews-empty">
+
+                <div class="empty-review-icon">
+                    ⭐
+                </div>
+
+                <strong>
+                    Még nincs értékelés
+                </strong>
+
+                <span>
+                    Ehhez az oktatóhoz még nem érkezett
+                    értékelés.
+                </span>
+
             </div>
+
         `;
 
         return;
     }
 
 
-    reviewsList.innerHTML =
-        reviews.map(review => {
-
-            const reviewerName =
-                review.reviewer_name ||
-                review.student_name ||
-                "Névtelen értékelő";
+    profileReviewsList.innerHTML =
+        reviews
+            .map(review => {
 
 
-            const rating =
-                Number(
-                    review.rating || 0
-                );
+                const reviewerName =
+                    review.reviewer_name ||
+                    "Névtelen értékelő";
 
 
-            const text =
-                review.comment ||
-                review.review_text ||
-                review.text ||
-                "Az értékelő nem írt szöveges értékelést.";
-
-
-            let dateText = "";
-
-
-            if (review.created_at) {
-
-                const date =
-                    new Date(
-                        review.created_at
+                const rating =
+                    Number(
+                        review.rating || 0
                     );
 
 
-                if (!Number.isNaN(
-                    date.getTime()
-                )) {
+                const text =
+                    review.comment ||
+                    "Az értékelő nem írt szöveges értékelést.";
 
-                    dateText =
-                        date.toLocaleDateString(
-                            "hu-HU"
+
+                let dateText =
+                    "";
+
+
+                if (
+                    review.created_at
+                ) {
+
+                    const date =
+                        new Date(
+                            review.created_at
                         );
+
+
+                    if (
+                        !Number.isNaN(
+                            date.getTime()
+                        )
+                    ) {
+
+                        dateText =
+                            date.toLocaleDateString(
+                                "hu-HU"
+                            );
+
+                    }
+
                 }
-            }
 
 
-            return `
+                return `
 
-                <article class="review-item">
+                    <article
+                        class="profile-review-item"
+                    >
 
-                    <div class="review-item-top">
 
-                        <div class="reviewer">
+                        <div
+                            class="profile-review-top"
+                        >
 
-                            <div class="reviewer-avatar">
-                                ${escapeHtml(
-                                    getInitials(
-                                        reviewerName
-                                    )
-                                )}
-                            </div>
 
-                            <div>
+                            <div
+                                class="profile-reviewer"
+                            >
 
-                                <div class="reviewer-name">
+
+                                <div
+                                    class="profile-reviewer-avatar"
+                                >
+
                                     ${escapeHtml(
-                                        reviewerName
+                                        getInitials(
+                                            reviewerName
+                                        )
                                     )}
+
                                 </div>
 
-                                ${
-                                    dateText
-                                        ? `
-                                            <span class="review-date">
-                                                ${escapeHtml(
-                                                    dateText
-                                                )}
-                                            </span>
-                                        `
-                                        : ""
-                                }
+
+                                <div>
+
+                                    <strong
+                                        class="profile-reviewer-name"
+                                    >
+
+                                        ${escapeHtml(
+                                            reviewerName
+                                        )}
+
+                                    </strong>
+
+
+                                    ${
+                                        dateText
+                                            ? `
+                                                <span
+                                                    class="profile-review-date"
+                                                >
+                                                    ${escapeHtml(
+                                                        dateText
+                                                    )}
+                                                </span>
+                                            `
+                                            : ""
+                                    }
+
+                                </div>
+
 
                             </div>
 
+
+                            <div
+                                class="profile-review-stars"
+                            >
+
+                                ${getStars(
+                                    rating
+                                )}
+
+                            </div>
+
+
                         </div>
 
 
-                        <div class="review-stars">
-                            ${getStars(rating)}
-                        </div>
+                        <p
+                            class="profile-review-text"
+                        >
 
-                    </div>
+                            ${escapeHtml(
+                                text
+                            )}
+
+                        </p>
 
 
-                    <p class="review-text">
-                        ${escapeHtml(text)}
-                    </p>
+                    </article>
 
-                </article>
+                `;
 
-            `;
-
-        }).join("");
+            })
+            .join("");
 }
 
 
 /* =====================================================
-   MODAL BEZÁRÁSA
+   PROFIL BEZÁRÁSA
 ===================================================== */
 
-function closeReviews() {
+function closeProfile() {
 
-    reviewsModal.classList.remove(
+    profileModal.classList.remove(
         "active"
     );
 
-    reviewsModal.setAttribute(
+
+    profileModal.setAttribute(
         "aria-hidden",
         "true"
     );
@@ -939,18 +1145,23 @@ function closeReviews() {
 
     document.body.style.overflow =
         "";
+
 }
 
 
-reviewsClose.addEventListener(
+/* =====================================================
+   MODAL ESEMÉNYEK
+===================================================== */
+
+profileClose.addEventListener(
     "click",
-    closeReviews
+    closeProfile
 );
 
 
-reviewsOverlay.addEventListener(
+profileOverlay.addEventListener(
     "click",
-    closeReviews
+    closeProfile
 );
 
 
@@ -960,94 +1171,21 @@ document.addEventListener(
 
         if (
             event.key === "Escape" &&
-            reviewsModal.classList.contains(
+            profileModal.classList.contains(
                 "active"
             )
         ) {
 
-            closeReviews();
+            closeProfile();
+
         }
+
     }
 );
 
 
 /* =====================================================
-   SZŰRŐ ESEMÉNYEK
-===================================================== */
-
-searchInput.addEventListener(
-    "input",
-    renderTutors
-);
-
-subjectSelect.addEventListener(
-    "change",
-    renderTutors
-);
-
-ratingSelect.addEventListener(
-    "change",
-    renderTutors
-);
-
-minPriceInput.addEventListener(
-    "input",
-    renderTutors
-);
-
-maxPriceInput.addEventListener(
-    "input",
-    renderTutors
-);
-
-availabilitySelect.addEventListener(
-    "change",
-    renderTutors
-);
-
-sortSelect.addEventListener(
-    "change",
-    renderTutors
-);
-
-
-/* =====================================================
-   SZŰRŐK TÖRLÉSE
-===================================================== */
-
-resetFilters.addEventListener(
-    "click",
-    () => {
-
-        searchInput.value =
-            "";
-
-        subjectSelect.value =
-            "all";
-
-        ratingSelect.value =
-            "0";
-
-        minPriceInput.value =
-            "";
-
-        maxPriceInput.value =
-            "";
-
-        availabilitySelect.value =
-            "all";
-
-        sortSelect.value =
-            "default";
-
-
-        renderTutors();
-    }
-);
-
-
-/* =====================================================
-   PROFIL / REVIEW GOMB
+   PROFIL GOMBOK
 ===================================================== */
 
 tutorGrid.addEventListener(
@@ -1069,7 +1207,88 @@ tutorGrid.addEventListener(
             button.dataset.tutorId;
 
 
-        openReviews(tutorId);
+        openProfile(
+            tutorId
+        );
+
+    }
+);
+
+
+/* =====================================================
+   SZŰRŐ ESEMÉNYEK
+===================================================== */
+
+searchInput.addEventListener(
+    "input",
+    renderTutors
+);
+
+
+subjectSelect.addEventListener(
+    "change",
+    renderTutors
+);
+
+
+ratingSelect.addEventListener(
+    "change",
+    renderTutors
+);
+
+
+minPriceInput.addEventListener(
+    "input",
+    renderTutors
+);
+
+
+maxPriceInput.addEventListener(
+    "input",
+    renderTutors
+);
+
+
+sortSelect.addEventListener(
+    "change",
+    renderTutors
+);
+
+
+/* =====================================================
+   SZŰRŐK TÖRLÉSE
+===================================================== */
+
+resetFilters.addEventListener(
+    "click",
+    () => {
+
+        searchInput.value =
+            "";
+
+
+        subjectSelect.value =
+            "all";
+
+
+        ratingSelect.value =
+            "0";
+
+
+        minPriceInput.value =
+            "";
+
+
+        maxPriceInput.value =
+            "";
+
+
+        sortSelect.value =
+            "default";
+
+
+        renderTutors();
+
     }
 );
 

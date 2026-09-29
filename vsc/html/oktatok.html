@@ -2,22 +2,46 @@
 <html lang="hu">
 
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/oktatok.css">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>TutorConnect - Oktatók</title>
+    <link
+        rel="stylesheet"
+        href="../css/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="../css/oktatok.css"
+    >
+
+    <title>
+        TutorConnect - Oktatók
+    </title>
+
 </head>
+
 
 <body>
 
+
 <main class="tutor-page">
+
+
+    <!-- =====================================================
+         FEJLÉC
+    ====================================================== -->
 
     <section class="tutor-header">
 
+
         <div class="header-content">
+
 
             <div>
 
@@ -25,10 +49,12 @@
                     TUTORCONNECT
                 </span>
 
+
                 <h1>
                     Találd meg a számodra<br>
                     megfelelő oktatót.
                 </h1>
+
 
                 <p>
                     Válassz a regisztrált oktatók közül,
@@ -37,17 +63,26 @@
 
             </div>
 
+
             <div class="header-icon">
-                <span>🎓</span>
+
+                <span>
+                    🎓
+                </span>
+
             </div>
 
         </div>
+
+
+        <!-- KERESÉS -->
 
         <div class="search-box">
 
             <span class="search-icon">
                 ⌕
             </span>
+
 
             <input
                 type="text"
@@ -57,16 +92,24 @@
 
         </div>
 
+
     </section>
 
 
+
+    <!-- =====================================================
+         SZŰRŐK
+    ====================================================== -->
+
     <section class="filters">
+
 
         <div class="filter-title">
 
             <span>
                 Szűrés
             </span>
+
 
             <button
                 id="resetFilters"
@@ -80,11 +123,13 @@
 
         <div class="filter-grid">
 
+
             <div class="filter-group">
 
                 <label for="subject">
                     Tantárgy
                 </label>
+
 
                 <select id="subject">
 
@@ -97,11 +142,13 @@
             </div>
 
 
+
             <div class="filter-group">
 
                 <label for="rating">
                     Értékelés
                 </label>
+
 
                 <select id="rating">
 
@@ -126,11 +173,13 @@
             </div>
 
 
+
             <div class="filter-group price-filter">
 
                 <label>
                     Óradíj
                 </label>
+
 
                 <div class="price-inputs">
 
@@ -141,7 +190,11 @@
                         min="0"
                     >
 
-                    <span>—</span>
+
+                    <span>
+                        —
+                    </span>
+
 
                     <input
                         type="number"
@@ -155,38 +208,24 @@
             </div>
 
 
-            <div class="filter-group">
 
-                <label for="availability">
-                    Elérhetőség
-                </label>
-
-                <select id="availability">
-
-                    <option value="all">
-                        Bármikor
-                    </option>
-
-                    <option value="available">
-                        Elérhető
-                    </option>
-
-                    <option value="unavailable">
-                        Nem elérhető
-                    </option>
-
-                </select>
-
-            </div>
+            <!-- ELÉRHETŐSÉG SZŰRŐT MOST KIHAGYJUK -->
 
         </div>
 
     </section>
 
 
+
+    <!-- =====================================================
+         TALÁLATOK
+    ====================================================== -->
+
     <section class="results-section">
 
+
         <div class="results-top">
+
 
             <div>
 
@@ -196,6 +235,7 @@
                 >
                     Oktatók betöltése...
                 </span>
+
 
                 <p>
                     Találd meg a neked megfelelő tanárt.
@@ -227,13 +267,16 @@
 
             </select>
 
+
         </div>
+
 
 
         <div
             class="tutor-grid"
             id="tutorGrid"
         ></div>
+
 
 
         <div
@@ -245,9 +288,11 @@
                 🔎
             </div>
 
+
             <h3>
                 Nem található oktató
             </h3>
+
 
             <p>
                 Próbálj más keresési feltételeket
@@ -256,94 +301,280 @@
 
         </div>
 
+
     </section>
+
 
 </main>
 
 
+
 <!-- =====================================================
-     ÉRTÉKELÉSEK MODAL
+     OKTATÓ PROFIL MODAL
 ====================================================== -->
 
 <div
-    class="reviews-modal"
-    id="reviewsModal"
+    class="profile-modal"
+    id="profileModal"
     aria-hidden="true"
 >
 
-    <div class="reviews-overlay" id="reviewsOverlay"></div>
+
+    <div
+        class="profile-overlay"
+        id="profileOverlay"
+    ></div>
 
 
-    <div class="reviews-window">
+
+    <div class="profile-window">
+
+
+        <!-- BEZÁRÁS -->
 
         <button
             type="button"
-            class="reviews-close"
-            id="reviewsClose"
-            aria-label="Bezárás"
+            class="profile-close"
+            id="profileClose"
+            aria-label="Profil bezárása"
         >
             ×
         </button>
 
 
-        <div class="reviews-header">
 
-            <div class="reviews-avatar" id="reviewsAvatar">
+        <!-- =================================================
+             PROFIL FEJLÉC
+        ================================================== -->
+
+        <div class="profile-header">
+
+
+            <div
+                class="profile-avatar"
+                id="profileAvatar"
+            >
                 OK
             </div>
 
-            <div>
 
-                <span class="reviews-label">
-                    OKTATÓ ÉRTÉKELÉSEI
+
+            <div class="profile-header-info">
+
+
+                <span class="profile-label">
+                    OKTATÓ PROFIL
                 </span>
 
-                <h2 id="reviewsTutorName">
+
+                <h2 id="profileTutorName">
                     Oktató
                 </h2>
 
-                <div class="reviews-summary">
 
-                    <span class="big-rating" id="reviewsAverage">
+                <p id="profileTutorSubjects">
+                    Nincs megadott tantárgy
+                </p>
+
+
+                <div class="profile-rating-summary">
+
+                    <span
+                        class="profile-rating"
+                        id="profileAverage"
+                    >
                         0.0
                     </span>
 
-                    <span class="stars">
+
+                    <span class="profile-stars">
                         ★★★★★
                     </span>
 
+
                     <span
-                        class="review-total"
-                        id="reviewsTotal"
+                        class="profile-review-count"
+                        id="profileReviewCount"
                     >
                         0 értékelés
                     </span>
 
                 </div>
 
+
             </div>
+
 
         </div>
 
 
-        <div
-            class="reviews-list"
-            id="reviewsList"
-        >
 
-            <div class="reviews-loading">
-                Értékelések betöltése...
+        <!-- =================================================
+             PROFIL TARTALOM
+        ================================================== -->
+
+        <div class="profile-body">
+
+
+            <!-- ADATOK -->
+
+            <div class="profile-info-grid">
+
+
+                <div class="profile-info-card">
+
+                    <span class="profile-info-label">
+                        Óradíj
+                    </span>
+
+
+                    <strong id="profilePrice">
+                        0 Ft / óra
+                    </strong>
+
+                </div>
+
+
+
+                <div class="profile-info-card">
+
+                    <span class="profile-info-label">
+                        Tantárgyak
+                    </span>
+
+
+                    <strong id="profileSubjects">
+                        —
+                    </strong>
+
+                </div>
+
+
+
+                <div class="profile-info-card">
+
+                    <span class="profile-info-label">
+                        Értékelések
+                    </span>
+
+
+                    <strong id="profileReviewsNumber">
+                        0
+                    </strong>
+
+                </div>
+
+
+
+                <div class="profile-info-card">
+
+                    <span class="profile-info-label">
+                        E-mail
+                    </span>
+
+
+                    <strong id="profileEmail">
+                        —
+                    </strong>
+
+                </div>
+
+
             </div>
 
+
+
+            <!-- =================================================
+                 BEMUTATKOZÁS
+            ================================================== -->
+
+            <section class="profile-about">
+
+
+                <div class="profile-section-title">
+
+                    <span>
+                        Rólam
+                    </span>
+
+                </div>
+
+
+                <p id="profileBio">
+                    Az oktató még nem adott meg bemutatkozást.
+                </p>
+
+
+            </section>
+
+
+
+            <!-- =================================================
+                 ÉRTÉKELÉSEK
+            ================================================== -->
+
+            <section class="profile-reviews-section">
+
+
+                <div class="profile-reviews-heading">
+
+
+                    <div>
+
+                        <span class="profile-section-label">
+                            VÉLEMÉNYEK
+                        </span>
+
+
+                        <h3>
+                            Mit mondanak róla a diákok?
+                        </h3>
+
+                    </div>
+
+
+                    <div
+                        class="profile-review-badge"
+                        id="profileReviewBadge"
+                    >
+                        0 értékelés
+                    </div>
+
+
+                </div>
+
+
+
+                <div
+                    class="profile-reviews-list"
+                    id="profileReviewsList"
+                >
+
+                    <div class="profile-reviews-loading">
+                        Értékelések betöltése...
+                    </div>
+
+                </div>
+
+
+            </section>
+
+
         </div>
+
 
     </div>
+
 
 </div>
 
 
+
 <script src="../js/oktatok.js"></script>
+
 <script src="/js/creator.js"></script>
 
+
 </body>
+
 </html>
