@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 25, 2026 at 10:38 AM
+-- Generation Time: Sep 29, 2026 at 09:23 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -99,7 +99,9 @@ CREATE TABLE `conversations` (
 --
 
 INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
-(1, 1, 3, '2026-09-24 07:38:40');
+(1, 1, 3, '2026-09-24 07:38:40'),
+(2, 13, 14, '2026-09-25 09:15:47'),
+(3, 13, 15, '2026-09-29 07:21:52');
 
 -- --------------------------------------------------------
 
@@ -277,7 +279,8 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`,
 (11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', 3500, '2026-09-25 08:15:14'),
 (12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', 3000, '2026-09-25 08:15:14'),
 (13, 'test', 'test@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$X401oEo08mY6fHy5P0htpA$gTwWRwTVZnEY9OuY40QR9JlknDDdMIQ5pU643f1gO+E', 'STUDENT', '', 0, '2026-09-25 08:31:22'),
-(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', '', 0, '2026-09-25 08:33:56');
+(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', 'kuvaszológia professzor', 6700, '2026-09-29 07:17:01'),
+(15, 'test3', 'test3@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$3zKHJdk9VJGqkFu6DOp++Q$02yCv+X4/yIdyDBnkYKLDFeY1VbljOZABhvvdP5FkpU', 'TUTOR', 'illuminati aktivitás trackelés ', 4000, '2026-09-29 07:19:36');
 
 --
 -- Indexes for dumped tables
@@ -363,7 +366,7 @@ ALTER TABLE `bookings`
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `messages`
@@ -387,7 +390,7 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- Constraints for dumped tables
