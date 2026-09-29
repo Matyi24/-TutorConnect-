@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 29, 2026 at 09:23 AM
+-- Generation Time: Sep 29, 2026 at 12:51 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -79,7 +79,8 @@ INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_tim
 (2, 2, 4, 8, '2026-09-26 11:00:00', '2026-09-26 12:00:00', 'CONFIRMED', NULL),
 (3, 6, 7, 5, '2026-09-26 13:00:00', '2026-09-26 14:00:00', 'COMPLETED', NULL),
 (4, 9, 5, 3, '2026-09-25 15:00:00', '2026-09-25 16:00:00', 'PENDING', NULL),
-(5, 2, 8, 15, '2026-09-28 14:00:00', '2026-09-28 15:00:00', 'CONFIRMED', NULL);
+(5, 2, 8, 15, '2026-09-28 14:00:00', '2026-09-28 15:00:00', 'CONFIRMED', NULL),
+(6, 2, 3, 1, '2026-09-29 14:00:00', '2026-09-29 15:00:00', 'COMPLETED', NULL);
 
 -- --------------------------------------------------------
 
@@ -123,12 +124,12 @@ CREATE TABLE `messages` (
 --
 
 INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`) VALUES
-(1, 1, 1, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29'),
-(2, 1, 3, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29'),
-(3, 1, 1, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29'),
-(4, 1, 3, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29'),
-(5, 1, 1, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29'),
-(6, 1, 3, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 0, '2026-09-24 09:18:29');
+(1, 2, 13, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29'),
+(2, 2, 14, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29'),
+(3, 2, 13, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29'),
+(4, 2, 14, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29'),
+(5, 2, 13, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29'),
+(6, 2, 14, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 0, '2026-09-24 09:18:29');
 
 -- --------------------------------------------------------
 
@@ -150,7 +151,8 @@ CREATE TABLE `reviews` (
 
 INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VALUES
 (2, 3, '5', 'Nagyon érthetően magyarázott, sokat segített a feladatokban.', NULL),
-(3, 1, '5', 'Nagyon jó óra volt, végre megértettem mindent amiről kérdezni szerettem volna akkoriban.', NULL);
+(3, 1, '5', 'Nagyon jó óra volt, végre megértettem mindent amiről kérdezni szerettem volna akkoriban.', NULL),
+(4, 6, '4', 'Kuvaszcraft lyo volt de nem pörfekt', NULL);
 
 -- --------------------------------------------------------
 
@@ -360,7 +362,7 @@ ALTER TABLE `availabilities`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `conversations`
@@ -378,7 +380,7 @@ ALTER TABLE `messages`
 -- AUTO_INCREMENT for table `reviews`
 --
 ALTER TABLE `reviews`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `subjects`
