@@ -859,18 +859,25 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
 
     const tutorId = Number(req.params.id);
 
+    console.log("⭐ REVIEWS REQUEST");
+    console.log("Tutor ID:", tutorId);
+
+
     if (!Number.isInteger(tutorId)) {
+
         return res.status(400).json({
             error: "Érvénytelen oktató ID."
         });
+
     }
+
 
     const sql = `
         SELECT
             r.id,
             r.rating,
-            r.comment,
-            r.created_at,
+            r.comment_ AS comment,
+            r.crated_at AS created_at,
             u.full_name AS reviewer_name
 
         FROM reviews r
@@ -883,8 +890,12 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
 
         WHERE b.tutor_id = ?
 
-        ORDER BY r.created_at DESC
+        ORDER BY r.crated_at DESC
     `;
+
+
+    console.log("📋 Review SQL futtatása...");
+
 
     db.query(
         sql,
@@ -894,19 +905,32 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
             if (err) {
 
                 console.error(
-                    "❌ /api/tutors/:id/reviews SQL ERROR:",
-                    err
+                    "❌ REVIEW SQL ERROR:"
                 );
 
+                console.error(err);
+
                 return res.status(500).json({
-                    error: "Adatbázis hiba."
+                    error: "Adatbázis hiba.",
+                    details: err.message
                 });
+
             }
 
-            res.json(results);
+
+            console.log(
+                "✅ Review-k lekérve:",
+                results
+            );
+
+
+            return res.json(results);
+
         }
     );
+
 });
+
 
 
 // ============================================================
