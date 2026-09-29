@@ -907,76 +907,65 @@ app.get("/api/tutors/:id/reviews", (req, res) => {
 });
 
 
-
-//convo prototype
+// ============================================================
+// CONVERSATIONS API
+// ============================================================
 
 app.get("/api/conversations", (req, res) => {
 
     console.log("💬 GET /api/conversations");
 
-
-    // 1. Megnézzük, hogy be van-e jelentkezve valaki
-
-    if (!req.session.user) {
-
-        return res.status(401).json({
-            error: "Nincs bejelentkezve."
-        });
-    }
-
-
-    // 2. Megszerezzük a bejelentkezett user ID-ját
-
+    // A bejelentkezett felhasználó ID-ja
     const userId = req.session.user.id;
 
-    console.log(
-        "👤 Bejelentkezett user ID:",
-        userId
-    );
-
-
-    // 3. Csak azokat a conversationöket kérjük le,
-    //    amelyekben a user részt vesz
-
     const sql = `
-        SELECT *
+        SELECT
+            conversations.id,
+            conversations.student_id,
+            conversations.tutor_id,
+            conversations.created_at,
+
+            CASE
+                WHEN conversations.student_id = ?
+                    THEN tutor.full_name
+                ELSE student.full_name
+            END AS other_user_name
+
         FROM conversations
-        WHERE student_id = ?
-           OR tutor_id = ?
+
+        JOIN users AS student
+            ON conversations.student_id = student.id
+
+        JOIN users AS tutor
+            ON conversations.tutor_id = tutor.id
+
+        WHERE conversations.student_id = ?
+           OR conversations.tutor_id = ?
     `;
-
-
-    // 4. A user ID-ját átadjuk a két ? helyére
 
     db.query(
         sql,
-        [userId, userId],
+        [userId, userId, userId],
         (err, results) => {
 
             if (err) {
 
-                console.error(
-                    "❌ SQL hiba:",
-                    err
-                );
+                console.error("❌ SQL hiba:", err);
 
                 return res.status(500).json({
                     error: "Adatbázis hiba"
                 });
             }
 
-
             console.log(
-                "✅ Saját beszélgetések lekérve:",
+                "✅ Beszélgetések lekérve:",
                 results.length
             );
-
 
             res.json(results);
         }
     );
 });
-
 
 // ============================================================
 // START SERVER
