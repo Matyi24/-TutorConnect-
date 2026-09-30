@@ -987,7 +987,6 @@ app.get("/api/stats", (req, res) => {
 });
 
 
-
 // ============================================================
 // CONVERSATIONS API
 // ============================================================
@@ -995,6 +994,10 @@ app.get("/api/stats", (req, res) => {
 app.get("/api/conversations", (req, res) => {
 
     console.log("💬 GET /api/conversations");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
 
     // A bejelentkezett felhasználó ID-ja
     const userId = req.session.user.id;
@@ -1010,7 +1013,23 @@ app.get("/api/conversations", (req, res) => {
                 WHEN conversations.student_id = ?
                     THEN tutor.full_name
                 ELSE student.full_name
-            END AS other_user_name
+            END AS other_user_name,
+
+            (
+                SELECT messages.content
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message,
+
+            (
+                SELECT messages.created_at
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message_time
 
         FROM conversations
 
@@ -1047,7 +1066,143 @@ app.get("/api/conversations", (req, res) => {
         }
     );
 });
+// ============================================================
+// MESSAGES API
+// ============================================================
 
+// ------------------------------------------------------------
+// GET: egy beszélgetés üzenetei
+// ------------------------------------------------------------
+
+app.get("/api/conversations/:id/messages", (req, res) => {
+
+    console.log("💬 GET /api/conversations/:id/messages");
+
+    // Be van jelentkezve?
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const conversationId = req.params.id;
+
+    const sql = `
+        SELECT
+            messages.id,
+            messages.conversation_id,
+            messages.sender_id,
+            messages.content,
+            messages.is_read,
+            messages.created_at
+
+        FROM messages
+
+        JOIN conversations
+            ON messages.conversation_id = conversations.id
+
+        WHERE messages.conversation_id = ?
+          AND (
+              conversations.student_id = ?
+              OR conversations.tutor_id = ?
+          )
+
+        ORDER BY messages.created_at ASC, messages.id ASC
+    `;
+
+    db.query(sql, [conversationId, userId, userId], (err, results) => {
+
+        if (err) {
+            console.error("❌ SQL hiba:", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        console.log("✅ Üzenetek lekérve:", results.length);
+
+        res.json(results);
+    });
+});
+
+
+// ------------------------------------------------------------
+// POST: új üzenet küldése
+// ------------------------------------------------------------
+
+app.post("/api/conversations/:id/messages", (req, res) => {
+
+    console.log("📨 POST /api/conversations/:id/messages");
+
+    // 1. Be van jelentkezve?
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const conversationId = req.params.id;
+
+    // 2. Az üzenet szövege a kérés törzséből jön
+    const content = (req.body.content || "").trim();
+
+    if (!content) {
+        return res.status(400).json({ error: "Az üzenet nem lehet üres" });
+    }
+
+    if (content.length > 2000) {
+        return res.status(400).json({ error: "Az üzenet túl hosszú" });
+    }
+
+    // 3. Résztvevője-e a bejelentkezett user ennek a beszélgetésnek?
+    const checkSql = `
+        SELECT id FROM conversations
+        WHERE id = ?
+          AND (student_id = ? OR tutor_id = ?)
+    `;
+
+    db.query(checkSql, [conversationId, userId, userId], (err, rows) => {
+
+        if (err) {
+            console.error("❌ SQL hiba (ellenőrzés):", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        if (rows.length === 0) {
+            return res.status(403).json({
+                error: "Nem vagy résztvevője ennek a beszélgetésnek"
+            });
+        }
+
+        // 4. Mentés. A sender_id MINDIG a sessionből jön,
+        //    sosem a böngészőből.
+        const insertSql = `
+            INSERT INTO messages (conversation_id, sender_id, content)
+            VALUES (?, ?, ?)
+        `;
+
+        db.query(insertSql, [conversationId, userId, content], (err, result) => {
+
+            if (err) {
+                console.error("❌ SQL hiba (INSERT):", err);
+                return res.status(500).json({ error: "Adatbázis hiba" });
+            }
+
+            // 5. Visszaadjuk a frissen mentett üzenetet
+            db.query(
+                "SELECT * FROM messages WHERE id = ?",
+                [result.insertId],
+                (err, saved) => {
+
+                    if (err) {
+                        console.error("❌ SQL hiba (SELECT):", err);
+                        return res.status(500).json({ error: "Adatbázis hiba" });
+                    }
+
+                    console.log("✅ Üzenet elmentve:", result.insertId);
+
+                    res.status(201).json(saved[0]);
+                }
+            );
+        });
+    });
+});
 // ============================================================
 // START SERVER
 // ============================================================
@@ -1056,9 +1211,9 @@ app.listen(
     3000,
     () => {
 
-    console.log("\n==========================================");
-    console.log("🌍 SERVER RUNNING");
-    console.log("➡️ http://localhost:3000");
-    console.log("==========================================\n");
+        console.log("\n==========================================");
+        console.log("🌍 SERVER RUNNING");
+        console.log("➡️ http://localhost:3000");
+        console.log("==========================================\n");
 
-});
+    });

@@ -43,10 +43,7 @@
 
                     <span class="search-icon">⌕</span>
 
-                    <input
-                        type="text"
-                        placeholder="Keresés..."
-                    >
+                    <input type="text" placeholder="Keresés...">
 
                 </div>
 
@@ -54,7 +51,7 @@
                 <!-- Beszélgetések -->
 
                 <div class="conversation-list">
-
+                    <!--
                     <div class="conversation active">
 
                         <div class="avatar">
@@ -133,7 +130,7 @@
                         </div>
 
                     </div>
-
+-->
                 </div>
 
             </aside>
@@ -148,25 +145,22 @@
                 <!-- Chat fejléc -->
 
                 <header class="chat-header">
+<div class="chat-user">
 
-                    <div class="chat-user">
+    <div class="avatar large"></div>
 
-                        <div class="avatar large">
-                            KP
-                        </div>
+    <div>
 
-                        <div>
+        <h2></h2>
 
-                            <h2>Kovács Péter</h2>
+        <div class="online-status">
+            <span></span>
+            Online
+        </div>
 
-                            <div class="online-status">
-                                <span></span>
-                                Online
-                            </div>
+    </div>
 
-                        </div>
-
-                    </div>
+</div>
 
 
                     <button class="chat-options">
@@ -181,7 +175,7 @@
                 ================================== -->
 
                 <div class="messages">
-
+                        <!--
                     <div class="message-group received">
 
                         <span class="message-time">
@@ -245,7 +239,7 @@
                         </div>
 
                     </div>
-
+                -->
                 </div>
 
 
@@ -255,27 +249,15 @@
 
                 <form class="message-form">
 
-                    <button
-                        type="button"
-                        class="attachment-button"
-                        title="Csatolmány"
-                    >
+                    <button type="button" class="attachment-button" title="Csatolmány">
                         +
                     </button>
 
 
-                    <input
-                        type="text"
-                        placeholder="Írj egy üzenetet..."
-                        autocomplete="off"
-                    >
+                    <input type="text" placeholder="Írj egy üzenetet..." autocomplete="off">
 
 
-                    <button
-                        type="submit"
-                        class="send-button"
-                        title="Üzenet küldése"
-                    >
+                    <button type="submit" class="send-button" title="Üzenet küldése">
                         ➤
                     </button>
 
@@ -292,6 +274,7 @@
          a közös navbar/footer elemeket -->
 
     <script src="/js/creator.js"></script>
+    <script src="/js/chat.js"></script>
 
 </body>
 
