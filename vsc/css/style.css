@@ -159,12 +159,15 @@ button:hover {
     gap: 12px;
 }
 .logout{
-    
+    background-color: red;
+    color: var(--white);
+    font-weight: bold;
 }
 .user-name{
-    color: orange;
+    color: var(--white);
     font-size: large;
-    gap: 20px;
+    font-weight: bold;
+    margin-right: 25px;
 }
 .cta-buttons .login {
     background: transparent;

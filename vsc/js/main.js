@@ -70,8 +70,7 @@ app.use(
             // If you later use HTTPS, change this to true.
             secure: false,
 
-            // How long the cookie (= the login) lasts, in milliseconds:
-            // 1000 ms * 60 s * 60 min * 24 h * 7 days = 7 days
+            // 1000 ms * 60 s * 60 m * 24 h * 7 days = 7 days
             maxAge: 1000 * 60 * 60 * 24 * 7
         }
     })
