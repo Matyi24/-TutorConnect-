@@ -794,11 +794,14 @@ app.get("/api/tutors", (req, res) => {
             u.hourly_rate,
 
             COALESCE(
-                AVG(CAST(r.rating AS DECIMAL(2,1))),
+                review_stats.average_rating,
                 0
             ) AS average_rating,
 
-            COUNT(r.id) AS review_count,
+            COALESCE(
+                review_stats.review_count,
+                0
+            ) AS review_count,
 
             GROUP_CONCAT(
                 DISTINCT s.name
@@ -814,11 +817,26 @@ app.get("/api/tutors", (req, res) => {
         LEFT JOIN subjects s
             ON s.id = ts.subject_id
 
-        LEFT JOIN bookings b
-            ON b.tutor_id = u.id
+        LEFT JOIN (
+            SELECT
+                b.tutor_id,
 
-        LEFT JOIN reviews r
-            ON r.booking_id = b.id
+                AVG(
+                    CAST(r.rating AS DECIMAL(2,1))
+                ) AS average_rating,
+
+                COUNT(r.id) AS review_count
+
+            FROM bookings b
+
+            INNER JOIN reviews r
+                ON r.booking_id = b.id
+
+            GROUP BY
+                b.tutor_id
+
+        ) AS review_stats
+            ON review_stats.tutor_id = u.id
 
         WHERE u.role = 'TUTOR'
 
@@ -827,10 +845,14 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-            u.hourly_rate
+            u.hourly_rate,
+            review_stats.average_rating,
+            review_stats.review_count
 
-        ORDER BY u.full_name ASC
+        ORDER BY
+            u.full_name ASC
     `;
+
 
     db.query(sql, (err, results) => {
 
@@ -846,14 +868,19 @@ app.get("/api/tutors", (req, res) => {
             });
         }
 
+
         console.log(
             "✅ Tutorok lekérve:",
             results.length
         );
 
+
         res.json(results);
+
     });
+
 });
+
 
 app.get("/api/tutors/:id/reviews", (req, res) => {
 
