@@ -117,6 +117,69 @@ form {
     background: var(--main-blue-dark);
 }
 
+/* Password field with show/hide eye button */
+.password-wrap {
+    position: relative;
+}
+
+.field .password-wrap input {
+    padding-right: 48px;
+}
+
+/* Hide Edge's built-in reveal icon so there is only one eye */
+.password-wrap input::-ms-reveal,
+.password-wrap input::-ms-clear {
+    display: none;
+}
+
+.field .toggle-password {
+    all: unset;
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    color: #868e96;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.field .toggle-password:hover {
+    color: var(--main-blue);
+}
+
+.field .toggle-password:focus-visible {
+    outline: 2px solid var(--main-blue);
+    outline-offset: 2px;
+}
+
+.toggle-password svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.toggle-password .icon-eye-off {
+    display: none;
+}
+
+.toggle-password.is-visible .icon-eye {
+    display: none;
+}
+
+.toggle-password.is-visible .icon-eye-off {
+    display: block;
+}
+
 @media (max-width: 460px) {
     form,
     .field,
