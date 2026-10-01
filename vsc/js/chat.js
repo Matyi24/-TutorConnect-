@@ -23,6 +23,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 2. Betöltjük a beszélgetéseket
         await loadConversations();
 
+        // 3. Valós idejű kapcsolat
+        connectWebSocket();
+
     } catch (error) {
 
         console.error(
@@ -619,4 +622,55 @@ if (messageForm && messageInput) {
             console.error("❌ Üzenetküldési hiba:", error);
         }
     });
+}
+
+
+// ============================================================
+// WEBSOCKET
+// ============================================================
+
+function connectWebSocket() {
+
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const socket = new WebSocket(`${protocol}://${location.host}`);
+
+    socket.addEventListener("open", () => {
+        console.log("🔌 WebSocket kapcsolat él");
+    });
+
+    socket.addEventListener("message", async (event) => {
+
+        const data = JSON.parse(event.data);
+
+        if (data.type === "new_message") {
+            await handleIncomingMessage(data.message);
+        }
+    });
+
+    socket.addEventListener("close", () => {
+        console.warn("🔌 WebSocket bezárult, újracsatlakozás 3 mp múlva...");
+        setTimeout(connectWebSocket, 3000);
+    });
+}
+
+
+async function handleIncomingMessage(message) {
+
+    console.log("📩 Új üzenet érkezett:", message);
+
+    // A bal oldali lista frissítése
+    const conversation = conversations.find(
+        item => Number(item.id) === Number(message.conversation_id)
+    );
+
+    if (conversation) {
+        conversation.last_message = message.content;
+        conversation.last_message_time = message.created_at;
+        renderConversations();
+    }
+
+    // Ha éppen ez a beszélgetés van megnyitva, frissítjük az üzeneteket
+    if (Number(message.conversation_id) === Number(currentConversationId)) {
+        await loadMessages(currentConversationId);
+    }
 }

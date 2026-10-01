@@ -2,6 +2,8 @@ const express = require("express");
 const path = require("path");
 const mysql = require("mysql2");
 const session = require("express-session");
+const http = require("http");
+const { WebSocketServer } = require("ws");
 
 const { hashPassword, verifyPassword } = require("./auth");
 
@@ -47,8 +49,7 @@ app.use(express.json());
 //
 // ============================================================
 
-app.use(
-    session({
+const sessionMiddleware = session({
         // Secret used to sign the session cookie so it can't be forged.
         // In production set the SESSION_SECRET environment variable
         // and don't rely on the fallback value.
@@ -70,11 +71,13 @@ app.use(
             // If you later use HTTPS, change this to true.
             secure: false,
 
-            // 1000 ms * 60 s * 60 m * 24 h * 7 days = 7 days
+            // How long the cookie (= the login) lasts, in milliseconds:
+            // 1000 ms * 60 s * 60 min * 24 h * 7 days = 7 days
             maxAge: 1000 * 60 * 60 * 24 * 7
         }
-    })
-);
+});
+
+app.use(sessionMiddleware);
 
 // ============================================================
 // STATIC FILES
@@ -793,14 +796,11 @@ app.get("/api/tutors", (req, res) => {
             u.hourly_rate,
 
             COALESCE(
-                review_stats.average_rating,
+                AVG(CAST(r.rating AS DECIMAL(2,1))),
                 0
             ) AS average_rating,
 
-            COALESCE(
-                review_stats.review_count,
-                0
-            ) AS review_count,
+            COUNT(r.id) AS review_count,
 
             GROUP_CONCAT(
                 DISTINCT s.name
@@ -816,26 +816,11 @@ app.get("/api/tutors", (req, res) => {
         LEFT JOIN subjects s
             ON s.id = ts.subject_id
 
-        LEFT JOIN (
-            SELECT
-                b.tutor_id,
+        LEFT JOIN bookings b
+            ON b.tutor_id = u.id
 
-                AVG(
-                    CAST(r.rating AS DECIMAL(2,1))
-                ) AS average_rating,
-
-                COUNT(r.id) AS review_count
-
-            FROM bookings b
-
-            INNER JOIN reviews r
-                ON r.booking_id = b.id
-
-            GROUP BY
-                b.tutor_id
-
-        ) AS review_stats
-            ON review_stats.tutor_id = u.id
+        LEFT JOIN reviews r
+            ON r.booking_id = b.id
 
         WHERE u.role = 'TUTOR'
 
@@ -844,14 +829,10 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-            u.hourly_rate,
-            review_stats.average_rating,
-            review_stats.review_count
+            u.hourly_rate
 
-        ORDER BY
-            u.full_name ASC
+        ORDER BY u.full_name ASC
     `;
-
 
     db.query(sql, (err, results) => {
 
@@ -867,19 +848,14 @@ app.get("/api/tutors", (req, res) => {
             });
         }
 
-
         console.log(
             "✅ Tutorok lekérve:",
             results.length
         );
 
-
         res.json(results);
-
     });
-
 });
-
 
 app.get("/api/tutors/:id/reviews", (req, res) => {
 
@@ -994,10 +970,6 @@ app.get("/api/stats", (req, res) => {
 app.get("/api/conversations", (req, res) => {
 
     console.log("💬 GET /api/conversations");
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Nincs bejelentkezve" });
-    }
 
     // A bejelentkezett felhasználó ID-ja
     const userId = req.session.user.id;
@@ -1152,7 +1124,7 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 
     // 3. Résztvevője-e a bejelentkezett user ennek a beszélgetésnek?
     const checkSql = `
-        SELECT id FROM conversations
+        SELECT id, student_id, tutor_id FROM conversations
         WHERE id = ?
           AND (student_id = ? OR tutor_id = ?)
     `;
@@ -1195,25 +1167,92 @@ app.post("/api/conversations/:id/messages", (req, res) => {
                         return res.status(500).json({ error: "Adatbázis hiba" });
                     }
 
+                    const message = saved[0];
+                    const conversation = rows[0];
+
+                    // A beszélgetés másik résztvevője
+                    const recipientId =
+                        Number(conversation.student_id) === Number(userId)
+                            ? conversation.tutor_id
+                            : conversation.student_id;
+
                     console.log("✅ Üzenet elmentve:", result.insertId);
 
-                    res.status(201).json(saved[0]);
+                    // Valós idejű értesítés a másik félnek
+                    sendToUser(recipientId, { type: "new_message", message });
+
+                    res.status(201).json(message);
                 }
             );
         });
     });
 });
 // ============================================================
+// WEBSOCKET
+// ============================================================
+
+const server = http.createServer(app);
+const wss = new WebSocketServer({ noServer: true });
+
+// userId -> a user nyitott kapcsolatai (több böngészőfül is lehet)
+const clients = new Map();
+
+server.on("upgrade", (req, socket, head) => {
+
+    // A session cookie alapján megnézzük, ki csatlakozik
+    sessionMiddleware(req, {}, () => {
+
+        if (!req.session || !req.session.user) {
+            socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+            socket.destroy();
+            return;
+        }
+
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            ws.userId = Number(req.session.user.id);
+            wss.emit("connection", ws);
+        });
+    });
+});
+
+wss.on("connection", (ws) => {
+
+    if (!clients.has(ws.userId)) {
+        clients.set(ws.userId, new Set());
+    }
+    clients.get(ws.userId).add(ws);
+
+    console.log("🔌 WebSocket csatlakozott, user:", ws.userId);
+
+    ws.on("close", () => {
+        const set = clients.get(ws.userId);
+        if (set) {
+            set.delete(ws);
+            if (set.size === 0) clients.delete(ws.userId);
+        }
+        console.log("🔌 WebSocket lecsatlakozott, user:", ws.userId);
+    });
+});
+
+// Üzenet küldése egy adott usernek (minden nyitott fülére)
+function sendToUser(userId, payload) {
+    const set = clients.get(Number(userId));
+    if (!set) return;
+
+    const data = JSON.stringify(payload);
+    set.forEach((ws) => {
+        if (ws.readyState === ws.OPEN) ws.send(data);
+    });
+}
+
+
+// ============================================================
 // START SERVER
 // ============================================================
 
-app.listen(
-    3000,
-    () => {
-
-        console.log("\n==========================================");
-        console.log("🌍 SERVER RUNNING");
-        console.log("➡️ http://localhost:3000");
-        console.log("==========================================\n");
-
-    });
+server.listen(3000, () => {
+    console.log("\n==========================================");
+    console.log("🌍 SERVER RUNNING");
+    console.log("➡️ http://localhost:3000");
+    console.log("==========================================\n");
+});
