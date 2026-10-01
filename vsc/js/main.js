@@ -366,10 +366,9 @@ app.post("/register", async (req, res) => {
             email,
             password_hash,
             role,
-            bio,
-            hourly_rate
+            bio
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
     `;
 
 
@@ -378,8 +377,7 @@ app.post("/register", async (req, res) => {
         email,
         passwordHash,
         role,
-        "",
-        0
+        ""
     ];
 
 
@@ -790,7 +788,10 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-            u.hourly_rate,
+
+            -- legolcsóbb tantárgy ára (a régi hourly_rate mező helyett)
+            COALESCE(MIN(ts.hourly_rate), 0) AS hourly_rate,
+            COALESCE(MAX(ts.hourly_rate), 0) AS max_hourly_rate,
 
             COALESCE(
                 review_stats.average_rating,
@@ -806,7 +807,14 @@ app.get("/api/tutors", (req, res) => {
                 DISTINCT s.name
                 ORDER BY s.name
                 SEPARATOR ', '
-            ) AS subjects
+            ) AS subjects,
+
+            -- tantárgyanként az ár: "id|név|ár;;id|név|ár"
+            GROUP_CONCAT(
+                DISTINCT CONCAT(s.id, '|', s.name, '|', ts.hourly_rate)
+                ORDER BY s.name
+                SEPARATOR ';;'
+            ) AS subject_prices
 
         FROM users u
 
@@ -844,7 +852,6 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-            u.hourly_rate,
             review_stats.average_rating,
             review_stats.review_count
 
