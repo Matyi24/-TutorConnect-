@@ -1,14 +1,27 @@
+/* =========================================================
+   VARIABLES
+========================================================= */
+
 :root {
-    --main-blue: #4C6EF5;
-    --main-blue-dark: #3B5BDB;
-    --main-blue-light: #DBE4FF;
-    --main-grey: #ADB5BD;
-    --light-grey: #F1F3F5;
+    --main-blue: #4c6ef5;
+    --main-blue-dark: #3b5bdb;
+    --main-blue-light: #dbe4ff;
+
+    --main-grey: #adb5bd;
+    --light-grey: #f1f3f5;
+
     --dark-text: #212529;
     --white: #ffffff;
+
     --radius: 12px;
+
     --shadow: 0 4px 16px rgba(76, 110, 245, 0.12);
 }
+
+
+/* =========================================================
+   RESET
+========================================================= */
 
 * {
     box-sizing: border-box;
@@ -16,43 +29,85 @@
     padding: 0;
 }
 
-body {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-    color: var(--dark-text);
-    background: var(--main-blue-light) url(/images/mainbg.png) center/cover no-repeat;
-    line-height: 1.6;
-    margin: 0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+html {
+    scroll-behavior: smooth;
 }
 
-.container {
-    width: 100%;
-    margin: 0 auto;
-    flex: 1;
+body {
+    min-height: 100vh;
+
     display: flex;
     flex-direction: column;
-    animation: fadeSlideUp 0.7s ease-out;
+
+    margin: 0;
+
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+
+    color: var(--dark-text);
+
+    background:
+        var(--main-blue-light)
+        url("/images/mainbg.png")
+        center / cover
+        no-repeat;
 }
 
 a {
+    color: inherit;
     text-decoration: none;
 }
 
-button {
+button,
+input {
     font-family: inherit;
-    font-size: 1rem;
-    padding: 12px 24px;
-    border-radius: var(--radius);
+}
+
+
+/* =========================================================
+   GLOBAL BUTTONS
+========================================================= */
+
+button {
     border: none;
+    border-radius: var(--radius);
+
+    font-size: 1rem;
+
     cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        background 0.2s ease,
+        color 0.2s ease;
 }
 
 button:hover {
     transform: translateY(-1px);
 }
+
+
+/* =========================================================
+   CONTAINER
+========================================================= */
+
+.container {
+    width: 100%;
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    margin: 0 auto;
+
+    animation: fadeSlideUp 0.7s ease-out;
+}
+
+
+/* =========================================================
+   CTA BUTTONS
+========================================================= */
 
 .cta-buttons {
     display: flex;
@@ -65,8 +120,8 @@ button:hover {
 }
 
 .cta-buttons .login {
-    background: transparent;
     color: var(--white);
+    background: transparent;
     border: 2px solid var(--white);
 }
 
@@ -75,17 +130,23 @@ button:hover {
 }
 
 .cta-buttons .register {
-    background: var(--white);
     color: var(--main-blue);
+    background: var(--white);
 }
 
 .cta-buttons .register:hover {
     background: var(--main-blue-light);
 }
 
+
+/* =========================================================
+   PRIMARY / SECONDARY BUTTONS
+========================================================= */
+
 .primary {
-    background: var(--main-blue);
     color: var(--white);
+    background: var(--main-blue);
+
     box-shadow: var(--shadow);
 }
 
@@ -94,8 +155,9 @@ button:hover {
 }
 
 .secondary {
-    background: var(--white);
     color: var(--main-blue);
+    background: var(--white);
+
     border: 2px solid var(--main-blue);
 }
 
@@ -103,49 +165,70 @@ button:hover {
     background: var(--main-blue-light);
 }
 
+
+/* =========================================================
+   NAVBAR
+========================================================= */
+
 .navbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 40px;
-    background: var(--main-blue);
-    box-shadow: var(--shadow);
     position: sticky;
     top: 0;
     z-index: 110;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
     width: 100%;
+
+    padding: 16px 40px;
+
+    background: var(--main-blue);
+
+    box-shadow: var(--shadow);
 }
 
 .navbar .logo {
+    color: var(--white);
+
     font-size: 1.4rem;
     font-weight: 700;
-    color: var(--white);
 }
 
 .nav-links {
     display: flex;
-    list-style: none;
     gap: 32px;
+
+    list-style: none;
 }
 
 .nav-links li {
     position: relative;
-    font-weight: 500;
+
     color: var(--white);
+
+    font-weight: 500;
+
     cursor: pointer;
+
     transition: opacity 0.15s ease;
 }
 
 .nav-links li::after {
     content: "";
+
     position: absolute;
     left: 0;
     bottom: -6px;
+
     width: 100%;
     height: 2px;
-    background-color: var(--white);
+
+    background: var(--white);
+
     transform: scaleX(0);
     transform-origin: center;
+
     transition: transform 0.25s ease;
 }
 
@@ -157,22 +240,34 @@ button:hover {
     transform: scaleX(1);
 }
 
+
+/* =========================================================
+   GENERAL HERO
+========================================================= */
+
 .hero {
     width: 100%;
+
     padding: 70px 20px;
+
     text-align: center;
 }
 
 .hero h2 {
     margin-bottom: 16px;
+
     color: var(--dark-text);
+
     font-size: 2.2rem;
 }
 
 .hero p {
     max-width: 700px;
+
     margin: 0 auto 32px;
+
     color: #495057;
+
     font-size: 1.1rem;
 }
 
@@ -180,13 +275,22 @@ button:hover {
     display: flex;
     justify-content: center;
     gap: 16px;
+
     flex-wrap: wrap;
 }
 
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
 .footer {
     width: 100%;
+
     padding: 32px 40px;
+
     background: var(--main-blue-dark);
+
     text-align: center;
 }
 
@@ -194,14 +298,19 @@ button:hover {
     display: flex;
     justify-content: center;
     gap: 28px;
+
     list-style: none;
+
     flex-wrap: wrap;
 }
 
 .footer li {
     color: var(--main-blue-light);
+
     font-size: 0.95rem;
+
     cursor: pointer;
+
     transition: color 0.15s ease;
 }
 
@@ -209,25 +318,45 @@ button:hover {
     color: var(--white);
 }
 
+
 /* =========================================================
    SUBJECT PAGE
 ========================================================= */
 
 .subjects-page {
     min-height: calc(100vh - 80px);
+
     padding: 40px 0 70px;
+
     background: #f5f5fc;
 }
 
+
+/* =========================================================
+   SUBJECT HERO
+========================================================= */
+
 .subjects-hero {
     position: relative;
+
     width: min(1350px, calc(100% - 80px));
+
     margin: 0 auto 26px;
+
     padding: 60px 54px 54px;
+
     overflow: hidden;
+
     border-radius: 28px;
-    background: linear-gradient(135deg, #ffffff 0%, #f7f5ff 100%);
-    box-shadow: 0 20px 50px rgba(60, 55, 130, 0.08);
+
+    background: linear-gradient(
+        135deg,
+        #ffffff 0%,
+        #f7f5ff 100%
+    );
+
+    box-shadow:
+        0 20px 50px rgba(60, 55, 130, 0.08);
 }
 
 .hero-content {
@@ -237,83 +366,129 @@ button:hover {
 
 .hero-label {
     display: block;
+
     margin-bottom: 18px;
+
     color: #536dfe;
+
     font-size: 14px;
     font-weight: 800;
+
     letter-spacing: 2px;
 }
 
 .subjects-hero h1 {
     margin: 0 0 18px;
+
     color: #17172f;
+
     font-size: clamp(38px, 4vw, 58px);
     font-weight: 800;
+
     line-height: 1.05;
+
     letter-spacing: -1.5px;
 }
 
 .subjects-hero p {
     max-width: 700px;
+
     margin: 0 0 34px;
+
     color: #73769b;
+
     font-size: 17px;
+
     line-height: 1.6;
 }
 
+
+/* =========================================================
+   HERO DECORATIONS
+========================================================= */
+
 .hero-decoration {
     position: absolute;
+
     border-radius: 50%;
+
     pointer-events: none;
 }
 
 .hero-decoration-top {
-    width: 260px;
-    height: 260px;
     top: -130px;
     right: -40px;
+
+    width: 260px;
+    height: 260px;
+
     background: rgba(112, 94, 255, 0.10);
 }
 
 .hero-decoration-bottom {
-    width: 150px;
-    height: 150px;
     bottom: -90px;
     left: -30px;
+
+    width: 150px;
+    height: 150px;
+
     background: rgba(67, 200, 170, 0.08);
 }
+
+
+/* =========================================================
+   SUBJECT SEARCH
+========================================================= */
 
 .subject-search {
     display: flex;
     align-items: center;
+
     width: 100%;
-    max-width: 100%;
     height: 60px;
+
     padding: 0 20px;
-    background: white;
+
+    background: var(--white);
+
     border: 1px solid #e5e5f2;
     border-radius: 16px;
-    box-shadow: 0 8px 25px rgba(80, 70, 150, 0.06);
-    transition: 0.2s ease;
+
+    box-shadow:
+        0 8px 25px rgba(80, 70, 150, 0.06);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .subject-search:focus-within {
     border-color: #6377ff;
-    box-shadow: 0 0 0 4px rgba(99, 119, 255, 0.10);
+
+    box-shadow:
+        0 0 0 4px rgba(99, 119, 255, 0.10);
 }
 
 .search-icon {
     margin-right: 12px;
+
     color: #536dfe;
+
     font-size: 27px;
+
+    line-height: 1;
 }
 
 .subject-search input {
     width: 100%;
+
     border: none;
     outline: none;
+
     background: transparent;
+
     color: #25253d;
+
     font-size: 15px;
 }
 
@@ -321,37 +496,50 @@ button:hover {
     color: #a4a5bd;
 }
 
+
+/* =========================================================
+   FILTER SECTION
+========================================================= */
+
 .subject-filter {
     width: min(1350px, calc(100% - 80px));
+
     margin: 0 auto 42px;
+
     padding: 30px;
-    background: white;
+
+    background: var(--white);
+
     border: 1px solid #e8e8f2;
     border-radius: 22px;
-    box-shadow: 0 12px 30px rgba(70, 65, 130, 0.05);
+
+    box-shadow:
+        0 12px 30px rgba(70, 65, 130, 0.05);
 }
 
 .filter-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     margin-bottom: 24px;
 }
 
 .filter-header h2 {
-    margin: 0;
     color: #17172f;
+
     font-size: 20px;
 }
 
 .filter-header button {
-    border: none;
-    background: transparent;
+    padding: 4px 0;
+
     color: #5b55f6;
+
+    background: transparent;
+
     font-size: 14px;
     font-weight: 600;
-    cursor: pointer;
-    transition: 0.2s ease;
 }
 
 .filter-header button:hover {
@@ -369,94 +557,244 @@ button:hover {
 
 .filter-group label {
     display: block;
+
     margin-bottom: 9px;
+
     color: #70718f;
+
     font-size: 13px;
     font-weight: 600;
 }
 
+
+/* =========================================================
+   CATEGORY / DROPDOWN
+========================================================= */
+
 .category {
     position: relative;
+
     width: 100%;
 }
 
 .subject-selector {
     position: relative;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
+
     width: 100%;
-    height: 50px;
+    height: 52px;
+
     padding-left: 16px;
+
     background: #fafaff;
+
     border: 1px solid #dedff0;
     border-radius: 12px;
+
     color: #292944;
+
     font-size: 14px;
     font-weight: 600;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
 }
+
+.subject-selector:hover {
+    border-color: #cfd2ed;
+}
+
+
+/* =========================================================
+   DROPDOWN BUTTON
+========================================================= */
 
 .dropdown-button {
     display: flex;
     align-items: center;
     justify-content: center;
+
     width: 40px;
     height: 40px;
+
     margin-right: 5px;
+    padding: 0;
+
     border: none;
     border-radius: 10px;
+
     background: #e9e9fb;
+
     color: #5258d9;
+
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.2s ease;
+
+    transition:
+        background 0.2s ease,
+        transform 0.15s ease,
+        box-shadow 0.2s ease;
 }
 
 .dropdown-button:hover {
     background: #dedeff;
+
+    box-shadow:
+        0 4px 10px rgba(82, 88, 217, 0.12);
 }
 
-.dropdown-button .arrow {
-    font-size: 18px;
-    line-height: 1;
-    transition: transform 0.25s ease;
+.dropdown-button:active {
+    transform: scale(0.94);
 }
+
+
+/* =========================================================
+   ACTIVE DROPDOWN BUTTON
+========================================================= */
+
+.dropdown-button.active {
+    background: var(--main-blue);
+
+    box-shadow:
+        0 5px 14px rgba(76, 110, 245, 0.25);
+}
+
+.dropdown-button.active:hover {
+    background: var(--main-blue-dark);
+}
+
+
+/* =========================================================
+   DROPDOWN ARROW
+========================================================= */
+
+.dropdown-button .arrow {
+    width: 9px;
+    height: 9px;
+
+    border-right: 2px solid #5258d9;
+    border-bottom: 2px solid #5258d9;
+
+    transform: rotate(45deg) translate(-2px, -2px);
+
+    transition:
+        transform 0.25s ease,
+        border-color 0.2s ease;
+}
+
+.dropdown-button.active .arrow {
+    border-color: var(--white);
+
+    transform: rotate(225deg) translate(-2px, -2px);
+}
+
+
+/* =========================================================
+   DROPDOWN MENU
+========================================================= */
 
 .dropdown-menu {
     position: absolute;
+
     top: calc(100% + 8px);
     left: 0;
+
     z-index: 1000;
-    display: none;
+
     width: 100%;
+
     padding: 7px;
-    overflow: hidden;
-    background: white;
+
+    background: var(--white);
+
     border: 1px solid #e3e3f0;
     border-radius: 14px;
-    box-shadow: 0 15px 35px rgba(40, 40, 90, 0.14);
+
+    box-shadow:
+        0 15px 35px rgba(40, 40, 90, 0.14),
+        0 4px 10px rgba(40, 40, 90, 0.05);
+
+    opacity: 0;
+    visibility: hidden;
+
+    transform:
+        translateY(-8px)
+        scale(0.98);
+
+    transform-origin: top center;
+
+    transition:
+        opacity 0.2s ease,
+        visibility 0.2s ease,
+        transform 0.2s ease;
 }
 
 .dropdown-menu.open {
-    display: block;
+    opacity: 1;
+    visibility: visible;
+
+    transform:
+        translateY(0)
+        scale(1);
 }
 
+
+/* =========================================================
+   DROPDOWN ITEMS
+========================================================= */
+
 .dropdown-item {
-    padding: 12px 14px;
+    padding: 11px 13px;
+
     border-radius: 9px;
+
     color: #34344e;
+
     font-size: 14px;
     font-weight: 500;
+
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        transform 0.15s ease;
 }
 
 .dropdown-item:hover {
     background: #f0efff;
-    color: #4f5cf5;
+
+    color: var(--main-blue);
+
+    transform: translateX(2px);
 }
+
+.dropdown-item.active {
+    background: var(--main-blue);
+
+    color: var(--white);
+
+    font-weight: 600;
+}
+
+.dropdown-item.active:hover {
+    background: var(--main-blue-dark);
+
+    color: var(--white);
+}
+
+
+/* =========================================================
+   SUBJECTS HEADER
+========================================================= */
 
 .subjects-section {
     width: min(1350px, calc(100% - 80px));
+
     margin: 0 auto;
 }
 
@@ -464,83 +802,140 @@ button:hover {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
+
     margin-bottom: 22px;
 }
 
 .subjects-header h2 {
-    margin: 0 0 5px;
+    margin-bottom: 5px;
+
     color: #17172f;
+
     font-size: 25px;
 }
 
 .subjects-header p {
-    margin: 0;
     color: #7a7b99;
+
     font-size: 14px;
 }
 
 #subjectCount {
     padding: 8px 14px;
+
     border-radius: 20px;
+
     background: #ececff;
+
     color: #565cf0;
+
     font-size: 13px;
     font-weight: 600;
 }
 
+
+/* =========================================================
+   SUBJECT GRID
+========================================================= */
+
 .grid-container {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
     gap: 20px;
+
     width: 100%;
 }
 
-.grid-container a {
+.grid-container > a {
     color: inherit;
     text-decoration: none;
 }
 
+
+/* =========================================================
+   SUBJECT CARD
+========================================================= */
+
 .subcard {
     position: relative;
+
     display: flex;
     align-items: center;
+
     width: 100%;
     min-height: 125px;
+
     padding: 24px;
-    background: white;
+
+    background: var(--white);
+
     border: 1px solid #e7e7f0;
     border-radius: 18px;
-    box-shadow: 0 8px 25px rgba(65, 60, 130, 0.05);
-    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+
+    box-shadow:
+        0 8px 25px rgba(65, 60, 130, 0.05);
+
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+
     animation: subjectAppear 0.5s ease both;
 }
 
 .subcard:hover {
     transform: translateY(-5px);
+
     border-color: #d8d8ff;
-    box-shadow: 0 16px 35px rgba(75, 70, 160, 0.12);
+
+    box-shadow:
+        0 16px 35px rgba(75, 70, 160, 0.12);
 }
+
+
+/* =========================================================
+   SUBJECT ICON
+========================================================= */
 
 .subject-icon {
     display: flex;
     align-items: center;
     justify-content: center;
+
     flex-shrink: 0;
+
     width: 56px;
     height: 56px;
+
     margin-right: 16px;
+
     border-radius: 15px;
+
     background: #eef0ff;
+
     color: #5265f5;
+
     font-size: 21px;
     font-weight: 700;
-    transition: background 0.2s ease, transform 0.2s ease;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
 }
 
 .subcard:hover .subject-icon {
     background: #e3e6ff;
+
     transform: scale(1.05);
 }
+
+
+/* =========================================================
+   SUBJECT INFO
+========================================================= */
 
 .subject-info {
     min-width: 0;
@@ -548,70 +943,167 @@ button:hover {
 }
 
 .subject-info h2 {
-    margin: 0 0 6px;
+    margin-bottom: 6px;
+
     color: #405be4;
+
     font-size: 17px;
     font-weight: 700;
+
     line-height: 1.3;
 }
 
 .subject-info p {
-    margin: 0;
     color: #7b7d9d;
+
     font-size: 13px;
 }
+
+
+/* =========================================================
+   SUBJECT ARROW
+========================================================= */
 
 .subject-arrow {
     display: flex;
     align-items: center;
     justify-content: center;
+
     flex-shrink: 0;
+
     margin-left: 12px;
+
     color: #8b8fae;
+
     font-size: 20px;
-    transition: transform 0.2s ease, color 0.2s ease;
+
+    transition:
+        transform 0.2s ease,
+        color 0.2s ease;
 }
 
 .subcard:hover .subject-arrow {
     color: #536dfe;
+
     transform: translateX(5px);
 }
+
+
+/* =========================================================
+   NO RESULTS
+========================================================= */
+
+.no-results {
+    grid-column: 1 / -1;
+
+    padding: 50px 20px;
+
+    text-align: center;
+
+    background: var(--white);
+
+    border: 1px solid #e7e7f0;
+    border-radius: 18px;
+
+    box-shadow:
+        0 8px 25px rgba(65, 60, 130, 0.05);
+}
+
+.no-results h3 {
+    margin-bottom: 6px;
+
+    color: #34344e;
+
+    font-size: 20px;
+}
+
+.no-results p {
+    color: #7b7d9d;
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
 
 @keyframes subjectAppear {
     from {
         opacity: 0;
+
         transform: translateY(12px);
     }
 
     to {
         opacity: 1;
+
         transform: translateY(0);
     }
 }
 
-@media (max-width: 1000px) {
-    .grid-container {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform: translateY(0);
     }
 }
 
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1000px) {
+
+    .grid-container {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+/* =========================================================
+   MOBILE NAVBAR
+========================================================= */
+
 @media (max-width: 768px) {
+
     .navbar {
         flex-wrap: wrap;
+
         gap: 12px;
+
         padding: 16px 20px;
     }
 
     .nav-links {
         order: 3;
-        width: 100%;
+
         justify-content: center;
+
+        width: 100%;
+
         gap: 20px;
+
         flex-wrap: wrap;
     }
 }
 
+
+/* =========================================================
+   MOBILE SUBJECT PAGE
+========================================================= */
+
 @media (max-width: 700px) {
+
     .subjects-hero,
     .subject-filter,
     .subjects-section {
@@ -636,17 +1128,46 @@ button:hover {
 
     .subjects-header {
         align-items: flex-start;
+
         flex-direction: column;
+
         gap: 12px;
     }
 }
 
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
 @media (max-width: 600px) {
+
     .hero h2 {
         font-size: 1.6rem;
     }
 
     .slide h1 {
         font-size: 1.4rem;
+    }
+
+    .subjects-hero {
+        border-radius: 22px;
+    }
+
+    .subject-search {
+        height: 56px;
+    }
+
+    .subject-selector {
+        height: 50px;
+    }
+
+    .dropdown-button {
+        width: 38px;
+        height: 38px;
+    }
+
+    .dropdown-item {
+        padding: 12px 13px;
     }
 }

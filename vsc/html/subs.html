@@ -1,163 +1,150 @@
 <!DOCTYPE html>
 <html lang="hu">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <link rel="stylesheet" href="/css/substyle.css">
+
     <title>TutorConnect</title>
 </head>
 
 <body>
-<main class="subjects-page">
+    <main class="subjects-page">
 
-    <!-- HERO -->
-    <section class="subjects-hero">
+        <!-- Hero -->
+        <section class="subjects-hero">
+            <div class="hero-decoration hero-decoration-top"></div>
+            <div class="hero-decoration hero-decoration-bottom"></div>
 
-        <div class="hero-decoration hero-decoration-top"></div>
-        <div class="hero-decoration hero-decoration-bottom"></div>
+            <div class="hero-content">
+                <span class="hero-label">TUTORCONNECT</span>
 
-        <div class="hero-content">
+                <h1>
+                    Találd meg a számodra<br>
+                    megfelelő tantárgyat.
+                </h1>
 
-            <span class="hero-label">TUTORCONNECT</span>
+                <p>
+                    Válassz a tantárgyak közül, és találd meg a számodra
+                    megfelelő korrepetitort.
+                </p>
 
-            <h1>
-                Találd meg a számodra<br>
-                megfelelő tantárgyat.
-            </h1>
+                <!-- Search -->
+                <div class="subject-search">
+                    <span class="search-icon" aria-hidden="true">⌕</span>
 
-            <p>
-                Válassz a tantárgyak közül, és találd meg a számodra
-                megfelelő korrepetitort.
-            </p>
+                    <input
+                        type="search"
+                        id="subjectSearch"
+                        placeholder="Keresés tantárgy neve alapján..."
+                        aria-label="Keresés tantárgy neve alapján"
+                    >
+                </div>
+            </div>
+        </section>
 
-            <!-- KERESŐ -->
-            <div class="subject-search">
-                <span class="search-icon">⌕</span>
+        <!-- Filters -->
+        <section class="subject-filter">
+            <div class="filter-header">
+                <h2>Szűrés</h2>
 
-                <input
-                    type="text"
-                    id="subjectSearch"
-                    placeholder="Keresés tantárgy neve alapján..."
-                >
+                <button id="clearFilters" type="button">
+                    Szűrők törlése
+                </button>
             </div>
 
-        </div>
+            <div class="filter-content">
+                <div class="filter-group">
+                    <label for="dropdownButton">Kategória</label>
 
-    </section>
+                    <div class="category">
+                        <div class="subject-selector">
 
-
-    <!-- SZŰRŐ -->
-    <section class="subject-filter">
-
-        <div class="filter-header">
-            <h2>Szűrés</h2>
-
-            <button id="clearFilters" type="button">
-                Szűrők törlése
-            </button>
-        </div>
-
-        <div class="filter-content">
-
-            <div class="filter-group">
-
-                <label>Kategória</label>
-
-                <div class="category">
-                    <div class="subject-selector">
-
-                        <span id="selectedSubject">
-                            Minden tárgy
-                        </span>
-
-                        <button
-                            id="dropdownButton"
-                            class="dropdown-button"
-                            type="button"
-                        >
-                            <span class="arrow"></span>
-                        </button>
-
-                        <div
-                            id="dropdownMenu"
-                            class="dropdown-menu"
-                        >
-
-                            <div class="dropdown-item">
+                            <span id="selectedSubject">
                                 Minden tárgy
-                            </div>
+                            </span>
 
-                            <div class="dropdown-item">
-                                Reál
-                            </div>
+                            <button
+                                id="dropdownButton"
+                                class="dropdown-button"
+                                type="button"
+                                aria-haspopup="listbox"
+                                aria-expanded="false"
+                            >
+                                <span class="arrow" aria-hidden="true"></span>
+                            </button>
 
-                            <div class="dropdown-item">
-                                Humán
-                            </div>
+                            <div
+                                id="dropdownMenu"
+                                class="dropdown-menu"
+                                role="listbox"
+                                aria-label="Kategória választása"
+                            >
+                                <div class="dropdown-item" role="option">
+                                    Minden tárgy
+                                </div>
 
-                            <div class="dropdown-item">
-                                Nyelvek
-                            </div>
+                                <div class="dropdown-item" role="option">
+                                    Reál
+                                </div>
 
-                            <div class="dropdown-item">
-                                Természettudomány
-                            </div>
+                                <div class="dropdown-item" role="option">
+                                    Humán
+                                </div>
 
-                            <div class="dropdown-item">
-                                Művészet
-                            </div>
+                                <div class="dropdown-item" role="option">
+                                    Nyelvek
+                                </div>
 
-                            <div class="dropdown-item">
-                                Gazdaság
-                            </div>
+                                <div class="dropdown-item" role="option">
+                                    Természettudomány
+                                </div>
 
-                            <div class="dropdown-item">
-                                Egyéb
+                                <div class="dropdown-item" role="option">
+                                    Művészet
+                                </div>
+
+                                <div class="dropdown-item" role="option">
+                                    Gazdaság
+                                </div>
+
+                                <div class="dropdown-item" role="option">
+                                    Egyéb
+                                </div>
                             </div>
 
                         </div>
-
                     </div>
+                </div>
+            </div>
+        </section>
 
+        <!-- Subjects -->
+        <section class="subjects-section">
+            <div class="subjects-header">
+                <div>
+                    <h2>Tantárgyak</h2>
+
+                    <p>
+                        Válassz egy tantárgyat a korrepetitorok
+                        megtekintéséhez.
+                    </p>
                 </div>
 
+                <span id="subjectCount">
+                    Tantárgyak
+                </span>
             </div>
 
-        </div>
+            <!-- A kártyákat a JavaScript tölti be -->
+            <div class="grid-container"></div>
+        </section>
 
-    </section>
+    </main>
 
-
-    <!-- TANTÁRGYAK -->
-    <section class="subjects-section">
-
-        <div class="subjects-header">
-
-            <div>
-                <h2>Tantárgyak</h2>
-
-                <p>
-                    Válassz egy tantárgyat a korrepetitorok megtekintéséhez.
-                </p>
-            </div>
-
-            <span id="subjectCount">
-                Tantárgyak
-            </span>
-
-        </div>
-
-
-        <!-- IDE TÖLTI BE A JS A KÁRTYÁKAT -->
-        <div class="grid-container"></div>
-
-    </section>
-
-</main>
+    <script src="/js/creator.js"></script>
+    <script src="/js/dropdown.js"></script>
+    <script src="/js/index.js"></script>
 </body>
-<script src="/js/creator.js"></script>
-<script src="/js/dropdown.js"></script>
-<script src="/js/index.js"></script>
-
 </html>
