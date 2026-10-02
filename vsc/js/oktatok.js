@@ -37,7 +37,7 @@ const resetFilters =
 
 
 /* =====================================================
-   PROFIL MODAL ELEMEK
+   PROFIL MODAL
 ===================================================== */
 
 const profileModal =
@@ -105,6 +105,7 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+
 }
 
 
@@ -117,10 +118,14 @@ function getInitials(name) {
     return String(name || "OK")
         .trim()
         .split(/\s+/)
-        .map(word => word.charAt(0))
+        .map(
+            word =>
+                word.charAt(0)
+        )
         .join("")
         .substring(0, 2)
         .toUpperCase();
+
 }
 
 
@@ -146,6 +151,27 @@ function getStars(rating) {
         "★".repeat(rounded) +
         "☆".repeat(5 - rounded)
     );
+
+}
+
+
+/* =====================================================
+   URL PARAMÉTER
+===================================================== */
+
+function getSubjectFromUrl() {
+
+    const params =
+        new URLSearchParams(
+            window.location.search
+        );
+
+
+    return (
+        params.get("subject") ||
+        ""
+    ).trim();
+
 }
 
 
@@ -158,7 +184,9 @@ async function loadSubjects() {
     try {
 
         const response =
-            await fetch("/api/subjects");
+            await fetch(
+                "/api/subjects"
+            );
 
 
         if (!response.ok) {
@@ -186,25 +214,65 @@ async function loadSubjects() {
         }
 
 
-        subjects.forEach(subject => {
+        subjects.forEach(
+            subject => {
 
-            const option =
-                document.createElement("option");
-
-
-            option.value =
-                subject.name;
-
-
-            option.textContent =
-                subject.name;
+                const option =
+                    document.createElement(
+                        "option"
+                    );
 
 
-            subjectSelect.appendChild(
-                option
-            );
+                option.value =
+                    subject.name;
 
-        });
+
+                option.textContent =
+                    subject.name;
+
+
+                subjectSelect.appendChild(
+                    option
+                );
+
+            }
+        );
+
+
+        /*
+         * Ha a Tantárgyak oldalról érkeztünk,
+         * automatikusan kiválasztjuk
+         * a megfelelő tantárgyat.
+         */
+
+        const subjectFromUrl =
+            getSubjectFromUrl();
+
+
+        if (subjectFromUrl) {
+
+            const matchingSubject =
+                Array.from(
+                    subjectSelect.options
+                ).find(
+                    option =>
+                        option.value
+                            .trim()
+                            .toLowerCase() ===
+                        subjectFromUrl
+                            .trim()
+                            .toLowerCase()
+                );
+
+
+            if (matchingSubject) {
+
+                subjectSelect.value =
+                    matchingSubject.value;
+
+            }
+
+        }
 
 
     } catch (error) {
@@ -215,6 +283,7 @@ async function loadSubjects() {
         );
 
     }
+
 }
 
 
@@ -231,7 +300,9 @@ async function loadTutors() {
 
 
         const response =
-            await fetch("/api/tutors");
+            await fetch(
+                "/api/tutors"
+            );
 
 
         if (!response.ok) {
@@ -256,7 +327,8 @@ async function loadTutors() {
         }
 
 
-        tutors = data;
+        tutors =
+            data;
 
 
         console.log(
@@ -302,6 +374,7 @@ async function loadTutors() {
             "none";
 
     }
+
 }
 
 
@@ -376,7 +449,9 @@ function createTutorCard(tutor) {
 
 
     const card =
-        document.createElement("article");
+        document.createElement(
+            "article"
+        );
 
 
     card.className =
@@ -389,8 +464,6 @@ function createTutorCard(tutor) {
 
     card.innerHTML = `
 
-        <!-- KÁRTYA FEJLÉC -->
-
         <div class="card-top">
 
             <div class="avatar ${colorClass}">
@@ -400,21 +473,15 @@ function createTutorCard(tutor) {
         </div>
 
 
-        <!-- NÉV -->
-
         <h2>
             ${escapeHtml(name)}
         </h2>
 
 
-        <!-- TANTÁRGY -->
-
         <span class="subject">
             ${escapeHtml(subjects)}
         </span>
 
-
-        <!-- ÉRTÉKELÉS -->
 
         <div class="rating">
 
@@ -423,31 +490,19 @@ function createTutorCard(tutor) {
             </span>
 
             <strong>
-
                 ${
                     rating > 0
                         ? rating.toFixed(1)
                         : "Nincs"
                 }
-
             </strong>
 
-
             <small>
-
-                ${reviewCount}
-                ${
-                    reviewCount === 1
-                        ? " értékelés"
-                        : " értékelés"
-                }
-
+                ${reviewCount} értékelés
             </small>
 
         </div>
 
-
-        <!-- ÁR -->
 
         <div class="price">
 
@@ -462,14 +517,10 @@ function createTutorCard(tutor) {
         </div>
 
 
-        <!-- BEMUTATKOZÁS -->
-
         <p class="description">
             ${escapeHtml(bio)}
         </p>
 
-
-        <!-- PROFIL GOMB -->
 
         <button
             class="profile-btn"
@@ -491,6 +542,7 @@ function createTutorCard(tutor) {
 
 
     return card;
+
 }
 
 
@@ -530,94 +582,106 @@ function getFilteredTutors() {
         ) || 0;
 
 
-    return tutors.filter(tutor => {
+    return tutors.filter(
+        tutor => {
+
+            const name =
+                String(
+                    tutor.full_name || ""
+                ).toLowerCase();
 
 
-        const name =
-            String(
-                tutor.full_name || ""
-            ).toLowerCase();
-
-
-        const subjects =
-            String(
-                tutor.subjects || ""
-            ).toLowerCase();
-
-
-        const rating =
-            Number(
-                tutor.average_rating || 0
-            );
-
-
-        const price =
-            Number(
-                tutor.hourly_rate || 0
-            );
-
-
-        /* KERESÉS */
-
-        const matchesSearch =
-            search === "" ||
-            name.includes(search) ||
-            subjects.includes(search);
-
-
-        /* TANTÁRGY */
-
-        let matchesSubject =
-            true;
-
-
-        if (
-            selectedSubject !== "all"
-        ) {
-
-            const tutorSubjectList =
+            const subjects =
                 String(
                     tutor.subjects || ""
-                )
-                .split(",")
-                .map(item =>
-                    item
-                        .trim()
-                        .toLowerCase()
+                ).toLowerCase();
+
+
+            const rating =
+                Number(
+                    tutor.average_rating || 0
                 );
 
 
-            matchesSubject =
-                tutorSubjectList.includes(
-                    selectedSubject
-                        .trim()
-                        .toLowerCase()
+            const price =
+                Number(
+                    tutor.hourly_rate || 0
                 );
+
+
+            /*
+             * KERESÉS
+             */
+
+            const matchesSearch =
+                search === "" ||
+                name.includes(search) ||
+                subjects.includes(search);
+
+
+            /*
+             * TANTÁRGY
+             */
+
+            let matchesSubject =
+                true;
+
+
+            if (
+                selectedSubject !==
+                "all"
+            ) {
+
+                const tutorSubjectList =
+                    String(
+                        tutor.subjects || ""
+                    )
+                    .split(",")
+                    .map(
+                        item =>
+                            item
+                                .trim()
+                                .toLowerCase()
+                    );
+
+
+                matchesSubject =
+                    tutorSubjectList.includes(
+                        selectedSubject
+                            .trim()
+                            .toLowerCase()
+                    );
+
+            }
+
+
+            /*
+             * ÉRTÉKELÉS
+             */
+
+            const matchesRating =
+                rating >= minimumRating;
+
+
+            /*
+             * ÁR
+             */
+
+            const matchesPrice =
+                price >= minPrice &&
+                price <= maxPrice;
+
+
+            return (
+                matchesSearch &&
+                matchesSubject &&
+                matchesRating &&
+                matchesPrice
+            );
 
         }
+    );
 
-
-        /* ÉRTÉKELÉS */
-
-        const matchesRating =
-            rating >= minimumRating;
-
-
-        /* ÁR */
-
-        const matchesPrice =
-            price >= minPrice &&
-            price <= maxPrice;
-
-
-        return (
-            matchesSearch &&
-            matchesSubject &&
-            matchesRating &&
-            matchesPrice
-        );
-
-    });
 }
 
 
@@ -631,8 +695,9 @@ function sortTutors(list) {
         [...list];
 
 
-    switch (sortSelect.value) {
-
+    switch (
+        sortSelect.value
+    ) {
 
         case "rating":
 
@@ -680,13 +745,13 @@ function sortTutors(list) {
 
 
         default:
-
             break;
 
     }
 
 
     return sorted;
+
 }
 
 
@@ -701,20 +766,26 @@ function renderTutors() {
 
 
     const sorted =
-        sortTutors(filtered);
+        sortTutors(
+            filtered
+        );
 
 
     tutorGrid.innerHTML =
         "";
 
 
-    sorted.forEach(tutor => {
+    sorted.forEach(
+        tutor => {
 
-        tutorGrid.appendChild(
-            createTutorCard(tutor)
-        );
+            tutorGrid.appendChild(
+                createTutorCard(
+                    tutor
+                )
+            );
 
-    });
+        }
+    );
 
 
     resultsCount.textContent =
@@ -725,6 +796,7 @@ function renderTutors() {
         sorted.length === 0
             ? "block"
             : "none";
+
 }
 
 
@@ -732,7 +804,9 @@ function renderTutors() {
    PROFIL MEGNYITÁSA
 ===================================================== */
 
-async function openProfile(tutorId) {
+async function openProfile(
+    tutorId
+) {
 
     const tutor =
         tutors.find(
@@ -750,12 +824,9 @@ async function openProfile(tutorId) {
         );
 
         return;
+
     }
 
-
-    /* =================================================
-       ALAPADATOK
-    ================================================== */
 
     const name =
         tutor.full_name ||
@@ -794,10 +865,6 @@ async function openProfile(tutorId) {
             tutor.review_count || 0
         );
 
-
-    /* =================================================
-       PROFIL ADATOK KIÍRÁSA
-    ================================================== */
 
     profileAvatar.textContent =
         getInitials(name);
@@ -845,10 +912,6 @@ async function openProfile(tutorId) {
         bio;
 
 
-    /* =================================================
-       MODAL MEGNYITÁSA
-    ================================================== */
-
     profileModal.classList.add(
         "active"
     );
@@ -864,16 +927,10 @@ async function openProfile(tutorId) {
         "hidden";
 
 
-    /* =================================================
-       ÉRTÉKELÉSEK BETÖLTÉSE
-    ================================================== */
-
     profileReviewsList.innerHTML = `
 
         <div class="profile-reviews-loading">
-
             Értékelések betöltése...
-
         </div>
 
     `;
@@ -883,7 +940,9 @@ async function openProfile(tutorId) {
 
         const response =
             await fetch(
-                `/api/tutors/${encodeURIComponent(tutorId)}/reviews`
+                `/api/tutors/${encodeURIComponent(
+                    tutorId
+                )}/reviews`
             );
 
 
@@ -916,15 +975,14 @@ async function openProfile(tutorId) {
         profileReviewsList.innerHTML = `
 
             <div class="profile-reviews-error">
-
                 ⚠️ Nem sikerült betölteni
                 az értékeléseket.
-
             </div>
 
         `;
 
     }
+
 }
 
 
@@ -932,22 +990,23 @@ async function openProfile(tutorId) {
    PROFIL ÉRTÉKELÉSEK
 ===================================================== */
 
-function renderProfileReviews(reviews) {
+function renderProfileReviews(
+    reviews
+) {
 
     if (!Array.isArray(reviews)) {
 
         profileReviewsList.innerHTML = `
 
             <div class="profile-reviews-error">
-
                 Hibás válasz érkezett
                 a szervertől.
-
             </div>
 
         `;
 
         return;
+
     }
 
 
@@ -975,154 +1034,141 @@ function renderProfileReviews(reviews) {
         `;
 
         return;
+
     }
 
 
     profileReviewsList.innerHTML =
         reviews
-            .map(review => {
+            .map(
+                review => {
+
+                    const reviewerName =
+                        review.reviewer_name ||
+                        "Névtelen értékelő";
 
 
-                const reviewerName =
-                    review.reviewer_name ||
-                    "Névtelen értékelő";
-
-
-                const rating =
-                    Number(
-                        review.rating || 0
-                    );
-
-
-                const text =
-                    review.comment ||
-                    "Az értékelő nem írt szöveges értékelést.";
-
-
-                let dateText =
-                    "";
-
-
-                if (
-                    review.created_at
-                ) {
-
-                    const date =
-                        new Date(
-                            review.created_at
+                    const rating =
+                        Number(
+                            review.rating || 0
                         );
 
 
+                    const text =
+                        review.comment ||
+                        "Az értékelő nem írt szöveges értékelést.";
+
+
+                    let dateText =
+                        "";
+
+
                     if (
-                        !Number.isNaN(
-                            date.getTime()
-                        )
+                        review.created_at
                     ) {
 
-                        dateText =
-                            date.toLocaleDateString(
-                                "hu-HU"
+                        const date =
+                            new Date(
+                                review.created_at
                             );
+
+
+                        if (
+                            !Number.isNaN(
+                                date.getTime()
+                            )
+                        ) {
+
+                            dateText =
+                                date.toLocaleDateString(
+                                    "hu-HU"
+                                );
+
+                        }
 
                     }
 
-                }
 
+                    return `
 
-                return `
-
-                    <article
-                        class="profile-review-item"
-                    >
-
-
-                        <div
-                            class="profile-review-top"
+                        <article
+                            class="profile-review-item"
                         >
 
-
                             <div
-                                class="profile-reviewer"
+                                class="profile-review-top"
                             >
+
+                                <div
+                                    class="profile-reviewer"
+                                >
+
+                                    <div
+                                        class="profile-reviewer-avatar"
+                                    >
+                                        ${escapeHtml(
+                                            getInitials(
+                                                reviewerName
+                                            )
+                                        )}
+                                    </div>
+
+                                    <div>
+
+                                        <strong
+                                            class="profile-reviewer-name"
+                                        >
+                                            ${escapeHtml(
+                                                reviewerName
+                                            )}
+                                        </strong>
+
+                                        ${
+                                            dateText
+                                                ? `
+                                                    <span
+                                                        class="profile-review-date"
+                                                    >
+                                                        ${escapeHtml(
+                                                            dateText
+                                                        )}
+                                                    </span>
+                                                `
+                                                : ""
+                                        }
+
+                                    </div>
+
+                                </div>
 
 
                                 <div
-                                    class="profile-reviewer-avatar"
+                                    class="profile-review-stars"
                                 >
-
-                                    ${escapeHtml(
-                                        getInitials(
-                                            reviewerName
-                                        )
+                                    ${getStars(
+                                        rating
                                     )}
-
                                 </div>
-
-
-                                <div>
-
-                                    <strong
-                                        class="profile-reviewer-name"
-                                    >
-
-                                        ${escapeHtml(
-                                            reviewerName
-                                        )}
-
-                                    </strong>
-
-
-                                    ${
-                                        dateText
-                                            ? `
-                                                <span
-                                                    class="profile-review-date"
-                                                >
-                                                    ${escapeHtml(
-                                                        dateText
-                                                    )}
-                                                </span>
-                                            `
-                                            : ""
-                                    }
-
-                                </div>
-
 
                             </div>
 
 
-                            <div
-                                class="profile-review-stars"
+                            <p
+                                class="profile-review-text"
                             >
-
-                                ${getStars(
-                                    rating
+                                ${escapeHtml(
+                                    text
                                 )}
+                            </p>
 
-                            </div>
+                        </article>
 
+                    `;
 
-                        </div>
-
-
-                        <p
-                            class="profile-review-text"
-                        >
-
-                            ${escapeHtml(
-                                text
-                            )}
-
-                        </p>
-
-
-                    </article>
-
-                `;
-
-            })
+                }
+            )
             .join("");
+
 }
 
 
@@ -1287,6 +1333,23 @@ resetFilters.addEventListener(
             "default";
 
 
+        /*
+         * URL-ből is eltávolítjuk
+         * a tantárgy paramétert,
+         * hogy a reset tényleg teljes reset legyen.
+         */
+
+        const cleanUrl =
+            window.location.pathname;
+
+
+        window.history.replaceState(
+            {},
+            "",
+            cleanUrl
+        );
+
+
         renderTutors();
 
     }
@@ -1299,7 +1362,20 @@ resetFilters.addEventListener(
 
 async function init() {
 
+    /*
+     * Először a tantárgyakat töltjük be,
+     * így az URL-ből érkező tantárgyat
+     * már ki tudjuk választani.
+     */
+
     await loadSubjects();
+
+
+    /*
+     * Ezután töltjük az oktatókat.
+     * A render már a kiválasztott
+     * tantárggyal fog lefutni.
+     */
 
     await loadTutors();
 

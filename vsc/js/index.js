@@ -1,352 +1,882 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const subjectContainer = document.querySelector(".grid-container");
+"use strict";
 
-    if (!subjectContainer) {
-        return;
-    }
 
-    loadSubjects();
-});
+/* =====================================================
+   ÁLLAPOT
+===================================================== */
 
 let allSubjects = [];
+
+let tutors = [];
+
 let selectedCategory = "Minden tárgy";
+
 let searchQuery = "";
 
 
-// ==========================================
-// SUBJECTEK BETÖLTÉSE
-// ==========================================
+/* =====================================================
+   INDÍTÁS
+===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        const subjectContainer =
+            document.querySelector(
+                ".grid-container"
+            );
+
+
+        if (!subjectContainer) {
+            return;
+        }
+
+
+        loadSubjects();
+
+    }
+);
+
+
+/* =====================================================
+   TANTÁRGYAK BETÖLTÉSE
+===================================================== */
 
 async function loadSubjects() {
-    try {
-        const response = await fetch("/api/subjects");
 
-        if (!response.ok) {
-            throw new Error("Nem sikerült lekérni a subjecteket.");
+    try {
+
+        const [
+            subjectsResponse,
+            tutorsResponse
+        ] = await Promise.all([
+
+            fetch("/api/subjects"),
+
+            fetch("/api/tutors")
+
+        ]);
+
+
+        if (!subjectsResponse.ok) {
+
+            throw new Error(
+                "Nem sikerült lekérni a tantárgyakat."
+            );
+
         }
 
-        allSubjects = await response.json();
 
-        console.log("Subjectek:", allSubjects);
+        allSubjects =
+            await subjectsResponse.json();
 
-        // Kezdeti megjelenítés
+
+        /*
+         * Az oktatók betöltése opcionális.
+         * Ha valamiért nem sikerül,
+         * a tantárgyak akkor is megjelennek.
+         */
+
+        if (tutorsResponse.ok) {
+
+            const tutorData =
+                await tutorsResponse.json();
+
+
+            if (Array.isArray(tutorData)) {
+
+                tutors =
+                    tutorData;
+
+            }
+
+        }
+
+
+        console.log(
+            "Tantárgyak:",
+            allSubjects
+        );
+
+
+        console.log(
+            "Oktatók:",
+            tutors
+        );
+
+
         applyFilters();
 
-        // Szűrők beállítása
+
         setupSearch();
+
         setupCategoryFilter();
+
         setupClearFilters();
 
-    } catch (error) {
-        console.error("Hiba a subjectek betöltésekor:", error);
 
-        const container = document.querySelector(".grid-container");
+    } catch (error) {
+
+        console.error(
+            "Hiba a tantárgyak betöltésekor:",
+            error
+        );
+
+
+        const container =
+            document.querySelector(
+                ".grid-container"
+            );
+
 
         if (container) {
+
             container.innerHTML = `
+
                 <div class="no-results">
-                    <p>Hiba történt a tantárgyak betöltésekor.</p>
+
+                    <div class="no-results-icon">
+                        ⚠️
+                    </div>
+
+                    <h3>
+                        Nem sikerült betölteni
+                        a tantárgyakat
+                    </h3>
+
+                    <p>
+                        Próbáld újra később.
+                    </p>
+
                 </div>
+
             `;
+
         }
+
+
+        updateSubjectCount(0);
+
     }
+
 }
 
 
-// ==========================================
-// KERESÉS
-// ==========================================
+/* =====================================================
+   KERESÉS
+===================================================== */
 
 function setupSearch() {
-    const searchInput = document.getElementById("subjectSearch");
+
+    const searchInput =
+        document.getElementById(
+            "subjectSearch"
+        );
+
 
     if (!searchInput) {
         return;
     }
 
-    searchInput.addEventListener("input", () => {
-        searchQuery = searchInput.value.trim().toLowerCase();
 
-        applyFilters();
-    });
+    searchInput.addEventListener(
+        "input",
+        () => {
+
+            searchQuery =
+                searchInput.value
+                    .trim()
+                    .toLowerCase();
+
+
+            applyFilters();
+
+        }
+    );
+
 }
 
 
-// ==========================================
-// KATEGÓRIA SZŰRÉS
-// ==========================================
+/* =====================================================
+   KATEGÓRIA SZŰRÉS
+===================================================== */
 
 function setupCategoryFilter() {
-    const dropdownMenu = document.getElementById("dropdownMenu");
-    const selectedSubject = document.getElementById("selectedSubject");
+
+    const dropdownMenu =
+        document.getElementById(
+            "dropdownMenu"
+        );
+
+
+    const selectedSubject =
+        document.getElementById(
+            "selectedSubject"
+        );
+
 
     if (!dropdownMenu) {
         return;
     }
 
-    const dropdownItems = dropdownMenu.querySelectorAll(".dropdown-item");
 
-    dropdownItems.forEach(item => {
-        item.addEventListener("click", () => {
-            selectedCategory = item.textContent.trim();
+    const dropdownItems =
+        dropdownMenu.querySelectorAll(
+            ".dropdown-item"
+        );
 
-            console.log("Kiválasztott kategória:", selectedCategory);
 
-            // Dropdown felirat frissítése
-            if (selectedSubject) {
-                selectedSubject.textContent = selectedCategory;
-            }
+    dropdownItems.forEach(
+        item => {
 
-            applyFilters();
-        });
-    });
+            item.addEventListener(
+                "click",
+                () => {
+
+                    selectedCategory =
+                        item.textContent
+                            .trim();
+
+
+                    if (selectedSubject) {
+
+                        selectedSubject.textContent =
+                            selectedCategory;
+
+                    }
+
+
+                    /*
+                     * Aktív elem frissítése
+                     */
+
+                    dropdownItems.forEach(
+                        dropdownItem => {
+
+                            dropdownItem.classList.remove(
+                                "active"
+                            );
+
+                            dropdownItem.setAttribute(
+                                "aria-selected",
+                                "false"
+                            );
+
+                        }
+                    );
+
+
+                    item.classList.add(
+                        "active"
+                    );
+
+
+                    item.setAttribute(
+                        "aria-selected",
+                        "true"
+                    );
+
+
+                    applyFilters();
+
+                }
+            );
+
+        }
+    );
+
 }
 
 
-// ==========================================
-// SZŰRŐK TÖRLÉSE
-// ==========================================
+/* =====================================================
+   SZŰRŐK TÖRLÉSE
+===================================================== */
 
 function setupClearFilters() {
-    const clearButton = document.getElementById("clearFilters");
-    const searchInput = document.getElementById("subjectSearch");
-    const selectedSubject = document.getElementById("selectedSubject");
+
+    const clearButton =
+        document.getElementById(
+            "clearFilters"
+        );
+
+
+    const searchInput =
+        document.getElementById(
+            "subjectSearch"
+        );
+
+
+    const selectedSubject =
+        document.getElementById(
+            "selectedSubject"
+        );
+
 
     if (!clearButton) {
         return;
     }
 
-    clearButton.addEventListener("click", () => {
-        // Kategória visszaállítása
-        selectedCategory = "Minden tárgy";
 
-        // Keresés törlése
-        searchQuery = "";
+    clearButton.addEventListener(
+        "click",
+        () => {
 
-        if (searchInput) {
-            searchInput.value = "";
+            selectedCategory =
+                "Minden tárgy";
+
+
+            searchQuery =
+                "";
+
+
+            if (searchInput) {
+
+                searchInput.value =
+                    "";
+
+            }
+
+
+            if (selectedSubject) {
+
+                selectedSubject.textContent =
+                    "Minden tárgy";
+
+            }
+
+
+            /*
+             * Aktív kategória visszaállítása
+             */
+
+            document
+                .querySelectorAll(
+                    ".dropdown-item"
+                )
+                .forEach(
+                    item => {
+
+                        const isAll =
+                            item.textContent
+                                .trim() ===
+                            "Minden tárgy";
+
+
+                        item.classList.toggle(
+                            "active",
+                            isAll
+                        );
+
+
+                        item.setAttribute(
+                            "aria-selected",
+                            isAll
+                                ? "true"
+                                : "false"
+                        );
+
+                    }
+                );
+
+
+            applyFilters();
+
         }
+    );
 
-        // Dropdown szöveg visszaállítása
-        if (selectedSubject) {
-            selectedSubject.textContent = "Minden tárgy";
-        }
-
-        // Minden subject megjelenítése
-        applyFilters();
-    });
 }
 
 
-// ==========================================
-// SZŰRÉSEK ALKALMAZÁSA
-// ==========================================
+/* =====================================================
+   SZŰRÉSEK
+===================================================== */
 
 function applyFilters() {
-    let filteredSubjects = [...allSubjects];
 
-    // ======================================
-    // KATEGÓRIA SZŰRÉS
-    // ======================================
+    let filteredSubjects =
+        [...allSubjects];
 
-    if (selectedCategory !== "Minden tárgy") {
-        filteredSubjects = filteredSubjects.filter(subject => {
-            return (
-                subject.category &&
-                subject.category.toLowerCase() ===
-                selectedCategory.toLowerCase()
+
+    /*
+     * KATEGÓRIA
+     */
+
+    if (
+        selectedCategory !==
+        "Minden tárgy"
+    ) {
+
+        filteredSubjects =
+            filteredSubjects.filter(
+                subject => {
+
+                    return (
+                        subject.category &&
+                        subject.category
+                            .toLowerCase() ===
+                        selectedCategory
+                            .toLowerCase()
+                    );
+
+                }
             );
-        });
+
     }
 
-    // ======================================
-    // KERESÉS
-    // ======================================
+
+    /*
+     * KERESÉS
+     */
 
     if (searchQuery !== "") {
-        filteredSubjects = filteredSubjects.filter(subject => {
-            const subjectName = subject.name
-                ? subject.name.toLowerCase()
-                : "";
 
-            return subjectName.includes(searchQuery);
-        });
+        filteredSubjects =
+            filteredSubjects.filter(
+                subject => {
+
+                    const subjectName =
+                        subject.name
+                            ? subject.name
+                                .toLowerCase()
+                            : "";
+
+
+                    return subjectName.includes(
+                        searchQuery
+                    );
+
+                }
+            );
+
     }
 
-    // ======================================
-    // MEGJELENÍTÉS
-    // ======================================
 
-    displaySubjects(filteredSubjects);
+    displaySubjects(
+        filteredSubjects
+    );
+
 }
 
 
-// ==========================================
-// SUBJECTEK MEGJELENÍTÉSE
-// ==========================================
+/* =====================================================
+   OKTATÓK SZÁMÁNAK MEGHATÁROZÁSA
+===================================================== */
 
-function displaySubjects(subjects) {
-    const container = document.querySelector(".grid-container");
+function getTutorCountForSubject(
+    subjectName
+) {
+
+    if (!subjectName) {
+        return 0;
+    }
+
+
+    const target =
+        subjectName
+            .trim()
+            .toLowerCase();
+
+
+    let count = 0;
+
+
+    tutors.forEach(
+        tutor => {
+
+            const subjects =
+                String(
+                    tutor.subjects || ""
+                )
+                .split(",")
+                .map(
+                    subject =>
+                        subject
+                            .trim()
+                            .toLowerCase()
+                )
+                .filter(Boolean);
+
+
+            if (
+                subjects.includes(
+                    target
+                )
+            ) {
+
+                count++;
+
+            }
+
+        }
+    );
+
+
+    return count;
+
+}
+
+
+/* =====================================================
+   TANTÁRGYOK MEGJELENÍTÉSE
+===================================================== */
+
+function displaySubjects(
+    subjects
+) {
+
+    const container =
+        document.querySelector(
+            ".grid-container"
+        );
+
 
     if (!container) {
         return;
     }
 
-    // Régi subjectek törlése
-    container.innerHTML = "";
 
-    // ======================================
-    // NINCS TALÁLAT
-    // ======================================
+    container.innerHTML =
+        "";
+
+
+    /*
+     * NINCS TALÁLAT
+     */
 
     if (subjects.length === 0) {
+
         container.innerHTML = `
+
             <div class="no-results">
-                <h3>Nincs találat</h3>
+
+                <div class="no-results-icon">
+                    🔎
+                </div>
+
+                <h3>
+                    Nincs találat
+                </h3>
+
                 <p>
-                    Nem található a keresésnek és a szűrőknek megfelelő tantárgy.
+                    Nem található a keresésnek
+                    és a szűrőknek megfelelő tantárgy.
                 </p>
+
             </div>
+
         `;
+
 
         updateSubjectCount(0);
 
         return;
+
     }
 
-    // Tantárgyak számának frissítése
-    updateSubjectCount(subjects.length);
 
-    // ======================================
-    // KÁRTYÁK
-    // ======================================
-
-    subjects.forEach((subject, index) => {
-
-        // ==================================
-        // LINK
-        // ==================================
-
-        const link = document.createElement("a");
-
-        link.href = `matek.html?subject_id=${subject.id}`;
+    updateSubjectCount(
+        subjects.length
+    );
 
 
-        // ==================================
-        // KÁRTYA
-        // ==================================
+    /*
+     * KÁRTYÁK
+     */
 
-        const card = document.createElement("div");
+    subjects.forEach(
+        (subject, index) => {
 
-        card.classList.add("subcard");
-
-        // Animáció késleltetése
-        card.style.animationDelay = `${index * 0.1}s`;
-
-
-        // ==================================
-        // IKON
-        // ==================================
-
-        const icon = document.createElement("div");
-
-        icon.classList.add("subject-icon");
-
-        icon.textContent = getSubjectIcon(subject.name);
+            const link =
+                document.createElement(
+                    "a"
+                );
 
 
-        // ==================================
-        // INFORMÁCIÓ
-        // ==================================
+            /*
+             * FONTOS:
+             *
+             * A régi matek.html helyett
+             * közvetlenül az Oktatók oldalra
+             * küldjük a felhasználót.
+             *
+             * Az oktatok.js ezt az URL paramétert
+             * automatikusan beállítja.
+             */
 
-        const info = document.createElement("div");
-
-        info.classList.add("subject-info");
-
-
-        const title = document.createElement("h2");
-
-        title.textContent = subject.name;
-
-
-        const description = document.createElement("p");
-
-        description.textContent = "Elérhető korrepetitorok";
+            link.href =
+                `/oktatok?subject=${encodeURIComponent(
+                    subject.name
+                )}`;
 
 
-        info.appendChild(title);
-        info.appendChild(description);
+            const card =
+                document.createElement(
+                    "div"
+                );
 
 
-        // ==================================
-        // NYÍL
-        // ==================================
-
-        const arrow = document.createElement("span");
-
-        arrow.classList.add("subject-arrow");
-
-        arrow.textContent = "→";
+            card.classList.add(
+                "subcard"
+            );
 
 
-        // ==================================
-        // KÁRTYA ÖSSZEÁLLÍTÁSA
-        // ==================================
+            card.style.animationDelay =
+                `${index * 0.06}s`;
 
-        card.appendChild(icon);
-        card.appendChild(info);
-        card.appendChild(arrow);
 
-        link.appendChild(card);
+            /*
+             * IKON
+             */
 
-        container.appendChild(link);
-    });
+            const icon =
+                document.createElement(
+                    "div"
+                );
+
+
+            icon.classList.add(
+                "subject-icon"
+            );
+
+
+            icon.textContent =
+                getSubjectIcon(
+                    subject.name
+                );
+
+
+            /*
+             * INFORMÁCIÓ
+             */
+
+            const info =
+                document.createElement(
+                    "div"
+                );
+
+
+            info.classList.add(
+                "subject-info"
+            );
+
+
+            const title =
+                document.createElement(
+                    "h2"
+                );
+
+
+            title.textContent =
+                subject.name;
+
+
+            const description =
+                document.createElement(
+                    "p"
+                );
+
+
+            description.textContent =
+                subject.category
+                    ? subject.category
+                    : "Tantárgy";
+
+
+            /*
+             * OKTATÓK SZÁMA
+             */
+
+            const tutorCount =
+                getTutorCountForSubject(
+                    subject.name
+                );
+
+
+            const tutorBadge =
+                document.createElement(
+                    "span"
+                );
+
+
+            tutorBadge.classList.add(
+                "tutor-count"
+            );
+
+
+            if (tutorCount === 0) {
+
+                tutorBadge.classList.add(
+                    "no-tutors"
+                );
+
+
+                tutorBadge.textContent =
+                    "Jelenleg nincs oktató";
+
+            } else if (tutorCount === 1) {
+
+                tutorBadge.textContent =
+                    "1 elérhető oktató";
+
+            } else {
+
+                tutorBadge.textContent =
+                    `${tutorCount} elérhető oktató`;
+
+            }
+
+
+            info.appendChild(
+                title
+            );
+
+
+            info.appendChild(
+                description
+            );
+
+
+            info.appendChild(
+                tutorBadge
+            );
+
+
+            /*
+             * NYÍL
+             */
+
+            const arrow =
+                document.createElement(
+                    "span"
+                );
+
+
+            arrow.classList.add(
+                "subject-arrow"
+            );
+
+
+            arrow.textContent =
+                "→";
+
+
+            /*
+             * KÁRTYA
+             */
+
+            card.appendChild(
+                icon
+            );
+
+
+            card.appendChild(
+                info
+            );
+
+
+            card.appendChild(
+                arrow
+            );
+
+
+            link.appendChild(
+                card
+            );
+
+
+            container.appendChild(
+                link
+            );
+
+        }
+    );
+
 }
 
 
-// ==========================================
-// TANTÁRGY DARABSZÁM
-// ==========================================
+/* =====================================================
+   TANTÁRGY DARABSZÁM
+===================================================== */
 
-function updateSubjectCount(count) {
-    const subjectCount = document.getElementById("subjectCount");
+function updateSubjectCount(
+    count
+) {
+
+    const subjectCount =
+        document.getElementById(
+            "subjectCount"
+        );
+
 
     if (!subjectCount) {
         return;
     }
 
+
     if (count === 0) {
-        subjectCount.textContent = "Nincs találat";
+
+        subjectCount.textContent =
+            "Nincs találat";
+
+
         return;
+
     }
+
 
     if (count === 1) {
-        subjectCount.textContent = "1 tantárgy";
+
+        subjectCount.textContent =
+            "1 tantárgy";
+
+
         return;
+
     }
 
-    subjectCount.textContent = `${count} tantárgy`;
+
+    subjectCount.textContent =
+        `${count} tantárgy`;
+
 }
 
 
-// ==========================================
-// SUBJECT IKONOK
-// ==========================================
+/* =====================================================
+   TANTÁRGY IKONOK
+===================================================== */
 
-function getSubjectIcon(subjectName) {
-    const name = subjectName.toLowerCase();
+function getSubjectIcon(
+    subjectName
+) {
 
-    if (name.includes("matematika")) {
+    const name =
+        String(
+            subjectName || ""
+        )
+        .toLowerCase();
+
+
+    if (
+        name.includes("matematika")
+    ) {
         return "∑";
     }
 
-    if (name.includes("fizika")) {
+
+    if (
+        name.includes("fizika")
+    ) {
         return "⚛";
     }
 
-    if (name.includes("kémia")) {
+
+    if (
+        name.includes("kémia")
+    ) {
         return "⚗";
     }
+
 
     if (
         name.includes("informatika") ||
@@ -355,66 +885,112 @@ function getSubjectIcon(subjectName) {
         return "</>";
     }
 
-    if (name.includes("statisztika")) {
+
+    if (
+        name.includes("statisztika")
+    ) {
         return "▥";
     }
 
-    if (name.includes("történelem")) {
+
+    if (
+        name.includes("történelem")
+    ) {
         return "◈";
     }
 
-    if (name.includes("magyar")) {
+
+    if (
+        name.includes("magyar")
+    ) {
         return "A";
     }
 
-    if (name.includes("filozófia")) {
+
+    if (
+        name.includes("filozófia")
+    ) {
         return "Φ";
     }
 
-    if (name.includes("etika")) {
+
+    if (
+        name.includes("etika")
+    ) {
         return "◆";
     }
 
-    if (name.includes("pszichológia")) {
+
+    if (
+        name.includes("pszichológia")
+    ) {
         return "Ψ";
     }
 
-    if (name.includes("társadalomismeret")) {
+
+    if (
+        name.includes("társadalomismeret")
+    ) {
         return "◉";
     }
 
-    if (name.includes("jog")) {
+
+    if (
+        name.includes("jog")
+    ) {
         return "§";
     }
 
-    if (name.includes("angol")) {
+
+    if (
+        name.includes("angol")
+    ) {
         return "EN";
     }
 
-    if (name.includes("német")) {
+
+    if (
+        name.includes("német")
+    ) {
         return "DE";
     }
 
-    if (name.includes("francia")) {
+
+    if (
+        name.includes("francia")
+    ) {
         return "FR";
     }
 
-    if (name.includes("spanyol")) {
+
+    if (
+        name.includes("spanyol")
+    ) {
         return "ES";
     }
 
-    if (name.includes("olasz")) {
+
+    if (
+        name.includes("olasz")
+    ) {
         return "IT";
     }
 
-    if (name.includes("orosz")) {
+
+    if (
+        name.includes("orosz")
+    ) {
         return "RU";
     }
 
-    if (name.includes("latin")) {
+
+    if (
+        name.includes("latin")
+    ) {
         return "LA";
     }
 
-    // Alapértelmezett ikon
+
     return "📚";
+
 }
