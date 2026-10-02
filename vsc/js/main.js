@@ -1214,6 +1214,168 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 // START SERVER
 // ============================================================
 
+const STRONG_PASSWORD = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+
+app.get("/api/account", async (req, res) => {
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+    }
+
+    try {
+
+        const [rows] = await db.promise().query(
+            `SELECT id, full_name, email, role, bio
+             FROM users
+             WHERE id = ?
+             LIMIT 1`,
+            [req.session.user.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A felhasználó nem található." });
+        }
+
+        const u = rows[0];
+
+        res.json({
+            id: u.id,
+            name: u.full_name,
+            email: u.email,
+            role: u.role,
+            bio: u.bio || ""
+        });
+
+    } catch (err) {
+        console.error("❌ GET /api/account error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+app.put("/api/account", async (req, res) => {
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+    }
+
+    const userId = req.session.user.id;
+
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim();
+    const bio = String(req.body.bio ?? "").trim();
+    const currentPassword = String(req.body.currentPassword || "");
+    const newPassword = String(req.body.newPassword || "");
+
+
+    // ---------------- validation ----------------
+
+    if (name.length < 2 || name.length > 100) {
+        return res.status(400).json({ error: "A név 2 és 100 karakter között legyen." });
+    }
+
+    if (!EMAIL_PATTERN.test(email) || email.length > 255) {
+        return res.status(400).json({ error: "Adj meg egy érvényes e-mail címet." });
+    }
+
+    if (newPassword && !STRONG_PASSWORD.test(newPassword)) {
+        return res.status(400).json({
+            error: "Az új jelszó legalább 6 karakter legyen, és tartalmazzon számot és speciális karaktert."
+        });
+    }
+
+
+    try {
+
+        // The current row (we need the hash and the current e-mail/role)
+        const [rows] = await db.promise().query(
+            "SELECT email, role, password_hash FROM users WHERE id = ? LIMIT 1",
+            [userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A felhasználó nem található." });
+        }
+
+        const current = rows[0];
+        const isTutor = current.role === "TUTOR";
+
+        if (isTutor) {
+            if (bio.length > 1000) {
+                return res.status(400).json({ error: "A bemutatkozás legfeljebb 1000 karakter lehet." });
+            }
+        }
+
+
+        // E-mail or password change => the current password is required
+        const emailChanged = email.toLowerCase() !== current.email.toLowerCase();
+
+        if (emailChanged || newPassword) {
+
+            if (!currentPassword) {
+                return res.status(400).json({
+                    error: "E-mail vagy jelszó módosításához add meg a jelenlegi jelszavad."
+                });
+            }
+
+            const ok = await verifyPassword(current.password_hash, currentPassword);
+
+            if (!ok) {
+                return res.status(403).json({ error: "A jelenlegi jelszó hibás." });
+            }
+        }
+
+
+        // ---------------- build the UPDATE ----------------
+
+        const fields = ["full_name = ?", "email = ?"];
+        const values = [name, email];
+
+        if (isTutor) {
+            fields.push("bio = ?");
+            values.push(bio);
+        }
+
+        if (newPassword) {
+            fields.push("password_hash = ?");
+            values.push(await hashPassword(newPassword));
+        }
+
+        values.push(userId);
+
+        await db.promise().query(
+            `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+            values
+        );
+
+
+        // Keep the session in sync so the navbar shows the new data
+        req.session.user.name = name;
+        req.session.user.email = email;
+
+        res.json({
+            success: true,
+            user: {
+                id: userId,
+                name: name,
+                email: email,
+                role: current.role
+            }
+        });
+
+    } catch (err) {
+
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({ error: "Ez az e-mail cím már foglalt." });
+        }
+
+        console.error("❌ PUT /api/account error:", err);
+        res.status(500).json({ error: "Nem sikerült menteni a módosításokat." });
+    }
+});
+
 app.listen(
     3000,
     () => {

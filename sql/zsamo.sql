@@ -231,9 +231,9 @@ CREATE TABLE `tutor_subjects` (
 --
 
 INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`, `hourly_rate`) VALUES
-(3, 1, 3500),
+(3, 1, 3100),
 (3, 2, 3500),
-(3, 5, 3500),
+(3, 5, 7000),
 (4, 1, 3000),
 (4, 8, 3000),
 (4, 15, 3000),
