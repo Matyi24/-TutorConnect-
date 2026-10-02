@@ -23,7 +23,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 2. Betöltjük a beszélgetéseket
         await loadConversations();
 
-        // 3. Valós idejű kapcsolat
+        // 3. Új beszélgetés gomb (csak diákoknak)
+        setupNewChatButton();
+
+        // 4. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
+        await openTutorFromUrl();
+
+        // 5. Valós idejű kapcsolat
         connectWebSocket();
 
     } catch (error) {
@@ -113,6 +119,34 @@ async function loadConversations() {
             conversations[0].id
         );
     }
+}
+
+
+// ------------------------------------------------------------
+// REFRESH CONVERSATIONS
+// ------------------------------------------------------------
+//
+// Újratölti a listát, de NEM vált át másik beszélgetésre.
+
+async function refreshConversations() {
+
+    const response = await fetch("/api/conversations");
+
+    if (!response.ok) {
+        return;
+    }
+
+    conversations = await response.json();
+
+    renderConversations();
+}
+
+
+function findConversation(conversationId) {
+
+    return conversations.find(
+        item => Number(item.id) === Number(conversationId)
+    );
 }
 
 
@@ -210,6 +244,21 @@ function createConversationElement(
         "Még nincs üzenet.";
 
 
+    // Olvasatlan üzenetek (a megnyitott beszélgetésnél nem jelezzük)
+    const unreadCount =
+        Number(conversation.unread_count) || 0;
+
+    const showUnread =
+        unreadCount > 0 &&
+        Number(conversation.id) !==
+        Number(currentConversationId);
+
+    if (showUnread) {
+
+        element.classList.add("unread");
+    }
+
+
     element.innerHTML = `
 
         <div class="avatar">
@@ -232,9 +281,21 @@ function createConversationElement(
 
             </div>
 
-            <p>
-                ${escapeHtml(lastMessage)}
-            </p>
+            <div class="conversation-bottom">
+
+                <p>
+                    ${escapeHtml(lastMessage)}
+                </p>
+
+                ${
+                    showUnread
+                        ? `<div class="unread-badge">${
+                            unreadCount > 99 ? "99+" : unreadCount
+                        }</div>`
+                        : ""
+                }
+
+            </div>
 
         </div>
 
@@ -309,6 +370,66 @@ async function selectConversation(
     await loadMessages(
         conversationId
     );
+
+
+    // A beszélgetés megnyílt, az üzenetek olvasottnak számítanak
+    await markConversationAsRead(
+        conversationId
+    );
+}
+
+
+// ============================================================
+// MARK AS READ
+// ============================================================
+
+async function markConversationAsRead(
+    conversationId,
+    force = false
+) {
+
+    const conversation =
+        findConversation(
+            conversationId
+        );
+
+    if (!conversation) {
+        return;
+    }
+
+    // Ha nincs olvasatlan üzenet, nem kell hívni a szervert
+    if (
+        !force &&
+        !(Number(conversation.unread_count) > 0)
+    ) {
+        return;
+    }
+
+    try {
+
+        const response = await fetch(
+            `/api/conversations/${conversationId}/read`,
+            { method: "POST" }
+        );
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Nem sikerült olvasottnak jelölni."
+            );
+        }
+
+        conversation.unread_count = 0;
+
+        renderConversations();
+
+    } catch (error) {
+
+        console.error(
+            "❌ Olvasottnak jelölési hiba:",
+            error
+        );
+    }
 }
 
 
@@ -658,19 +779,251 @@ async function handleIncomingMessage(message) {
 
     console.log("📩 Új üzenet érkezett:", message);
 
-    // A bal oldali lista frissítése
-    const conversation = conversations.find(
-        item => Number(item.id) === Number(message.conversation_id)
-    );
+    const isOpen =
+        Number(message.conversation_id) ===
+        Number(currentConversationId);
 
-    if (conversation) {
+    let conversation = findConversation(message.conversation_id);
+
+    if (!conversation) {
+
+        // Ez egy új beszélgetés (pl. egy diák most írt először),
+        // ezért újratöltjük a listát. A szerver az olvasatlan
+        // számot is megadja.
+        await refreshConversations();
+
+        conversation = findConversation(message.conversation_id);
+
+        if (!conversation) {
+            return;
+        }
+
+    } else {
+
+        // A bal oldali lista frissítése
         conversation.last_message = message.content;
         conversation.last_message_time = message.created_at;
+
+        // Ha nem ez a beszélgetés van megnyitva, olvasatlan
+        if (!isOpen) {
+            conversation.unread_count =
+                (Number(conversation.unread_count) || 0) + 1;
+        }
+
         renderConversations();
     }
 
-    // Ha éppen ez a beszélgetés van megnyitva, frissítjük az üzeneteket
-    if (Number(message.conversation_id) === Number(currentConversationId)) {
+    if (isOpen) {
+
+        // Éppen ez a beszélgetés van megnyitva:
+        // megjelenítjük, és rögtön olvasottnak jelöljük
         await loadMessages(currentConversationId);
+        await markConversationAsRead(currentConversationId, true);
+
+    } else if (!currentConversationId) {
+
+        // Még nem volt megnyitva egyetlen beszélgetés sem
+        await selectConversation(conversation.id);
     }
+}
+
+
+// ============================================================
+// NEW CONVERSATION
+// ============================================================
+
+function setupNewChatButton() {
+
+    const button = document.querySelector(".new-chat-button");
+
+    if (!button) {
+        return;
+    }
+
+    // Új beszélgetést csak diák indíthat oktatóval
+    if (!currentUser || currentUser.role !== "STUDENT") {
+        button.style.display = "none";
+        return;
+    }
+
+    button.addEventListener("click", openTutorPicker);
+}
+
+
+async function startConversationWith(tutorId) {
+
+    const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tutor_id: tutorId })
+    });
+
+    if (!response.ok) {
+        throw new Error("Nem sikerült elindítani a beszélgetést.");
+    }
+
+    const conversation = await response.json();
+
+    console.log("💬 Beszélgetés kész:", conversation);
+
+    // Ha még nincs a listában, felülre tesszük
+    if (!findConversation(conversation.id)) {
+        conversations.unshift(conversation);
+    }
+
+    await selectConversation(conversation.id);
+
+    const input = document.querySelector(".message-form input[type='text']");
+
+    if (input) {
+        input.focus();
+    }
+}
+
+
+async function openTutorFromUrl() {
+
+    const params = new URLSearchParams(location.search);
+    const tutorId = Number(params.get("tutor"));
+
+    if (!tutorId || !currentUser || currentUser.role !== "STUDENT") {
+        return;
+    }
+
+    try {
+        await startConversationWith(tutorId);
+    } catch (error) {
+        console.error("❌ Nem sikerült megnyitni az oktatóval a chatet:", error);
+    }
+
+    // Az URL-ből kivesszük a paramétert, hogy frissítéskor ne ismétlődjön
+    history.replaceState(null, "", location.pathname);
+}
+
+
+async function openTutorPicker() {
+
+    if (document.querySelector(".tutor-picker-overlay")) {
+        return;
+    }
+
+    const overlay = document.createElement("div");
+    overlay.className = "tutor-picker-overlay";
+
+    overlay.innerHTML = `
+        <div class="tutor-picker" role="dialog" aria-modal="true">
+
+            <div class="tutor-picker-header">
+                <h2>Új beszélgetés</h2>
+                <button type="button" class="tutor-picker-close" aria-label="Bezárás">×</button>
+            </div>
+
+            <input
+                type="text"
+                class="tutor-picker-search"
+                placeholder="Oktató vagy tantárgy keresése..."
+            >
+
+            <div class="tutor-picker-list">
+                <p class="tutor-picker-empty">Betöltés...</p>
+            </div>
+
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const list = overlay.querySelector(".tutor-picker-list");
+    const search = overlay.querySelector(".tutor-picker-search");
+
+    function closePicker() {
+        document.removeEventListener("keydown", onKeyDown);
+        overlay.remove();
+    }
+
+    function onKeyDown(event) {
+        if (event.key === "Escape") {
+            closePicker();
+        }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+
+    overlay.querySelector(".tutor-picker-close").addEventListener("click", closePicker);
+
+    overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) {
+            closePicker();
+        }
+    });
+
+    search.focus();
+
+    let tutors = [];
+
+    try {
+
+        const response = await fetch("/api/tutors");
+
+        if (!response.ok) {
+            throw new Error("Nem sikerült lekérni az oktatókat.");
+        }
+
+        tutors = await response.json();
+
+    } catch (error) {
+
+        console.error("❌ Oktatók betöltési hiba:", error);
+        list.innerHTML = `<p class="tutor-picker-empty">Nem sikerült betölteni az oktatókat.</p>`;
+        return;
+    }
+
+    function renderTutors() {
+
+        const query = search.value.trim().toLowerCase();
+
+        const filtered = tutors.filter((tutor) => {
+            const text = `${tutor.full_name || ""} ${tutor.subjects || ""}`.toLowerCase();
+            return text.includes(query);
+        });
+
+        list.innerHTML = "";
+
+        if (filtered.length === 0) {
+            list.innerHTML = `<p class="tutor-picker-empty">Nincs találat.</p>`;
+            return;
+        }
+
+        filtered.forEach((tutor) => {
+
+            const item = document.createElement("div");
+            item.className = "tutor-picker-item";
+
+            item.innerHTML = `
+                <div class="avatar">${escapeHtml(getInitials(tutor.full_name))}</div>
+
+                <div class="tutor-picker-info">
+                    <h3>${escapeHtml(tutor.full_name)}</h3>
+                    <p>${escapeHtml(tutor.subjects || "Nincs megadott tantárgy")}</p>
+                </div>
+            `;
+
+            item.addEventListener("click", async () => {
+
+                try {
+                    await startConversationWith(tutor.id);
+                    closePicker();
+                } catch (error) {
+                    console.error("❌ Beszélgetés indítási hiba:", error);
+                    list.innerHTML = `<p class="tutor-picker-empty">Nem sikerült elindítani a beszélgetést.</p>`;
+                }
+            });
+
+            list.appendChild(item);
+        });
+    }
+
+    search.addEventListener("input", renderTutors);
+
+    renderTutors();
 }

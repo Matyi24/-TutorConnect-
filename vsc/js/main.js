@@ -966,10 +966,13 @@ app.get("/api/stats", (req, res) => {
 // ============================================================
 // CONVERSATIONS API
 // ============================================================
-
 app.get("/api/conversations", (req, res) => {
 
     console.log("💬 GET /api/conversations");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
 
     // A bejelentkezett felhasználó ID-ja
     const userId = req.session.user.id;
@@ -1001,7 +1004,15 @@ app.get("/api/conversations", (req, res) => {
                 WHERE messages.conversation_id = conversations.id
                 ORDER BY messages.created_at DESC, messages.id DESC
                 LIMIT 1
-            ) AS last_message_time
+            ) AS last_message_time,
+
+            (
+                SELECT COUNT(*)
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                  AND messages.sender_id <> ?
+                  AND COALESCE(messages.is_read, 0) = 0
+            ) AS unread_count
 
         FROM conversations
 
@@ -1012,12 +1023,19 @@ app.get("/api/conversations", (req, res) => {
             ON conversations.tutor_id = tutor.id
 
         WHERE conversations.student_id = ?
-           OR conversations.tutor_id = ?
+           OR (
+               conversations.tutor_id = ?
+               AND EXISTS (
+                   SELECT 1
+                   FROM messages
+                   WHERE messages.conversation_id = conversations.id
+               )
+           )
     `;
 
     db.query(
         sql,
-        [userId, userId, userId],
+        [userId, userId, userId, userId],
         (err, results) => {
 
             if (err) {
@@ -1038,6 +1056,225 @@ app.get("/api/conversations", (req, res) => {
         }
     );
 });
+// ============================================================
+// START CONVERSATION API
+// ============================================================
+
+// Egy beszélgetés lekérése úgy, ahogy a GET /api/conversations adja
+function getConversationForUser(conversationId, userId, callback) {
+
+    const sql = `
+        SELECT
+            conversations.id,
+            conversations.student_id,
+            conversations.tutor_id,
+            conversations.created_at,
+
+            CASE
+                WHEN conversations.student_id = ?
+                    THEN tutor.full_name
+                ELSE student.full_name
+            END AS other_user_name,
+
+            (
+                SELECT messages.content
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message,
+
+            (
+                SELECT messages.created_at
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message_time,
+
+            (
+                SELECT COUNT(*)
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                  AND messages.sender_id <> ?
+                  AND COALESCE(messages.is_read, 0) = 0
+            ) AS unread_count
+
+        FROM conversations
+
+        JOIN users AS student
+            ON conversations.student_id = student.id
+
+        JOIN users AS tutor
+            ON conversations.tutor_id = tutor.id
+
+        WHERE conversations.id = ?
+    `;
+
+    db.query(sql, [userId, userId, conversationId], (err, rows) => {
+        callback(err, rows && rows[0]);
+    });
+}
+app.post("/api/conversations", (req, res) => {
+
+    console.log("💬 POST /api/conversations");
+
+    // 1. Be van jelentkezve?
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    // 2. Új beszélgetést csak diák indíthat
+    if (req.session.user.role !== "STUDENT") {
+        return res.status(403).json({
+            error: "Csak diák indíthat új beszélgetést"
+        });
+    }
+
+    const studentId = req.session.user.id;
+    const tutorId = Number(req.body.tutor_id);
+
+    if (!Number.isInteger(tutorId) || tutorId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen oktató" });
+    }
+
+    // 3. Létezik ez az oktató?
+    db.query(
+        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR'",
+        [tutorId],
+        (err, tutors) => {
+
+            if (err) {
+                console.error("❌ SQL hiba (oktató):", err);
+                return res.status(500).json({ error: "Adatbázis hiba" });
+            }
+
+            if (tutors.length === 0) {
+                return res.status(404).json({ error: "Az oktató nem található" });
+            }
+
+            // 4. Van már beszélgetésük?
+            db.query(
+                "SELECT id FROM conversations WHERE student_id = ? AND tutor_id = ?",
+                [studentId, tutorId],
+                (err, existing) => {
+
+                    if (err) {
+                        console.error("❌ SQL hiba (meglévő):", err);
+                        return res.status(500).json({ error: "Adatbázis hiba" });
+                    }
+
+                    // Ha igen, azt adjuk vissza (nem hozunk létre újat)
+                    if (existing.length > 0) {
+
+                        return getConversationForUser(
+                            existing[0].id,
+                            studentId,
+                            (err, conversation) => {
+
+                                if (err || !conversation) {
+                                    console.error("❌ SQL hiba (lekérés):", err);
+                                    return res.status(500).json({ error: "Adatbázis hiba" });
+                                }
+
+                                res.json(conversation);
+                            }
+                        );
+                    }
+
+                    // 5. Ha nem, létrehozzuk
+                    db.query(
+                        "INSERT INTO conversations (student_id, tutor_id) VALUES (?, ?)",
+                        [studentId, tutorId],
+                        (err, result) => {
+
+                            if (err) {
+                                console.error("❌ SQL hiba (INSERT):", err);
+                                return res.status(500).json({ error: "Adatbázis hiba" });
+                            }
+
+                            console.log("✅ Új beszélgetés:", result.insertId);
+
+                            getConversationForUser(
+                                result.insertId,
+                                studentId,
+                                (err, conversation) => {
+
+                                    if (err || !conversation) {
+                                        console.error("❌ SQL hiba (lekérés):", err);
+                                        return res.status(500).json({ error: "Adatbázis hiba" });
+                                    }
+
+                                    res.status(201).json(conversation);
+                                }
+                            );
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+// ============================================================
+// MARK AS READ API
+// ============================================================
+
+app.post("/api/conversations/:id/read", (req, res) => {
+
+    console.log("👁️ POST /api/conversations/:id/read");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const conversationId = req.params.id;
+
+    // Csak a beszélgetés résztvevője jelölhet olvasottnak
+    const checkSql = `
+        SELECT id FROM conversations
+        WHERE id = ?
+          AND (student_id = ? OR tutor_id = ?)
+    `;
+
+    db.query(checkSql, [conversationId, userId, userId], (err, rows) => {
+
+        if (err) {
+            console.error("❌ SQL hiba (ellenőrzés):", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        if (rows.length === 0) {
+            return res.status(403).json({
+                error: "Nem vagy résztvevője ennek a beszélgetésnek"
+            });
+        }
+
+        // Csak a MÁSIK fél üzenetei számítanak olvasatlannak
+        const updateSql = `
+            UPDATE messages
+            SET is_read = 1
+            WHERE conversation_id = ?
+              AND sender_id <> ?
+              AND COALESCE(is_read, 0) = 0
+        `;
+
+        db.query(updateSql, [conversationId, userId], (err, result) => {
+
+            if (err) {
+                console.error("❌ SQL hiba (UPDATE):", err);
+                return res.status(500).json({ error: "Adatbázis hiba" });
+            }
+
+            console.log("✅ Olvasottnak jelölve:", result.affectedRows);
+
+            res.json({ updated: result.affectedRows });
+        });
+    });
+});
+
+
 // ============================================================
 // MESSAGES API
 // ============================================================
