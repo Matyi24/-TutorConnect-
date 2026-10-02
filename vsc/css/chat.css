@@ -1094,3 +1094,67 @@ button:hover {
 
     font-weight: 700;
 }
+
+
+/* =========================================
+   DATE SEPARATOR
+========================================= */
+
+.date-separator {
+    align-self: center;
+
+    margin: 6px 0;
+}
+
+.date-separator span {
+    padding: 4px 12px;
+
+    border-radius: 20px;
+
+    background: rgba(65, 85, 232, 0.08);
+
+    color: rgba(16, 21, 66, 0.55);
+
+    font-size: 11px;
+    font-weight: 600;
+}
+
+
+/* =========================================
+   TYPING INDICATOR
+========================================= */
+
+.typing-indicator {
+    flex-shrink: 0;
+
+    position: relative;
+
+    height: 0;
+
+    z-index: 1;
+}
+
+.typing-indicator span {
+    display: none;
+
+    position: absolute;
+    left: 25px;
+    bottom: 6px;
+
+    padding: 4px 12px;
+
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.95);
+
+    box-shadow: 0 2px 8px rgba(65, 85, 232, 0.12);
+
+    color: rgba(16, 21, 66, 0.6);
+
+    font-size: 12px;
+    font-style: italic;
+}
+
+.typing-indicator.visible span {
+    display: block;
+}

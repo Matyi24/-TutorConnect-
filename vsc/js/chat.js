@@ -6,6 +6,15 @@ let currentUser = null;
 let conversations = [];
 let currentConversationId = null;
 
+// Valós idejű kapcsolat és "gépel..." jelzés
+let chatSocket = null;
+let lastTypingSent = 0;
+let typingTimer = null;
+let typingIndicator = null;
+
+// Dupla küldés elleni védelem
+let isSending = false;
+
 
 // ============================================================
 // INITIALIZATION
@@ -156,6 +165,10 @@ function findConversation(conversationId) {
 
 function renderConversations() {
 
+    // Legfrissebb beszélgetés legyen legfelül
+    sortConversations();
+
+
     const conversationList =
         document.querySelector(
             ".conversation-list"
@@ -234,8 +247,9 @@ function createConversationElement(
 
 
     const time =
-        formatTime(
-            conversation.last_message_time
+        formatConversationTime(
+            conversation.last_message_time ||
+            conversation.created_at
         );
 
 
@@ -366,9 +380,14 @@ async function selectConversation(
     );
 
 
-    // Üzenetek betöltése
+    // A másik fél "gépel..." jelzése nem maradhat meg
+    hideTypingIndicator();
+
+
+    // Üzenetek betöltése (beszélgetésváltásnál mindig az aljára görgetünk)
     await loadMessages(
-        conversationId
+        conversationId,
+        true
     );
 
 
@@ -478,7 +497,8 @@ function updateChatHeader(
 // ============================================================
 
 async function loadMessages(
-    conversationId
+    conversationId,
+    forceScroll = false
 ) {
 
     console.log(
@@ -512,7 +532,8 @@ async function loadMessages(
 
 
     renderMessages(
-        messages
+        messages,
+        forceScroll
     );
 }
 
@@ -522,7 +543,8 @@ async function loadMessages(
 // ============================================================
 
 function renderMessages(
-    messages
+    messages,
+    forceScroll = false
 ) {
 
     const messagesContainer =
@@ -541,11 +563,56 @@ function renderMessages(
     }
 
 
+    // Ha a felhasználó felgörgetett (régi üzeneteket olvas),
+    // egy új üzenet ne dobja le az aljára.
+    const previousScrollTop =
+        messagesContainer.scrollTop;
+
+    const wasAtBottom =
+        messagesContainer.scrollHeight -
+        messagesContainer.scrollTop -
+        messagesContainer.clientHeight < 80;
+
+
     messagesContainer.innerHTML = "";
+
+
+    let previousDay = null;
 
 
     messages.forEach(
         (message) => {
+
+            // Dátum elválasztó, ha új nap kezdődik
+            const messageDate =
+                new Date(message.created_at);
+
+            const dayKey =
+                Number.isNaN(messageDate.getTime())
+                    ? null
+                    : messageDate.toDateString();
+
+            if (dayKey && dayKey !== previousDay) {
+
+                const separator =
+                    document.createElement("div");
+
+                separator.className =
+                    "date-separator";
+
+                separator.innerHTML = `
+                    <span>${escapeHtml(
+                        formatDateLabel(message.created_at)
+                    )}</span>
+                `;
+
+                messagesContainer.appendChild(
+                    separator
+                );
+
+                previousDay = dayKey;
+            }
+
 
             const isOwnMessage =
                 Number(message.sender_id) ===
@@ -592,9 +659,16 @@ function renderMessages(
     );
 
 
-    // Automatikusan görgessünk az aljára
-    messagesContainer.scrollTop =
-        messagesContainer.scrollHeight;
+    if (forceScroll || wasAtBottom) {
+
+        messagesContainer.scrollTop =
+            messagesContainer.scrollHeight;
+
+    } else {
+
+        messagesContainer.scrollTop =
+            previousScrollTop;
+    }
 }
 
 
@@ -666,6 +740,110 @@ function formatTime(
 
 
 // ------------------------------------------------------------
+// DATE HELPERS
+// ------------------------------------------------------------
+
+function isSameDay(a, b) {
+
+    return a.toDateString() === b.toDateString();
+}
+
+
+// Elválasztó felirat az üzenetek között: Ma / Tegnap / dátum
+function formatDateLabel(dateString) {
+
+    const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const today = new Date();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (isSameDay(date, today)) {
+        return "Ma";
+    }
+
+    if (isSameDay(date, yesterday)) {
+        return "Tegnap";
+    }
+
+    return date.toLocaleDateString(
+        "hu-HU",
+        {
+            year: "numeric",
+            month: "long",
+            day: "numeric"
+        }
+    );
+}
+
+
+// A bal oldali listában: ma idő, tegnap "Tegnap", régebbi rövid dátum
+function formatConversationTime(dateString) {
+
+    if (!dateString) {
+        return "";
+    }
+
+    const date = new Date(dateString);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const today = new Date();
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (isSameDay(date, today)) {
+        return formatTime(dateString);
+    }
+
+    if (isSameDay(date, yesterday)) {
+        return "Tegnap";
+    }
+
+    return date.toLocaleDateString(
+        "hu-HU",
+        {
+            month: "short",
+            day: "numeric"
+        }
+    );
+}
+
+
+// ------------------------------------------------------------
+// SORT CONVERSATIONS
+// ------------------------------------------------------------
+
+function getConversationTimestamp(conversation) {
+
+    const time = new Date(
+        conversation.last_message_time ||
+        conversation.created_at
+    ).getTime();
+
+    return Number.isNaN(time) ? 0 : time;
+}
+
+
+function sortConversations() {
+
+    conversations.sort(
+        (a, b) =>
+            getConversationTimestamp(b) -
+            getConversationTimestamp(a)
+    );
+}
+
+
+// ------------------------------------------------------------
 // ESCAPE HTML
 // ------------------------------------------------------------
 //
@@ -694,6 +872,40 @@ const messageInput = document.querySelector(".message-form input[type='text']");
 
 if (messageForm && messageInput) {
 
+    // "Valaki gépel..." jelzés helye (az üzenetíró sáv felett)
+    typingIndicator = document.createElement("div");
+    typingIndicator.className = "typing-indicator";
+    typingIndicator.innerHTML = "<span></span>";
+    messageForm.parentNode.insertBefore(typingIndicator, messageForm);
+
+
+    // Gépelés közben értesítjük a másik felet (legfeljebb 2 mp-enként)
+    messageInput.addEventListener("input", () => {
+
+        if (
+            !currentConversationId ||
+            !chatSocket ||
+            chatSocket.readyState !== WebSocket.OPEN ||
+            messageInput.value.trim() === ""
+        ) {
+            return;
+        }
+
+        const now = Date.now();
+
+        if (now - lastTypingSent < 2000) {
+            return;
+        }
+
+        lastTypingSent = now;
+
+        chatSocket.send(JSON.stringify({
+            type: "typing",
+            conversation_id: currentConversationId
+        }));
+    });
+
+
     messageForm.addEventListener("submit", async (event) => {
 
         // Ne töltse újra az oldalt a form
@@ -701,9 +913,11 @@ if (messageForm && messageInput) {
 
         const content = messageInput.value.trim();
 
-        if (!content || !currentConversationId) {
+        if (!content || !currentConversationId || isSending) {
             return;
         }
+
+        isSending = true;
 
         try {
             const response = await fetch(
@@ -724,14 +938,13 @@ if (messageForm && messageInput) {
 
             // Az input kiürítése
             messageInput.value = "";
+            lastTypingSent = 0;
 
-            // Az üzenetek újratöltése (így az új is megjelenik)
-            await loadMessages(currentConversationId);
+            // Az üzenetek újratöltése, saját üzenetnél mindig az aljára görgetünk
+            await loadMessages(currentConversationId, true);
 
             // A bal oldali lista "utolsó üzenet" sorának frissítése
-            const conversation = conversations.find(
-                item => item.id === currentConversationId
-            );
+            const conversation = findConversation(currentConversationId);
 
             if (conversation) {
                 conversation.last_message = savedMessage.content;
@@ -741,6 +954,8 @@ if (messageForm && messageInput) {
 
         } catch (error) {
             console.error("❌ Üzenetküldési hiba:", error);
+        } finally {
+            isSending = false;
         }
     });
 }
@@ -755,6 +970,8 @@ function connectWebSocket() {
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const socket = new WebSocket(`${protocol}://${location.host}`);
 
+    chatSocket = socket;
+
     socket.addEventListener("open", () => {
         console.log("🔌 WebSocket kapcsolat él");
     });
@@ -765,6 +982,10 @@ function connectWebSocket() {
 
         if (data.type === "new_message") {
             await handleIncomingMessage(data.message);
+        }
+
+        if (data.type === "typing") {
+            handleTyping(data.conversation_id);
         }
     });
 
@@ -782,6 +1003,11 @@ async function handleIncomingMessage(message) {
     const isOpen =
         Number(message.conversation_id) ===
         Number(currentConversationId);
+
+    // Megérkezett az üzenet, a "gépel..." jelzés már nem kell
+    if (isOpen) {
+        hideTypingIndicator();
+    }
 
     let conversation = findConversation(message.conversation_id);
 
@@ -824,6 +1050,48 @@ async function handleIncomingMessage(message) {
 
         // Még nem volt megnyitva egyetlen beszélgetés sem
         await selectConversation(conversation.id);
+    }
+}
+
+
+// ============================================================
+// TYPING INDICATOR
+// ============================================================
+
+function handleTyping(conversationId) {
+
+    // Csak a megnyitott beszélgetésnél jelezzük
+    if (
+        !typingIndicator ||
+        Number(conversationId) !== Number(currentConversationId)
+    ) {
+        return;
+    }
+
+    const conversation = findConversation(conversationId);
+
+    const name =
+        conversation
+            ? conversation.other_user_name
+            : "A másik fél";
+
+    typingIndicator.querySelector("span").textContent =
+        `${name} gépel...`;
+
+    typingIndicator.classList.add("visible");
+
+    // 3 másodperc után magától eltűnik
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(hideTypingIndicator, 3000);
+}
+
+
+function hideTypingIndicator() {
+
+    clearTimeout(typingTimer);
+
+    if (typingIndicator) {
+        typingIndicator.classList.remove("visible");
     }
 }
 

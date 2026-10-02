@@ -5,6 +5,7 @@ const session = require("express-session");
 const http = require("http");
 const { WebSocketServer } = require("ws");
 
+
 const { hashPassword, verifyPassword } = require("./auth");
 
 const app = express();
@@ -1429,7 +1430,7 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 // ============================================================
 
 const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });
 
 // userId -> a user nyitott kapcsolatai (több böngészőfül is lehet)
 const clients = new Map();
@@ -1460,6 +1461,53 @@ wss.on("connection", (ws) => {
     clients.get(ws.userId).add(ws);
 
     console.log("🔌 WebSocket csatlakozott, user:", ws.userId);
+
+    // "Gépel..." jelzés továbbítása a beszélgetés másik résztvevőjének
+    ws.on("message", (raw) => {
+
+        let data;
+
+        try {
+            data = JSON.parse(raw);
+        } catch (error) {
+            return;
+        }
+
+        if (!data || data.type !== "typing") {
+            return;
+        }
+
+        const conversationId = Number(data.conversation_id);
+
+        if (!Number.isInteger(conversationId)) {
+            return;
+        }
+
+        // Csak a beszélgetés résztvevője küldhet jelzést
+        db.query(
+            `SELECT student_id, tutor_id FROM conversations
+             WHERE id = ? AND (student_id = ? OR tutor_id = ?)`,
+            [conversationId, ws.userId, ws.userId],
+            (err, rows) => {
+
+                if (err || rows.length === 0) {
+                    return;
+                }
+
+                const conversation = rows[0];
+
+                const recipientId =
+                    Number(conversation.student_id) === ws.userId
+                        ? conversation.tutor_id
+                        : conversation.student_id;
+
+                sendToUser(recipientId, {
+                    type: "typing",
+                    conversation_id: conversationId
+                });
+            }
+        );
+    });
 
     ws.on("close", () => {
         const set = clients.get(ws.userId);
