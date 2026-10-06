@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "node --watch vsc/js/main.js"
-},
+    "dev": "node --watch vsc/js/main.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Matyi24/-TutorConnect-.git"
@@ -19,10 +19,12 @@
   "homepage": "https://github.com/Matyi24/-TutorConnect-#readme",
   "dependencies": {
     "argon2": "^0.45.1",
+    "better-sqlite3": "^13.0.3",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
     "multer": "^2.4.0",
     "mysql2": "^3.24.5",
+    "nodemon": "^3.1.14",
     "ws": "^8.22.0"
   },
   "allowScripts": {
