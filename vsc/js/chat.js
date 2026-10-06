@@ -6,6 +6,9 @@ let currentUser = null;
 let conversations = [];
 let currentConversationId = null;
 
+// A keresőmező aktuális szövege
+let searchQuery = "";
+
 // Valós idejű kapcsolat és "gépel..." jelzés
 let chatSocket = null;
 let lastTypingSent = 0;
@@ -32,13 +35,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 2. Betöltjük a beszélgetéseket
         await loadConversations();
 
-        // 3. Új beszélgetés gomb (csak diákoknak)
+        // 3. Keresés a beszélgetések között
+        setupConversationSearch();
+
+        // 4. Új beszélgetés gomb (csak diákoknak)
         setupNewChatButton();
 
-        // 4. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
+        // 5. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
         await openTutorFromUrl();
 
-        // 5. Valós idejű kapcsolat
+        // 6. Valós idejű kapcsolat
         connectWebSocket();
 
     } catch (error) {
@@ -200,7 +206,25 @@ function renderConversations() {
     }
 
 
-    conversations.forEach(
+    // A keresőmező alapján szűrt lista
+    const visibleConversations =
+        getVisibleConversations();
+
+
+    // Van beszélgetés, de a keresésre egyik sem illik
+    if (visibleConversations.length === 0) {
+
+        conversationList.innerHTML = `
+            <p class="no-conversations">
+                Nincs találat.
+            </p>
+        `;
+
+        return;
+    }
+
+
+    visibleConversations.forEach(
         (conversation) => {
 
             const element =
@@ -839,6 +863,86 @@ function sortConversations() {
         (a, b) =>
             getConversationTimestamp(b) -
             getConversationTimestamp(a)
+    );
+}
+
+
+// ------------------------------------------------------------
+// CONVERSATION SEARCH
+// ------------------------------------------------------------
+//
+// Kis- és nagybetűre, valamint ékezetekre érzéketlen keresés
+// (pl. "arpad" megtalálja az "Árpád"-ot).
+
+function normalizeText(value) {
+
+    return String(value ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+}
+
+
+function getVisibleConversations() {
+
+    const query =
+        normalizeText(searchQuery).trim();
+
+    if (!query) {
+        return conversations;
+    }
+
+    return conversations.filter(
+        (conversation) =>
+            normalizeText(
+                conversation.other_user_name
+            ).includes(query) ||
+            normalizeText(
+                conversation.last_message
+            ).includes(query)
+    );
+}
+
+
+function setupConversationSearch() {
+
+    const input =
+        document.querySelector(
+            ".conversation-search input"
+        );
+
+    if (!input) {
+
+        console.error(
+            "❌ A keresőmező nem található!"
+        );
+
+        return;
+    }
+
+    input.addEventListener(
+        "input",
+        () => {
+
+            searchQuery = input.value;
+
+            renderConversations();
+        }
+    );
+
+    // Esc: a keresés törlése
+    input.addEventListener(
+        "keydown",
+        (event) => {
+
+            if (event.key === "Escape") {
+
+                input.value = "";
+                searchQuery = "";
+
+                renderConversations();
+            }
+        }
     );
 }
 

@@ -1158,3 +1158,18 @@ button:hover {
 .typing-indicator.visible span {
     display: block;
 }
+
+
+/* =========================================
+   EMPTY CONVERSATION LIST
+========================================= */
+
+.no-conversations {
+    margin: 24px 12px;
+
+    text-align: center;
+
+    font-size: 13px;
+
+    color: rgba(16, 21, 66, 0.5);
+}
