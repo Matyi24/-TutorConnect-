@@ -17,7 +17,6 @@ call npm install express express-session better-sqlite3 argon2 mysql2 nodemon
 echo.
 echo Starting the app...
 echo.
-call npm audit --force
-call npm run dev
+call npx nodemon main.js
 echo Ha nem müködik töltsd le a Xampp-ot és inditsd el az Apache-t és Mysql-t (Zsamot be kell importálni)
 pause
