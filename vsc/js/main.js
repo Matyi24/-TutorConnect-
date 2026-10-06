@@ -1,5 +1,8 @@
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
+const crypto = require("crypto");
+const multer = require("multer");
 const mysql = require("mysql2");
 const session = require("express-session");
 const http = require("http");
@@ -88,6 +91,31 @@ app.use("/css", express.static(path.join(__dirname, "../css")));
 app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 app.use("/images", express.static(path.join(__dirname, "../images")));
+
+// A szerver mappája és a node_modules ne legyen letölthető a böngészőből
+const serverFolderName = path.basename(__dirname).toLowerCase();
+
+app.use((req, res, next) => {
+
+    let firstSegment = "";
+
+    try {
+        firstSegment = decodeURIComponent(req.path)
+            .split(/[\\/]+/)
+            .filter(Boolean)[0] || "";
+    } catch (error) {
+        return res.status(400).end();
+    }
+
+    firstSegment = firstSegment.toLowerCase();
+
+    if (firstSegment === serverFolderName || firstSegment === "node_modules") {
+        return res.status(404).end();
+    }
+
+    next();
+});
+
 
 // Serve the project root from the actual vsc folder regardless of
 // the terminal's current working directory.
