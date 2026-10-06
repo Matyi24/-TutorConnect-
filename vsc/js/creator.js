@@ -539,17 +539,17 @@ function setupAccountModal(user) {
 
                             <div class="acc-field">
                                 <label for="accCurrentPw">Jelenlegi jelszó</label>
-                                <input type="password" id="accCurrentPw" autocomplete="current-password">
+                                <input type="password" id="accCurrentPw" placeholder="Akkor töltsd ki a email-t vagy jelszót változtatsz." autocomplete="current-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw">Új jelszó</label>
-                                <input type="password" id="accNewPw" autocomplete="new-password">
+                                <input type="password" id="accNewPw" placeholder="Akkor add meg ha jelszót akarsz változtatni." autocomplete="new-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw2">Új jelszó megerősítése</label>
-                                <input type="password" id="accNewPw2" autocomplete="new-password">
+                                <input type="password" id="accNewPw2" placeholder="Akkor add meg ha jelszót akarsz változtatni." autocomplete="new-password">
                             </div>
 
                         </div>
