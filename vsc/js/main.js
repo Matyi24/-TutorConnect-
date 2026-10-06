@@ -1214,8 +1214,29 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 // START SERVER
 // ============================================================
 
+// ============================================================
+// ACCOUNT  (replace the old account block in main.js with this)
+// ============================================================
+//
+// GET /api/account  -> the logged-in user's editable data
+//                      (tutors also get their subjects and prices)
+// PUT /api/account  -> update name, email, bio, subjects/prices, password
+//
+// Changing the e-mail or the password requires the CURRENT password,
+// so someone who finds a logged-in browser can't take over the account.
+//
+// DATABASE: tutor_subjects needs a price column. Run once:
+//
+//     ALTER TABLE tutor_subjects
+//         ADD COLUMN hourly_rate INT NOT NULL DEFAULT 0;
+//
+// ============================================================
+
+
 const STRONG_PASSWORD = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_TUTOR_SUBJECTS = 10;
+const MAX_HOURLY_RATE = 100000;
 
 
 app.get("/api/account", async (req, res) => {
@@ -1240,13 +1261,30 @@ app.get("/api/account", async (req, res) => {
 
         const u = rows[0];
 
-        res.json({
+        const account = {
             id: u.id,
             name: u.full_name,
             email: u.email,
             role: u.role,
             bio: u.bio || ""
-        });
+        };
+
+        // A tutor's subjects and prices
+        if (u.role === "TUTOR") {
+
+            const [subjects] = await db.promise().query(
+                `SELECT ts.subject_id, s.name, ts.hourly_rate
+                 FROM tutor_subjects ts
+                 INNER JOIN subjects s ON s.id = ts.subject_id
+                 WHERE ts.tutor_id = ?
+                 ORDER BY s.name`,
+                [u.id]
+            );
+
+            account.subjects = subjects;
+        }
+
+        res.json(account);
 
     } catch (err) {
         console.error("❌ GET /api/account error:", err);
@@ -1272,12 +1310,12 @@ app.put("/api/account", async (req, res) => {
 
     // ---------------- validation ----------------
 
-    if (name.length < 2 || name.length > 100) {
-        return res.status(400).json({ error: "A név 2 és 100 karakter között legyen." });
+    if (name.length < 2 || name.length > 60) {
+        return res.status(400).json({ error: "A név 2 és 60 karakter között legyen." });
     }
 
-    if (!EMAIL_PATTERN.test(email) || email.length > 255) {
-        return res.status(400).json({ error: "Adj meg egy érvényes e-mail címet." });
+    if (!EMAIL_PATTERN.test(email) || email.length > 30) {
+        return res.status(400).json({ error: "Adj meg egy érvényes e-mail címet (legfeljebb 30 karakter)." });
     }
 
     if (newPassword && !STRONG_PASSWORD.test(newPassword)) {
@@ -1289,7 +1327,7 @@ app.put("/api/account", async (req, res) => {
 
     try {
 
-        // The current row (we need the hash and the current e-mail/role)
+        // The current row (we need the hash, the current e-mail and the role)
         const [rows] = await db.promise().query(
             "SELECT email, role, password_hash FROM users WHERE id = ? LIMIT 1",
             [userId]
@@ -1302,14 +1340,69 @@ app.put("/api/account", async (req, res) => {
         const current = rows[0];
         const isTutor = current.role === "TUTOR";
 
+
+        // ---------------- tutor only: bio + subjects ----------------
+
+        let subjectRows = null;     // null = "don't touch the subjects"
+
         if (isTutor) {
+
             if (bio.length > 1000) {
                 return res.status(400).json({ error: "A bemutatkozás legfeljebb 1000 karakter lehet." });
+            }
+
+            if (Array.isArray(req.body.subjects)) {
+
+                if (req.body.subjects.length > MAX_TUTOR_SUBJECTS) {
+                    return res.status(400).json({
+                        error: "Legfeljebb " + MAX_TUTOR_SUBJECTS + " tantárgyat adhatsz meg."
+                    });
+                }
+
+                const seen = new Set();
+                subjectRows = [];
+
+                for (const item of req.body.subjects) {
+
+                    const subjectId = Number(item && item.subject_id);
+                    const rate = Number(item && item.hourly_rate);
+
+                    if (!Number.isInteger(subjectId) || subjectId <= 0) {
+                        return res.status(400).json({ error: "Érvénytelen tantárgy." });
+                    }
+
+                    if (seen.has(subjectId)) {
+                        return res.status(400).json({ error: "Egy tantárgy csak egyszer szerepelhet." });
+                    }
+
+                    if (!Number.isInteger(rate) || rate < 0 || rate > MAX_HOURLY_RATE) {
+                        return res.status(400).json({
+                            error: "Az óradíj 0 és 100 000 Ft között legyen."
+                        });
+                    }
+
+                    seen.add(subjectId);
+                    subjectRows.push([userId, subjectId, rate]);
+                }
+
+                // every chosen subject must really exist
+                if (seen.size > 0) {
+
+                    const [found] = await db.promise().query(
+                        "SELECT id FROM subjects WHERE id IN (?)",
+                        [[...seen]]
+                    );
+
+                    if (found.length !== seen.size) {
+                        return res.status(400).json({ error: "Ismeretlen tantárgy." });
+                    }
+                }
             }
         }
 
 
-        // E-mail or password change => the current password is required
+        // ---------------- e-mail / password change needs the current password ----------------
+
         const emailChanged = email.toLowerCase() !== current.email.toLowerCase();
 
         if (emailChanged || newPassword) {
@@ -1349,6 +1442,24 @@ app.put("/api/account", async (req, res) => {
             `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
             values
         );
+
+
+        // ---------------- replace the tutor's subjects ----------------
+
+        if (subjectRows !== null) {
+
+            await db.promise().query(
+                "DELETE FROM tutor_subjects WHERE tutor_id = ?",
+                [userId]
+            );
+
+            if (subjectRows.length > 0) {
+                await db.promise().query(
+                    "INSERT INTO tutor_subjects (tutor_id, subject_id, hourly_rate) VALUES ?",
+                    [subjectRows]
+                );
+            }
+        }
 
 
         // Keep the session in sync so the navbar shows the new data

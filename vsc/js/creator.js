@@ -2,10 +2,143 @@ const body = document.body;
 
 
 // ============================================================
+// THEME (dark / light)
+// ============================================================
+//
+// The button only switches the theme: the chosen value ("light" or
+// "dark") is stored in localStorage and set as a data-theme attribute
+// on <html>. There is NO dark styling here, so style it yourself
+// in your CSS, e.g.  html[data-theme="dark"] { ... }
+//
+// ============================================================
+
+const TC_THEME_KEY = "tc-theme";
+
+function tcGetTheme() {
+
+    try {
+
+        const saved = localStorage.getItem(TC_THEME_KEY);
+
+        if (saved === "dark" || saved === "light") {
+            return saved;
+        }
+
+    } catch (error) {
+        // localStorage can be blocked; fall through to the default
+    }
+
+    return "light";
+}
+
+function tcApplyTheme(theme) {
+
+    document.documentElement.setAttribute("data-theme", theme);
+
+    const toggle = document.getElementById("themeToggle");
+
+    if (toggle) {
+        toggle.setAttribute("aria-pressed", String(theme === "dark"));
+    }
+}
+
+// Apply right away, so the page doesn't flash light first
+tcApplyTheme(tcGetTheme());
+
+
+function tcThemeToggleHtml() {
+
+    return `
+
+        <button
+            type="button"
+            class="theme-toggle"
+            id="themeToggle"
+            aria-label="Sötét / világos mód váltása"
+            title="Sötét / világos mód"
+        >
+
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+            </svg>
+
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+
+        </button>
+
+    `;
+}
+
+function tcSetupThemeToggle() {
+
+    const toggle = document.getElementById("themeToggle");
+
+    if (!toggle) {
+        return;
+    }
+
+    tcApplyTheme(tcGetTheme());
+
+    toggle.addEventListener("click", () => {
+
+        const next =
+            document.documentElement.getAttribute("data-theme") === "dark"
+                ? "light"
+                : "dark";
+
+        tcApplyTheme(next);
+
+        try {
+            localStorage.setItem(TC_THEME_KEY, next);
+        } catch (error) {
+            // not saved, but the theme still changed for this page
+        }
+    });
+}
+
+
+// ============================================================
+// SMALL HELPERS FOR THE NAVBAR USER
+// ============================================================
+
+function tcInitials(name) {
+
+    return String(name).trim().split(/\s+/).slice(0, 2)
+        .map(part => part[0] ? part[0].toUpperCase() : "")
+        .join("");
+}
+
+function tcUpdateNavUser(name) {
+
+    const navName = document.getElementById("navName");
+    const navAvatar = document.getElementById("navAvatar");
+
+    if (navName) {
+        navName.textContent = name;
+    }
+
+    if (navAvatar) {
+        navAvatar.textContent = tcInitials(name);
+    }
+}
+
+
+// ============================================================
 // NAVBAR
 // ============================================================
 
 async function createNavbar() {
+
+    // The navbar styles (avatar, theme button) are needed for
+    // logged-out visitors too, so inject them first.
+    injectAccountStyles();
 
     let auth = {
         loggedIn: false,
@@ -224,19 +357,35 @@ async function createNavbar() {
 
             <div class="user-menu">
 
-                <span
-                    class="user-name"
+                <div
+                    class="user-chip"
                     id="accountButton"
                     role="button"
                     tabindex="0"
                     title="Fiókom szerkesztése"
                 >
-                    ${escapeHtml(user.name)}
-                </span>
+
+                    <span class="nav-avatar" id="navAvatar">
+                        ${escapeHtml(tcInitials(user.name))}
+                    </span>
+
+                    <span class="user-name" id="navName">
+                        ${escapeHtml(user.name)}
+                    </span>
+
+                </div>
+
+                ${tcThemeToggleHtml()}
 
             </div>
 
         `;
+    }
+
+
+    // Logged-out visitors get the theme circle after the buttons
+    if (!isLoggedIn) {
+        accountArea += tcThemeToggleHtml();
     }
 
 
@@ -291,6 +440,8 @@ async function createNavbar() {
     // ========================================================
     // ACCOUNT MODAL (click on the user's name)
     // ========================================================
+
+    tcSetupThemeToggle();
 
     if (isLoggedIn) {
         setupAccountModal(user);
@@ -382,9 +533,41 @@ function injectAccountStyles() {
 
     style.textContent = `
 
+        /* ---------- navbar: avatar, name, theme circle ---------- */
+
+        .user-menu { display: flex; align-items: center; gap: 12px; }
+
+        .user-chip {
+            display: flex; align-items: center; gap: 10px; cursor: pointer;
+            padding: 3px 14px 3px 3px; border-radius: 999px; transition: background .2s;
+        }
+        .user-chip:hover { background: rgba(91, 77, 224, .10); }
+        .user-chip:focus-visible { outline: 2px solid #5b4de0; outline-offset: 2px; }
+
         .user-name { cursor: pointer; transition: color .2s; }
-        .user-name:hover { color: #4de0a3; }
-        .user-name:focus-visible { outline: 2px solid #5b4de0; outline-offset: 3px; border-radius: 6px; }
+        .user-chip:hover .user-name { color: #4de0a3; }
+
+        .nav-avatar {
+            flex: none; box-sizing: border-box; width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #7a6cf0, #5b4de0);
+            color: #fff; font-weight: 700; font-size: 13px; line-height: 1;
+        }
+
+        .theme-toggle {
+            flex: none; box-sizing: border-box; width: 36px; height: 36px; min-width: 0;
+            margin: 0; padding: 0; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: 1px solid #e0dbfa; background: #f1eeff; color: #5b4de0;
+            cursor: pointer; vertical-align: middle; line-height: 1;
+            transition: background .2s, transform .25s;
+        }
+        .theme-toggle:hover { background: #e4dffc; transform: rotate(18deg); }
+        .theme-toggle svg { width: 18px; height: 18px; }
+        .theme-toggle .icon-sun { display: none; }
+        html[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+        html[data-theme="dark"] .theme-toggle .icon-sun { display: inline; }
+        .cta-buttons > .theme-toggle { margin-left: 10px; }
 
         .acc-modal {
             position: fixed; inset: 0; z-index: 9999;
@@ -400,7 +583,7 @@ function injectAccountStyles() {
         }
 
         .acc-window {
-            position: relative; width: 100%; max-width: 880px; max-height: 92vh;
+            position: relative; box-sizing: border-box; width: 100%; max-width: 880px; max-height: 92vh;
             overflow-y: auto; background: #fdfcff; border-radius: 26px;
             padding: 32px; box-shadow: 0 30px 80px rgba(60, 40, 160, .28);
             animation: accIn .25s ease;
@@ -411,7 +594,7 @@ function injectAccountStyles() {
         }
 
         .acc-close {
-            position: absolute; top: 16px; right: 18px; padding: 0px 0px;
+            position: absolute; top: 16px; right: 18px; padding: 0;
             width: 36px; height: 36px; border: 0; border-radius: 50%;
             background: #f1eeff; color: #5b4de0; font-size: 22px;
             line-height: 1; cursor: pointer;
@@ -479,8 +662,6 @@ function injectAccountStyles() {
         .acc-message.success { color: #1f9d6b; }
 
         .acc-actions { display: flex; gap: 10px; justify-content: flex-end; }
-        .acc-actions .logout { margin-right: auto; background: #fff0f4; color: #d6336c; }
-        .acc-actions .logout:hover { background: #ffe0e8; }
         .acc-actions button {
             padding: 12px 22px; border-radius: 12px; border: 0;
             font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
@@ -489,6 +670,58 @@ function injectAccountStyles() {
         .acc-save { background: #5b4de0; color: #fff; }
         .acc-save:hover { background: #4a3dcb; }
         .acc-save:disabled { opacity: .6; cursor: default; }
+
+        .acc-modal [hidden] { display: none !important; }
+
+        /* logout button on the left of the action row */
+        .acc-actions .logout { margin-right: auto; background: #fff0f4; color: #d6336c; }
+        .acc-actions .logout:hover { background: #ffe0e8; }
+
+        /* ---------- tutor: subjects and prices ---------- */
+
+        .acc-subjects {
+            margin: 4px 0 18px; padding: 22px;
+            background: #f4f2ff; border: 1px solid #e6e1fb; border-radius: 20px;
+        }
+        .acc-subj-head, .acc-subj-row {
+            display: grid; grid-template-columns: 1fr 130px 36px; gap: 10px; align-items: center;
+        }
+        .acc-subj-head {
+            margin-bottom: 8px; padding: 0 2px;
+            font-size: 13px; font-weight: 600; color: #1b1735;
+        }
+        .acc-subj-row { margin-bottom: 10px; }
+        .acc-subj-select, .acc-subj-price {
+            width: 100%; box-sizing: border-box; min-width: 0; height: 44px; padding: 0 14px;
+            border: 1px solid #e0dbfa; border-radius: 12px; background: #fff;
+            font: inherit; font-size: 14px; color: #1b1735;
+        }
+        .acc-subj-select:focus, .acc-subj-price:focus {
+            outline: none; border-color: #5b4de0; box-shadow: 0 0 0 3px rgba(91, 77, 224, .15);
+        }
+        .acc-subj-remove {
+            box-sizing: border-box; width: 36px; height: 36px; min-width: 0; margin: 0; padding: 0;
+            border: 0; border-radius: 50%; background: #fff0f4; color: #d6336c;
+            font-size: 20px; line-height: 1; cursor: pointer;
+        }
+        .acc-subj-remove:hover { background: #ffe0e8; }
+        .acc-add-row {
+            margin: 2px 0 0; padding: 10px 16px; border: 1px dashed #b9b0f2; border-radius: 12px;
+            background: transparent; color: #5b4de0; font: inherit; font-size: 13px; font-weight: 700;
+            cursor: pointer;
+        }
+        .acc-add-row:hover { background: #ebe7fd; }
+
+        @media (max-width: 520px) {
+            .acc-subjects { padding: 16px; }
+            .acc-subj-head { display: none; }
+            /* phone: the subject gets its own line, price + delete sit below it */
+            .acc-subj-row {
+                grid-template-columns: 1fr 36px; gap: 8px;
+                padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #e6e1fb;
+            }
+            .acc-subj-select { grid-column: 1 / -1; }
+        }
 
     `;
 
@@ -539,17 +772,17 @@ function setupAccountModal(user) {
 
                             <div class="acc-field">
                                 <label for="accCurrentPw">Jelenlegi jelszó</label>
-                                <input type="password" id="accCurrentPw" placeholder="Akkor töltsd ki a email-t vagy jelszót változtatsz." autocomplete="current-password">
+                                <input type="password" id="accCurrentPw" autocomplete="current-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw">Új jelszó</label>
-                                <input type="password" id="accNewPw" placeholder="Akkor add meg ha jelszót akarsz változtatni." autocomplete="new-password">
+                                <input type="password" id="accNewPw" autocomplete="new-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw2">Új jelszó megerősítése</label>
-                                <input type="password" id="accNewPw2" placeholder="Akkor add meg ha jelszót akarsz változtatni." autocomplete="new-password">
+                                <input type="password" id="accNewPw2" autocomplete="new-password">
                             </div>
 
                         </div>
@@ -560,12 +793,12 @@ function setupAccountModal(user) {
 
                             <div class="acc-field">
                                 <label for="accName">Név</label>
-                                <input type="text" id="accName" maxlength="100" required>
+                                <input type="text" id="accName" maxlength="60" required>
                             </div>
 
                             <div class="acc-field">
                                 <label for="accEmail">E-mail</label>
-                                <input type="email" id="accEmail" maxlength="255" required>
+                                <input type="email" id="accEmail" maxlength="30" required>
                             </div>
 
                             <div id="accTutorFields" hidden>
@@ -582,10 +815,33 @@ function setupAccountModal(user) {
 
                     </div>
 
+
+                    <!-- TUTOR ONLY: what they teach and for how much -->
+                    <div class="acc-subjects" id="accSubjectsBox" hidden>
+
+                        <div class="acc-section">Tantárgyaim és óradíjak</div>
+                        <p class="acc-hint">
+                            Válaszd ki, mit tanítasz, és add meg az óradíjat forintban.
+                        </p>
+
+                        <div class="acc-subj-head">
+                            <span>Tantárgy</span>
+                            <span>Ár / óra</span>
+                            <span></span>
+                        </div>
+
+                        <div id="accSubjectRows"></div>
+
+                        <button type="button" class="acc-add-row" id="accAddRow">
+                            + Tantárgy hozzáadása
+                        </button>
+
+                    </div>
+
                     <div class="acc-message" id="accMessage" role="status"></div>
 
                     <div class="acc-actions">
-                        <button class="logout" id="logoutButton">Kilépés</button>
+                        <button type="button" class="logout" id="logoutButton">Kilépés</button>
                         <button type="button" class="acc-cancel" id="accCancel">Mégse</button>
                         <button type="submit" class="acc-save" id="accSave">Mentés</button>
                     </div>
@@ -607,11 +863,6 @@ function setupAccountModal(user) {
     const field = (id) => document.getElementById(id);
 
 
-    function initials(name) {
-        return name.trim().split(/\s+/).slice(0, 2)
-            .map(part => part[0] ? part[0].toUpperCase() : "").join("");
-    }
-
     function showMessage(text, type) {
         message.textContent = text;
         message.className = "acc-message " + (type || "");
@@ -625,8 +876,196 @@ function setupAccountModal(user) {
 
     function setHeader(name) {
         field("accTitle").textContent = name;
-        field("accAvatar").textContent = initials(name);
+        field("accAvatar").textContent = tcInitials(name);
     }
+
+
+    // ---------------- tutor: subjects and prices ----------------
+
+    const MAX_SUBJECT_ROWS = 10;
+    let subjectCache = null;            // [{ id, name, category }]
+
+    async function loadSubjectList() {
+
+        if (subjectCache) {
+            return subjectCache;
+        }
+
+        const response = await fetch("/api/subjects", { credentials: "include" });
+
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+        }
+
+        subjectCache = await response.json();
+
+        return subjectCache;
+    }
+
+    function buildSubjectSelect(selectedId) {
+
+        const select = document.createElement("select");
+        select.className = "acc-subj-select";
+        select.setAttribute("aria-label", "Tantárgy");
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "Válassz tantárgyat...";
+        select.appendChild(placeholder);
+
+        // group the subjects by category
+        const groups = new Map();
+
+        subjectCache.forEach(subject => {
+
+            const category = subject.category || "Egyéb";
+
+            if (!groups.has(category)) {
+                groups.set(category, []);
+            }
+
+            groups.get(category).push(subject);
+        });
+
+        groups.forEach((list, category) => {
+
+            const group = document.createElement("optgroup");
+            group.label = category;
+
+            list.forEach(subject => {
+
+                const option = document.createElement("option");
+                option.value = String(subject.id);
+                option.textContent = subject.name;
+                group.appendChild(option);
+            });
+
+            select.appendChild(group);
+        });
+
+        select.value = selectedId ? String(selectedId) : "";
+
+        return select;
+    }
+
+    // A subject can only be picked once: disable it in the other rows
+    function refreshSubjectRows() {
+
+        const rows = field("accSubjectRows");
+        const selects = Array.from(rows.querySelectorAll(".acc-subj-select"));
+        const chosen = new Set(selects.map(select => select.value).filter(Boolean));
+
+        selects.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.disabled =
+                    option.value !== "" &&
+                    chosen.has(option.value) &&
+                    option.value !== select.value;
+            });
+        });
+
+        field("accAddRow").hidden = rows.children.length >= MAX_SUBJECT_ROWS;
+    }
+
+    function addSubjectRow(subjectId, rate) {
+
+        const rows = field("accSubjectRows");
+
+        if (rows.children.length >= MAX_SUBJECT_ROWS) {
+            return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "acc-subj-row";
+
+        const select = buildSubjectSelect(subjectId);
+
+        const price = document.createElement("input");
+        price.type = "number";
+        price.className = "acc-subj-price";
+        price.min = "0";
+        price.max = "100000";
+        price.step = "100";
+        price.placeholder = "Ft / óra";
+        price.setAttribute("aria-label", "Óradíj (Ft)");
+
+        if (rate !== undefined && rate !== null) {
+            price.value = rate;
+        }
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "acc-subj-remove";
+        remove.textContent = "×";
+        remove.setAttribute("aria-label", "Sor törlése");
+
+        remove.addEventListener("click", () => {
+
+            if (rows.children.length > 1) {
+                row.remove();
+            } else {
+                // keep one empty row so the tutor can start again
+                select.value = "";
+                price.value = "";
+            }
+
+            refreshSubjectRows();
+        });
+
+        select.addEventListener("change", refreshSubjectRows);
+
+        row.append(select, price, remove);
+        rows.appendChild(row);
+
+        refreshSubjectRows();
+    }
+
+    async function fillSubjectRows(saved) {
+
+        await loadSubjectList();
+
+        field("accSubjectRows").innerHTML = "";
+
+        if (saved.length === 0) {
+            addSubjectRow();
+        } else {
+            saved.forEach(item => addSubjectRow(item.subject_id, item.hourly_rate));
+        }
+    }
+
+    // Reads the rows. Rows without a chosen subject are skipped.
+    function collectSubjects() {
+
+        const list = [];
+
+        for (const row of field("accSubjectRows").querySelectorAll(".acc-subj-row")) {
+
+            const select = row.querySelector(".acc-subj-select");
+            const price = row.querySelector(".acc-subj-price").value.trim();
+
+            if (!select.value) {
+                continue;
+            }
+
+            if (!/^\d+$/.test(price) || Number(price) > 100000) {
+
+                const name = select.options[select.selectedIndex].textContent;
+
+                return {
+                    error: "Add meg a(z) „" + name + "” óradíját (0 és 100 000 Ft között)."
+                };
+            }
+
+            list.push({
+                subject_id: Number(select.value),
+                hourly_rate: Number(price)
+            });
+        }
+
+        return { list };
+    }
+
+    field("accAddRow").addEventListener("click", () => addSubjectRow());
 
 
     // ---------------- open / close ----------------
@@ -656,9 +1095,11 @@ function setupAccountModal(user) {
 
             const isTutor = data.role === "TUTOR";
             field("accTutorFields").hidden = !isTutor;
+            field("accSubjectsBox").hidden = !isTutor;
 
             if (isTutor) {
                 field("accBio").value = data.bio;
+                await fillSubjectRows(data.subjects || []);
             }
 
             showMessage("", "");
@@ -718,6 +1159,20 @@ function setupAccountModal(user) {
             return;
         }
 
+        let subjectList = null;
+
+        if (!field("accSubjectsBox").hidden) {
+
+            const collected = collectSubjects();
+
+            if (collected.error) {
+                showMessage(collected.error, "error");
+                return;
+            }
+
+            subjectList = collected.list;
+        }
+
         const payload = {
             name: field("accName").value,
             email: field("accEmail").value,
@@ -727,6 +1182,10 @@ function setupAccountModal(user) {
 
         if (!field("accTutorFields").hidden) {
             payload.bio = field("accBio").value;
+        }
+
+        if (subjectList !== null) {
+            payload.subjects = subjectList;
         }
 
         saveButton.disabled = true;
@@ -749,7 +1208,7 @@ function setupAccountModal(user) {
             }
 
             // Update the navbar and the modal header with the new name
-            trigger.textContent = data.user.name;
+            tcUpdateNavUser(data.user.name);
             setHeader(data.user.name);
 
             clearPasswords();
