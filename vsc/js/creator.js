@@ -772,17 +772,17 @@ function setupAccountModal(user) {
 
                             <div class="acc-field">
                                 <label for="accCurrentPw">Jelenlegi jelszó</label>
-                                <input type="password" id="accCurrentPw" autocomplete="current-password">
+                                <input type="password" id="accCurrentPw" placeholder="Töltsd ki ha jelszót vagy emailt változtatsz!" autocomplete="current-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw">Új jelszó</label>
-                                <input type="password" id="accNewPw" autocomplete="new-password">
+                                <input type="password" id="accNewPw" placeholder="Töltsd ki ha jelszót vagy emailt változtatsz!" autocomplete="new-password">
                             </div>
 
                             <div class="acc-field">
                                 <label for="accNewPw2">Új jelszó megerősítése</label>
-                                <input type="password" id="accNewPw2" autocomplete="new-password">
+                                <input type="password" id="accNewPw2" placeholder="Töltsd ki ha jelszót vagy emailt változtatsz!" autocomplete="new-password">
                             </div>
 
                         </div>
