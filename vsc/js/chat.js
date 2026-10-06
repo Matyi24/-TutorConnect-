@@ -18,6 +18,21 @@ let typingIndicator = null;
 // Dupla küldés elleni védelem
 let isSending = false;
 
+// Csatolmány (még el nem küldött, kiválasztott fájl)
+let pendingAttachment = null;
+let pendingPreviewUrl = null;
+let attachmentBar = null;
+let attachmentErrorTimer = null;
+
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10 MB
+
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+
+const ALLOWED_EXTENSIONS = [
+    ...IMAGE_EXTENSIONS,
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt"
+];
+
 
 // ============================================================
 // INITIALIZATION
@@ -370,6 +385,11 @@ async function selectConversation(
     );
 
 
+    // Másik beszélgetésre váltva a kiválasztott fájl nem mehet át
+    if (Number(currentConversationId) !== Number(conversationId)) {
+        clearAttachment();
+    }
+
     currentConversationId =
         conversationId;
 
@@ -667,10 +687,10 @@ function renderMessages(
                     ${escapeHtml(time)}
                 </span>
 
-                <div class="message">
-                    ${escapeHtml(
-                        message.content
-                    )}
+                <div class="message${
+                    message.attachment_name ? " has-attachment" : ""
+                }">
+                    ${buildMessageContent(message)}
                 </div>
 
             `;
@@ -683,7 +703,10 @@ function renderMessages(
     );
 
 
-    if (forceScroll || wasAtBottom) {
+    const stickToBottom =
+        forceScroll || wasAtBottom;
+
+    if (stickToBottom) {
 
         messagesContainer.scrollTop =
             messagesContainer.scrollHeight;
@@ -693,6 +716,25 @@ function renderMessages(
         messagesContainer.scrollTop =
             previousScrollTop;
     }
+
+    // A képek betöltődés után megnövelik a magasságot,
+    // ilyenkor újra az aljára görgetünk (ha ott voltunk)
+    messagesContainer
+        .querySelectorAll("img.message-image")
+        .forEach((image) => {
+
+            image.addEventListener(
+                "load",
+                () => {
+
+                    if (stickToBottom) {
+
+                        messagesContainer.scrollTop =
+                            messagesContainer.scrollHeight;
+                    }
+                }
+            );
+        });
 }
 
 
@@ -968,11 +1010,242 @@ function escapeHtml(
 }
 
 // ============================================================
+// ATTACHMENT HELPERS
+// ============================================================
+
+function getFileExtension(fileName) {
+
+    const name = String(fileName || "");
+    const index = name.lastIndexOf(".");
+
+    return index === -1
+        ? ""
+        : name.slice(index + 1).toLowerCase();
+}
+
+
+function formatFileSize(bytes) {
+
+    const size = Number(bytes);
+
+    if (!size || size < 0) {
+        return "";
+    }
+
+    if (size < 1024) {
+        return `${size} B`;
+    }
+
+    if (size < 1024 * 1024) {
+        return `${Math.round(size / 1024)} KB`;
+    }
+
+    return `${(size / (1024 * 1024)).toFixed(1).replace(".", ",")} MB`;
+}
+
+
+// Attribútumba illesztett szöveghez (az idézőjeleket is kezeli)
+function escapeAttribute(value) {
+
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+
+// Egy üzenet buborékjának tartalma (szöveg, kép vagy fájlkártya)
+function buildMessageContent(message) {
+
+    const text = message.content || "";
+
+    if (!message.attachment_name) {
+        return escapeHtml(text);
+    }
+
+    const url =
+        `/api/messages/${encodeURIComponent(message.id)}/attachment`;
+
+    const name = message.attachment_name;
+
+    let html;
+
+    if (String(message.attachment_type || "").startsWith("image/")) {
+
+        html = `
+            <a class="message-image-link" href="${url}" target="_blank" rel="noopener">
+                <img class="message-image" src="${url}" alt="${escapeAttribute(name)}">
+            </a>
+        `;
+
+    } else {
+
+        html = `
+            <a class="message-file" href="${url}" download="${escapeAttribute(name)}">
+                <span class="file-badge">${escapeHtml(getFileExtension(name).slice(0, 4))}</span>
+                <span class="file-info">
+                    <span class="file-name">${escapeHtml(name)}</span>
+                    <span class="file-size">${escapeHtml(formatFileSize(message.attachment_size))}</span>
+                </span>
+            </a>
+        `;
+    }
+
+    // Ha nincs külön szöveg, az üzenet szövege a fájl neve volt,
+    // azt nem írjuk ki még egyszer.
+    if (text && text !== message.attachment_name) {
+
+        html += `<div class="message-caption">${escapeHtml(text)}</div>`;
+    }
+
+    return html;
+}
+
+
+// ------------------------------------------------------------
+// KIVÁLASZTOTT (MÉG NEM ELKÜLDÖTT) CSATOLMÁNY
+// ------------------------------------------------------------
+
+function selectAttachment(file) {
+
+    if (!file) {
+        return;
+    }
+
+    const extension = getFileExtension(file.name);
+
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+
+        showAttachmentError("Ez a fájltípus nem engedélyezett.");
+        return;
+    }
+
+    if (file.size === 0) {
+
+        showAttachmentError("A fájl üres.");
+        return;
+    }
+
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+
+        showAttachmentError("A fájl túl nagy (legfeljebb 10 MB).");
+        return;
+    }
+
+    clearAttachment();
+
+    pendingAttachment = file;
+
+    if (IMAGE_EXTENSIONS.includes(extension)) {
+        pendingPreviewUrl = URL.createObjectURL(file);
+    }
+
+    renderAttachmentBar();
+}
+
+
+function clearAttachment() {
+
+    if (pendingPreviewUrl) {
+        URL.revokeObjectURL(pendingPreviewUrl);
+    }
+
+    pendingAttachment = null;
+    pendingPreviewUrl = null;
+
+    renderAttachmentBar();
+}
+
+
+function renderAttachmentBar() {
+
+    if (!attachmentBar) {
+        return;
+    }
+
+    clearTimeout(attachmentErrorTimer);
+
+    attachmentBar.innerHTML = "";
+
+    if (!pendingAttachment) {
+
+        attachmentBar.className = "attachment-bar";
+        return;
+    }
+
+    attachmentBar.className = "attachment-bar visible";
+
+    const chip = document.createElement("div");
+    chip.className = "attachment-chip";
+
+    if (pendingPreviewUrl) {
+
+        const image = document.createElement("img");
+        image.className = "attachment-thumb";
+        image.src = pendingPreviewUrl;
+        image.alt = "";
+        chip.appendChild(image);
+
+    } else {
+
+        const badge = document.createElement("span");
+        badge.className = "file-badge";
+        badge.textContent = getFileExtension(pendingAttachment.name).slice(0, 4);
+        chip.appendChild(badge);
+    }
+
+    const info = document.createElement("div");
+    info.className = "attachment-chip-info";
+
+    const name = document.createElement("span");
+    name.className = "attachment-chip-name";
+    name.textContent = pendingAttachment.name;
+
+    const size = document.createElement("span");
+    size.className = "attachment-chip-size";
+    size.textContent = formatFileSize(pendingAttachment.size);
+
+    info.appendChild(name);
+    info.appendChild(size);
+    chip.appendChild(info);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "attachment-remove";
+    remove.setAttribute("aria-label", "Csatolmány eltávolítása");
+    remove.textContent = "×";
+    remove.addEventListener("click", clearAttachment);
+    chip.appendChild(remove);
+
+    attachmentBar.appendChild(chip);
+}
+
+
+function showAttachmentError(text) {
+
+    if (!attachmentBar) {
+        return;
+    }
+
+    clearTimeout(attachmentErrorTimer);
+
+    attachmentBar.className = "attachment-bar visible error";
+    attachmentBar.textContent = text;
+
+    // 4 másodperc után visszaáll (vagy eltűnik)
+    attachmentErrorTimer = setTimeout(renderAttachmentBar, 4000);
+}
+
+
+// ============================================================
 // MESSAGE FORM
 // ============================================================
 
 const messageForm = document.querySelector(".message-form");
 const messageInput = document.querySelector(".message-form input[type='text']");
+const attachmentButton = document.querySelector(".message-form .attachment-button");
 
 if (messageForm && messageInput) {
 
@@ -981,6 +1254,44 @@ if (messageForm && messageInput) {
     typingIndicator.className = "typing-indicator";
     typingIndicator.innerHTML = "<span></span>";
     messageForm.parentNode.insertBefore(typingIndicator, messageForm);
+
+    // A kiválasztott csatolmány sávja (az üzenetíró sáv felett)
+    attachmentBar = document.createElement("div");
+    attachmentBar.className = "attachment-bar";
+    messageForm.parentNode.insertBefore(attachmentBar, messageForm);
+
+
+    // Rejtett fájlválasztó, a + gomb nyitja meg
+    if (attachmentButton) {
+
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.hidden = true;
+        fileInput.accept = ALLOWED_EXTENSIONS.map((ext) => "." + ext).join(",");
+        document.body.appendChild(fileInput);
+
+        attachmentButton.title = "Fájl csatolása";
+
+        attachmentButton.addEventListener("click", (event) => {
+
+            // A gomb ne küldje el a formot
+            event.preventDefault();
+
+            if (!currentConversationId) {
+                return;
+            }
+
+            fileInput.click();
+        });
+
+        fileInput.addEventListener("change", () => {
+
+            selectAttachment(fileInput.files[0]);
+
+            // Így ugyanaz a fájl újra kiválasztható
+            fileInput.value = "";
+        });
+    }
 
 
     // Gépelés közben értesítjük a másik felet (legfeljebb 2 mp-enként)
@@ -1017,32 +1328,64 @@ if (messageForm && messageInput) {
 
         const content = messageInput.value.trim();
 
-        if (!content || !currentConversationId || isSending) {
+        // Szöveg vagy csatolmány kell hozzá
+        if (
+            (!content && !pendingAttachment) ||
+            !currentConversationId ||
+            isSending
+        ) {
             return;
         }
 
         isSending = true;
 
         try {
-            const response = await fetch(
-                `/api/conversations/${currentConversationId}/messages`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ content })
-                }
-            );
+
+            let response;
+
+            if (pendingAttachment) {
+
+                // Fájl + (opcionális) szöveg együtt
+                const formData = new FormData();
+                formData.append("content", content);
+                formData.append("file", pendingAttachment);
+
+                response = await fetch(
+                    `/api/conversations/${currentConversationId}/attachments`,
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+            } else {
+
+                response = await fetch(
+                    `/api/conversations/${currentConversationId}/messages`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ content })
+                    }
+                );
+            }
 
             if (!response.ok) {
-                throw new Error("Nem sikerült elküldeni az üzenetet.");
+
+                const errorData = await response.json().catch(() => ({}));
+
+                throw new Error(
+                    errorData.error || "Nem sikerült elküldeni az üzenetet."
+                );
             }
 
             const savedMessage = await response.json();
             console.log("📨 Üzenet elküldve:", savedMessage);
 
-            // Az input kiürítése
+            // Az input és a csatolmány kiürítése
             messageInput.value = "";
             lastTypingSent = 0;
+            clearAttachment();
 
             // Az üzenetek újratöltése, saját üzenetnél mindig az aljára görgetünk
             await loadMessages(currentConversationId, true);
@@ -1057,7 +1400,14 @@ if (messageForm && messageInput) {
             }
 
         } catch (error) {
+
             console.error("❌ Üzenetküldési hiba:", error);
+
+            // Fájlküldésnél a hibát a felhasználó is látja
+            if (pendingAttachment) {
+                showAttachmentError(error.message);
+            }
+
         } finally {
             isSending = false;
         }

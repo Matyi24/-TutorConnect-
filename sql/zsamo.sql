@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 29, 2026 at 12:51 PM
+-- Generation Time: Oct 06, 2026 at 12:36 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -102,7 +102,8 @@ CREATE TABLE `conversations` (
 INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
 (1, 1, 3, '2026-09-24 07:38:40'),
 (2, 13, 14, '2026-09-25 09:15:47'),
-(3, 13, 15, '2026-09-29 07:21:52');
+(3, 13, 15, '2026-09-29 07:21:52'),
+(4, 13, 8, '2026-10-02 08:16:37');
 
 -- --------------------------------------------------------
 
@@ -116,20 +117,24 @@ CREATE TABLE `messages` (
   `sender_id` int(11) NOT NULL,
   `content` text NOT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `attachment_name` varchar(255) DEFAULT NULL,
+  `attachment_path` varchar(255) DEFAULT NULL,
+  `attachment_type` varchar(100) DEFAULT NULL,
+  `attachment_size` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
 -- Dumping data for table `messages`
 --
 
-INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`) VALUES
-(1, 2, 13, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29'),
-(2, 2, 14, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29'),
-(3, 2, 13, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29'),
-(4, 2, 14, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29'),
-(5, 2, 13, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29'),
-(6, 2, 14, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 0, '2026-09-24 09:18:29');
+INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`, `attachment_name`, `attachment_path`, `attachment_type`, `attachment_size`) VALUES
+(1, 2, 13, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
+(2, 2, 14, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
+(3, 2, 13, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
+(4, 2, 14, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
+(5, 2, 13, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
+(6, 2, 14, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -368,13 +373,13 @@ ALTER TABLE `bookings`
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `reviews`

@@ -1303,6 +1303,290 @@ app.post("/api/conversations/:id/read", (req, res) => {
     });
 });
 
+// ============================================================
+// ATTACHMENTS API
+// ============================================================
+
+// Feltöltött fájlok helye (a böngészőből közvetlenül nem érhető el)
+const CHAT_UPLOAD_DIR = path.join(__dirname, "uploads", "chat");
+
+fs.mkdirSync(CHAT_UPLOAD_DIR, { recursive: true });
+
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10 MB
+
+// Engedélyezett kiterjesztések és a hozzájuk tartozó fájltípus.
+// A böngésző által küldött típust szándékosan nem használjuk.
+const ALLOWED_ATTACHMENTS = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ppt: "application/vnd.ms-powerpoint",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    txt: "text/plain; charset=utf-8"
+};
+
+function getFileExtension(fileName) {
+    return path.extname(String(fileName || "")).slice(1).toLowerCase();
+}
+
+function isAllowedExtension(extension) {
+    return Object.prototype.hasOwnProperty.call(ALLOWED_ATTACHMENTS, extension);
+}
+
+// A multer a fájlnevet latin1-ként olvassa, ezt javítjuk (ő, ű stb.),
+// és eltávolítjuk a veszélyes karaktereket.
+function cleanFileName(name) {
+
+    let fixed = Buffer.from(name, "latin1").toString("utf8");
+
+    if (fixed.includes("\uFFFD")) {
+        fixed = name;
+    }
+
+    fixed = path.basename(fixed.replace(/\\/g, "/"));
+    fixed = fixed.replace(/[<>:"|?*\u0000-\u001f]/g, "_").trim();
+
+    return (fixed || "fajl").slice(0, 200);
+}
+
+const uploadChatFile = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, CHAT_UPLOAD_DIR),
+        filename: (req, file, cb) => {
+            const extension = getFileExtension(file.originalname);
+            cb(null, crypto.randomBytes(16).toString("hex") + "." + extension);
+        }
+    }),
+    limits: {
+        fileSize: MAX_ATTACHMENT_SIZE,
+        files: 1
+    },
+    fileFilter: (req, file, cb) => {
+        if (!isAllowedExtension(getFileExtension(file.originalname))) {
+            return cb(new Error("UNSUPPORTED_FILE_TYPE"));
+        }
+        cb(null, true);
+    }
+}).single("file");
+
+
+// ------------------------------------------------------------
+// POST: üzenet csatolmánnyal
+// ------------------------------------------------------------
+
+app.post("/api/conversations/:id/attachments", (req, res) => {
+
+    console.log("📎 POST /api/conversations/:id/attachments");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const conversationId = req.params.id;
+
+    uploadChatFile(req, res, (uploadError) => {
+
+        const file = req.file;
+
+        // Hiba esetén a már lemezre került fájlt töröljük
+        const discard = () => {
+            if (file) {
+                fs.unlink(file.path, () => {});
+            }
+        };
+
+        if (uploadError) {
+
+            discard();
+
+            if (uploadError.code === "LIMIT_FILE_SIZE") {
+                return res.status(413).json({
+                    error: "A fájl túl nagy (legfeljebb 10 MB)."
+                });
+            }
+
+            if (uploadError.message === "UNSUPPORTED_FILE_TYPE") {
+                return res.status(400).json({
+                    error: "Ez a fájltípus nem engedélyezett."
+                });
+            }
+
+            console.error("❌ Feltöltési hiba:", uploadError);
+
+            return res.status(400).json({ error: "A feltöltés nem sikerült." });
+        }
+
+        if (!file) {
+            return res.status(400).json({ error: "Nincs kiválasztott fájl." });
+        }
+
+        // Résztvevője-e a bejelentkezett user ennek a beszélgetésnek?
+        const checkSql = `
+            SELECT id, student_id, tutor_id FROM conversations
+            WHERE id = ?
+              AND (student_id = ? OR tutor_id = ?)
+        `;
+
+        db.query(checkSql, [conversationId, userId, userId], (err, rows) => {
+
+            if (err) {
+                discard();
+                console.error("❌ SQL hiba (ellenőrzés):", err);
+                return res.status(500).json({ error: "Adatbázis hiba" });
+            }
+
+            if (rows.length === 0) {
+                discard();
+                return res.status(403).json({
+                    error: "Nem vagy résztvevője ennek a beszélgetésnek"
+                });
+            }
+
+            const originalName = cleanFileName(file.originalname);
+            const extension = getFileExtension(file.originalname);
+            const fileType = ALLOWED_ATTACHMENTS[extension];
+
+            // Ha nincs szöveg, a fájl neve lesz az üzenet szövege
+            const caption = String(req.body.content || "").trim().slice(0, 2000);
+            const content = caption || originalName;
+
+            const insertSql = `
+                INSERT INTO messages
+                    (conversation_id, sender_id, content,
+                     attachment_name, attachment_path, attachment_type, attachment_size)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            db.query(
+                insertSql,
+                [conversationId, userId, content, originalName, file.filename, fileType, file.size],
+                (err, result) => {
+
+                    if (err) {
+                        discard();
+                        console.error("❌ SQL hiba (INSERT):", err);
+                        return res.status(500).json({ error: "Adatbázis hiba" });
+                    }
+
+                    // A szerveren lévő fájl útvonalát nem adjuk ki
+                    const selectSql = `
+                        SELECT id, conversation_id, sender_id, content, is_read,
+                               created_at, attachment_name, attachment_type, attachment_size
+                        FROM messages
+                        WHERE id = ?
+                    `;
+
+                    db.query(selectSql, [result.insertId], (err, saved) => {
+
+                        if (err) {
+                            console.error("❌ SQL hiba (SELECT):", err);
+                            return res.status(500).json({ error: "Adatbázis hiba" });
+                        }
+
+                        const message = saved[0];
+                        const conversation = rows[0];
+
+                        const recipientId =
+                            Number(conversation.student_id) === Number(userId)
+                                ? conversation.tutor_id
+                                : conversation.student_id;
+
+                        console.log("✅ Csatolmány elmentve:", result.insertId);
+
+                        // Valós idejű értesítés a másik félnek
+                        sendToUser(recipientId, { type: "new_message", message });
+
+                        res.status(201).json(message);
+                    });
+                }
+            );
+        });
+    });
+});
+
+
+// ------------------------------------------------------------
+// GET: csatolmány letöltése / megjelenítése
+// ------------------------------------------------------------
+
+app.get("/api/messages/:id/attachment", (req, res) => {
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+
+    const sql = `
+        SELECT
+            messages.attachment_name,
+            messages.attachment_path,
+            messages.attachment_type
+
+        FROM messages
+
+        JOIN conversations
+            ON messages.conversation_id = conversations.id
+
+        WHERE messages.id = ?
+          AND messages.attachment_path IS NOT NULL
+          AND (
+              conversations.student_id = ?
+              OR conversations.tutor_id = ?
+          )
+    `;
+
+    db.query(sql, [req.params.id, userId, userId], (err, rows) => {
+
+        if (err) {
+            console.error("❌ SQL hiba:", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A fájl nem található" });
+        }
+
+        const row = rows[0];
+
+        const filePath = path.join(
+            CHAT_UPLOAD_DIR,
+            path.basename(row.attachment_path)
+        );
+
+        // A képeket megjelenítjük, minden mást letöltésként adunk át
+        const disposition = row.attachment_type.startsWith("image/")
+            ? "inline"
+            : "attachment";
+
+        const encodedName = encodeURIComponent(row.attachment_name)
+            .replace(/['()*]/g, (c) => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Content-Type", row.attachment_type);
+        res.setHeader(
+            "Content-Disposition",
+            `${disposition}; filename*=UTF-8''${encodedName}`
+        );
+
+        res.sendFile(filePath, (err) => {
+            if (err && !res.headersSent) {
+                res.status(404).json({ error: "A fájl nem található" });
+            }
+        });
+    });
+});
+
+
+
 
 // ============================================================
 // MESSAGES API
@@ -1331,7 +1615,10 @@ app.get("/api/conversations/:id/messages", (req, res) => {
             messages.sender_id,
             messages.content,
             messages.is_read,
-            messages.created_at
+            messages.created_at,
+            messages.attachment_name,
+            messages.attachment_type,
+            messages.attachment_size
 
         FROM messages
 
