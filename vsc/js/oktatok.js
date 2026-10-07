@@ -86,12 +86,97 @@ function getSubjectFromUrl() {
 
 
 /* =====================================================
-   LOAD SUBJECTS
+   TANTÁRGYANKÉNTI ÁRAK
+===================================================== */
+
+// "id|név|ár;;id|név|ár" -> [{ id, name, hourly_rate }]
+function parseSubjectPrices(value) {
+
+    if (!value) {
+        return [];
+    }
+
+    return String(value)
+        .split(";;")
+        .map(item => {
+
+            const [id, name, rate] =
+                item.split("|");
+
+            return {
+                id: Number(id),
+                name: name || "",
+                hourly_rate: Number(rate) || 0
+            };
+
+        });
+}
+
+
+// Az oktató megjelenített ára:
+// - ha egy tantárgy van kiválasztva a szűrőben, annak az ára
+// - egyébként a legolcsóbb tantárgy ára ("from" = true, ha vannak eltérő árak)
+function getDisplayPrice(tutor) {
+
+    const prices =
+        tutor.subject_prices || [];
+
+    const selected =
+        subjectSelect.value;
+
+
+    if (selected !== "all") {
+
+        const match =
+            prices.find(item =>
+                item.name.trim().toLowerCase() ===
+                selected.trim().toLowerCase()
+            );
+
+        if (match) {
+            return {
+                price: match.hourly_rate,
+                from: false
+            };
+        }
+    }
+
+
+    if (prices.length === 0) {
+        return {
+            price: Number(tutor.hourly_rate || 0),
+            from: false
+        };
+    }
+
+
+    const rates =
+        prices.map(item => item.hourly_rate);
+
+    const min =
+        Math.min(...rates);
+
+    const max =
+        Math.max(...rates);
+
+    return {
+        price: min,
+        from: min !== max
+    };
+}
+
+
+/* =====================================================
+   TANTÁRGYANKÉNTI ÁRAK
 ===================================================== */
 
 async function loadSubjects() {
+
     try {
-        const response = await fetch("/api/subjects");
+
+        const response =
+            await fetch("/api/subjects");
+
 
         if (!response.ok) {
             throw new Error(
@@ -167,49 +252,23 @@ async function loadTutors() {
             throw new Error(
                 "Érvénytelen válasz érkezett a szervertől."
             );
+
         }
 
-        tutors = data;
 
-        /*
-         * Minden oktatóhoz lekérjük a VALÓDI értékeléseket.
-         * A review_count értéket ezek darabszámából állítjuk elő.
-         */
-        await Promise.all(
-            tutors.map(async tutor => {
-                try {
-                    const reviewsResponse = await fetch(
-                        `/api/tutors/${encodeURIComponent(tutor.id)}/reviews`
-                    );
+        tutors = data.map(tutor => ({
+            ...tutor,
+            subject_prices: parseSubjectPrices(
+                tutor.subject_prices
+            )
+        }));
 
-                    if (!reviewsResponse.ok) {
-                        throw new Error(
-                            `Reviews API hiba: ${tutor.id}`
-                        );
-                    }
 
-                    const reviews = await reviewsResponse.json();
-
-                    /*
-                     * FONTOS:
-                     * Nem tutor.review_count-ot használunk.
-                     * A tényleges review-k száma kell.
-                     */
-                    tutor.review_count =
-                        Array.isArray(reviews)
-                            ? reviews.length
-                            : 0;
-
-                } catch (error) {
-                    console.warn(
-                        `Nem sikerült lekérni az értékeléseket: ${tutor.full_name}`,
-                        error
-                    );
-
-                    tutor.review_count = 0;
-                }
-            })
+        console.log(
+            "✅ Adatbázisból betöltött oktatók:",
+            tutors
         );
+
 
         renderTutors();
 
@@ -253,8 +312,14 @@ function createTutorCard(tutor) {
         tutor.bio ||
         "Az oktató még nem adott meg bemutatkozást.";
 
+
+    const displayPrice =
+        getDisplayPrice(tutor);
+
+
     const price =
-        Number(tutor.hourly_rate) || 0;
+        displayPrice.price;
+
 
     const rating =
         Number(tutor.average_rating) || 0;
@@ -321,7 +386,7 @@ function createTutorCard(tutor) {
 
         <div class="price">
             <strong>
-                ${price.toLocaleString("hu-HU")} Ft
+                ${price.toLocaleString("hu-HU")} Ft${displayPrice.from ? "-tól" : ""}
             </strong>
 
             <span>/ óra</span>
@@ -377,8 +442,18 @@ function getFilteredTutors() {
         const rating =
             Number(tutor.average_rating) || 0;
 
-        const price =
-            Number(tutor.hourly_rate) || 0;
+        // Ha van kiválasztott tantárgy, annak az ára számít,
+        // különben bármelyik tantárgy ára beleeshet a sávba.
+        const pricesToCheck =
+            selectedSubject !== "all" ||
+            (tutor.subject_prices || []).length === 0
+                ? [getDisplayPrice(tutor).price]
+                : tutor.subject_prices.map(
+                    item => item.hourly_rate
+                );
+
+
+        /* KERESÉS */
 
         const matchesSearch =
             !search ||
@@ -398,8 +473,10 @@ function getFilteredTutors() {
             rating >= minimumRating;
 
         const matchesPrice =
-            price >= minPrice &&
-            price <= maxPrice;
+            pricesToCheck.some(price =>
+                price >= minPrice &&
+                price <= maxPrice
+            );
 
         return (
             matchesSearch &&
@@ -430,16 +507,16 @@ function sortTutors(list) {
         case "priceLow":
             sorted.sort(
                 (a, b) =>
-                    (Number(a.hourly_rate) || 0) -
-                    (Number(b.hourly_rate) || 0)
+                    getDisplayPrice(a).price -
+                    getDisplayPrice(b).price
             );
             break;
 
         case "priceHigh":
             sorted.sort(
                 (a, b) =>
-                    (Number(b.hourly_rate) || 0) -
-                    (Number(a.hourly_rate) || 0)
+                    getDisplayPrice(b).price -
+                    getDisplayPrice(a).price
             );
             break;
     }
@@ -503,10 +580,28 @@ async function openProfile(tutorId) {
         "Az oktató még nem adott meg bemutatkozást.";
 
     const email =
-        tutor.email || "Nincs megadva";
+        tutor.email ||
+        "Nincs megadva";
+
+
+    const displayPrice =
+        getDisplayPrice(tutor);
+
 
     const price =
-        Number(tutor.hourly_rate) || 0;
+        displayPrice.price;
+
+
+    // Tantárgyanként az ár, pl. "Biológia – 7 000 Ft/óra, Földrajz – 5 000 Ft/óra"
+    const subjectsWithPrices =
+        (tutor.subject_prices || []).length > 0
+            ? tutor.subject_prices
+                .map(item =>
+                    `${item.name} – ${item.hourly_rate.toLocaleString("hu-HU")} Ft/óra`
+                )
+                .join(", ")
+            : subjects;
+
 
     const rating =
         Number(tutor.average_rating) || 0;
@@ -530,8 +625,14 @@ async function openProfile(tutorId) {
     profilePrice.textContent =
         `${price.toLocaleString("hu-HU")} Ft / óra`;
 
-    profileSubjects.textContent = subjects;
-    profileReviewsNumber.textContent = reviewCount;
+
+    profileSubjects.textContent =
+        subjectsWithPrices;
+
+
+    profileReviewsNumber.textContent =
+        reviewCount;
+
 
     profileReviewBadge.textContent =
         `${reviewCount} értékelés`;

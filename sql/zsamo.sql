@@ -227,29 +227,30 @@ INSERT INTO `subjects` (`id`, `name`, `category`) VALUES
 
 CREATE TABLE `tutor_subjects` (
   `tutor_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL
+  `subject_id` int(11) NOT NULL,
+  `hourly_rate` int(10) UNSIGNED NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
 -- Dumping data for table `tutor_subjects`
 --
 
-INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`) VALUES
-(3, 1),
-(3, 2),
-(3, 5),
-(4, 1),
-(4, 8),
-(4, 15),
-(5, 3),
-(5, 6),
-(5, 22),
-(7, 4),
-(7, 5),
-(7, 7),
-(8, 15),
-(8, 16),
-(8, 18);
+INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`, `hourly_rate`) VALUES
+(3, 1, 3100),
+(3, 2, 3500),
+(3, 5, 7000),
+(4, 1, 3000),
+(4, 8, 3000),
+(4, 15, 3000),
+(5, 3, 4000),
+(5, 6, 4000),
+(5, 22, 4000),
+(7, 4, 2800),
+(7, 5, 2800),
+(7, 7, 2800),
+(8, 15, 3200),
+(8, 16, 3200),
+(8, 18, 3200);
 
 -- --------------------------------------------------------
 
@@ -264,7 +265,6 @@ CREATE TABLE `users` (
   `password_hash` varchar(255) NOT NULL,
   `role` enum('STUDENT','TUTOR','ADMIN','') NOT NULL,
   `bio` text NOT NULL,
-  `hourly_rate` decimal(65,0) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
@@ -272,22 +272,22 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
-(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13'),
-(2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', 0, '2026-09-24 07:34:13'),
-(3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', 3500, '2026-09-24 07:34:13'),
-(4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', 3000, '2026-09-24 07:34:13'),
-(5, 'Horváth Dávid', 'david.horvath@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Programozás, algoritmusok és adatstruktúrák oktatása.', 4000, '2026-09-24 07:34:13'),
-(6, 'Varga Eszter', 'eszter.varga@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Egyetemi hallgató, jelenleg webfejlesztést tanulok.', 0, '2026-09-24 07:34:13'),
-(7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', 2800, '2026-09-24 07:34:13'),
-(8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', 3200, '2026-09-24 07:34:13'),
-(9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', 0, '2026-09-24 07:34:13'),
-(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13'),
-(11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', 3500, '2026-09-25 08:15:14'),
-(12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', 3000, '2026-09-25 08:15:14'),
-(13, 'test', 'test@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$X401oEo08mY6fHy5P0htpA$gTwWRwTVZnEY9OuY40QR9JlknDDdMIQ5pU643f1gO+E', 'STUDENT', '', 0, '2026-09-25 08:31:22'),
-(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', 'kuvaszológia professzor', 6700, '2026-09-29 07:17:01'),
-(15, 'test3', 'test3@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$3zKHJdk9VJGqkFu6DOp++Q$02yCv+X4/yIdyDBnkYKLDFeY1VbljOZABhvvdP5FkpU', 'TUTOR', 'illuminati aktivitás trackelés ', 4000, '2026-09-29 07:19:36');
+INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `created_at`) VALUES
+(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', '2026-09-24 07:34:13'),
+(2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', '2026-09-24 07:34:13'),
+(3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', '2026-09-24 07:34:13'),
+(4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', '2026-09-24 07:34:13'),
+(5, 'Horváth Dávid', 'david.horvath@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Programozás, algoritmusok és adatstruktúrák oktatása.', '2026-09-24 07:34:13'),
+(6, 'Varga Eszter', 'eszter.varga@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Egyetemi hallgató, jelenleg webfejlesztést tanulok.', '2026-09-24 07:34:13'),
+(7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', '2026-09-24 07:34:13'),
+(8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', '2026-09-24 07:34:13'),
+(9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', '2026-09-24 07:34:13'),
+(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', '2026-09-24 07:34:13'),
+(11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', '2026-09-25 08:15:14'),
+(12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', '2026-09-25 08:15:14'),
+(13, 'test', 'test@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$X401oEo08mY6fHy5P0htpA$gTwWRwTVZnEY9OuY40QR9JlknDDdMIQ5pU643f1gO+E', 'STUDENT', '', '2026-09-25 08:31:22'),
+(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', 'kuvaszológia professzor', '2026-09-29 07:17:01'),
+(15, 'test3', 'test3@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$3zKHJdk9VJGqkFu6DOp++Q$02yCv+X4/yIdyDBnkYKLDFeY1VbljOZABhvvdP5FkpU', 'TUTOR', 'illuminati aktivitás trackelés ', '2026-09-29 07:19:36');
 
 --
 -- Indexes for dumped tables
