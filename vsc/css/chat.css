@@ -435,6 +435,36 @@ body {
 
 
 /* =========================================
+   VISSZA GOMB (csak telefonon és összehúzott képernyőn látszik)
+========================================= */
+
+.chat-back {
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    width: 38px;
+    height: 38px;
+    margin-right: 10px;
+    padding: 0;
+
+    border: none;
+    border-radius: 10px;
+
+    background: rgba(65, 85, 232, 0.08);
+
+    color: var(--main-blue);
+
+    font-size: 20px;
+
+    cursor: pointer;
+}
+
+
+/* =========================================
    OPTIONS
 ========================================= */
 
@@ -735,8 +765,28 @@ body {
         grid-template-columns: 1fr;
     }
 
-    .conversation-panel {
+    /* Egyszerre egy panel: alapból a lista, egy beszélgetés
+       megnyitása után a chat (.show-chat) */
+    .chat-window {
         display: none;
+    }
+
+    .chat-container.show-chat .conversation-panel {
+        display: none;
+    }
+
+    .chat-container.show-chat .chat-window {
+        display: flex;
+    }
+
+    .chat-back {
+        display: flex;
+    }
+
+    /* A név töltse ki a helyet a ← és a ⋮ között */
+    .chat-user {
+        flex: 1;
+        min-width: 0;
     }
 
     .message-group {

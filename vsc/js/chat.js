@@ -59,6 +59,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 4/b. A fejléc menüje (profil megtekintése)
         setupChatMenu();
 
+        // 4/c. Telefonos nézet: vissza gomb a beszélgetéslistához
+        setupMobileNav();
+
         // 5. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
         await openTutorFromUrl();
 
@@ -145,8 +148,9 @@ async function loadConversations() {
 
 
     // Ha van legalább egy beszélgetés,
-    // automatikusan megnyitjuk az elsőt.
-    if (conversations.length > 0) {
+    // automatikusan megnyitjuk az elsőt. Telefonon nem: ott a lista
+    // látszik először, és a felhasználó választ belőle.
+    if (conversations.length > 0 && !isMobileLayout()) {
 
         await selectConversation(
             conversations[0].id
@@ -366,6 +370,8 @@ function createConversationElement(
             selectConversation(
                 conversation.id
             );
+
+            showChatView();
         }
     );
 
@@ -1503,9 +1509,10 @@ async function handleIncomingMessage(message) {
         await loadMessages(currentConversationId);
         await markConversationAsRead(currentConversationId, true);
 
-    } else if (!currentConversationId) {
+    } else if (!currentConversationId && !isMobileLayout()) {
 
         // Még nem volt megnyitva egyetlen beszélgetés sem
+        // (telefonon a lista marad, az olvasatlan-jelvény jelzi az újat)
         await selectConversation(conversation.id);
     }
 }
@@ -1597,6 +1604,8 @@ async function startConversationWith(tutorId) {
     }
 
     await selectConversation(conversation.id);
+
+    showChatView();
 
     const input = document.querySelector(".message-form input[type='text']");
 
@@ -2064,4 +2073,65 @@ async function openTutorProfile(tutorId) {
         <h3>Vélemények</h3>
         <div class="profile-reviews">${reviewsHtml}</div>
     `;
+}
+
+
+// ============================================================
+// TELEFONOS NÉZET (lista <-> chat)
+// ============================================================
+//
+// Keskeny képernyőn (<= 700px) egyszerre csak az egyik panel látszik:
+// a beszélgetések listája VAGY a megnyitott chat. A váltást a
+// .chat-container "show-chat" osztálya vezérli (lásd chat.css).
+// Széles képernyőn ennek nincs hatása, mindkét panel látszik.
+
+function isMobileLayout() {
+
+    return window.matchMedia("(max-width: 700px)").matches;
+}
+
+
+function showChatView() {
+
+    const container = document.querySelector(".chat-container");
+
+    if (container) {
+        container.classList.add("show-chat");
+    }
+}
+
+
+function showListView() {
+
+    const container = document.querySelector(".chat-container");
+
+    if (container) {
+        container.classList.remove("show-chat");
+    }
+
+    // A lista nézetben nincs "megnyitott" beszélgetés: az új üzenet
+    // olvasatlan marad, és a jelvény megjelenik a listában.
+    hideTypingIndicator();
+    currentConversationId = null;
+    renderConversations();
+}
+
+
+function setupMobileNav() {
+
+    const header = document.querySelector(".chat-header");
+
+    if (!header) {
+        return;
+    }
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "chat-back";
+    back.setAttribute("aria-label", "Vissza a beszélgetésekhez");
+    back.textContent = "←";
+
+    back.addEventListener("click", showListView);
+
+    header.insertBefore(back, header.firstChild);
 }
