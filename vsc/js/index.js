@@ -10,6 +10,9 @@ let tutors = [];
 let selectedCategory = "Minden tárgy";
 let searchQuery = "";
 
+// Igaz, ha a tantárgyak már megérkeztek a szervertől
+let subjectsLoaded = false;
+
 
 /* =====================================================
    INIT
@@ -22,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
+    setupCategoryFilter();
     loadSubjects();
 });
 
@@ -52,10 +56,11 @@ async function loadSubjects() {
             }
         }
 
+        subjectsLoaded = true;
+
         applyFilters();
 
         setupSearch();
-        setupCategoryFilter();
         setupClearFilters();
 
     } catch (error) {
@@ -103,47 +108,18 @@ function setupSearch() {
    CATEGORY FILTER
 ===================================================== */
 
+// A legördülő menü megjelenését a dropdown.js kezeli, ez a függvény
+// csak a "categorychange" eseményre reagál, és szűr.
+// Az oldal betöltésekor azonnal regisztrálódik, hogy egy korai
+// kattintás se vesszen el; a lista kirajzolása addig vár, amíg
+// az adatok meg nem érkeznek.
 function setupCategoryFilter() {
-    const dropdownMenu = document.getElementById("dropdownMenu");
-    const selectedSubject = document.getElementById("selectedSubject");
+    document.addEventListener("categorychange", event => {
+        selectedCategory = event.detail.category;
 
-    if (!dropdownMenu) {
-        return;
-    }
-
-    const dropdownItems = dropdownMenu.querySelectorAll(".dropdown-item");
-
-    dropdownItems.forEach(item => {
-        item.addEventListener("click", () => {
-            selectedCategory = item.textContent.trim();
-
-            if (selectedSubject) {
-                selectedSubject.textContent = selectedCategory;
-            }
-
-            dropdownItems.forEach(dropdownItem => {
-                const isActive = dropdownItem === item;
-
-                dropdownItem.classList.toggle("active", isActive);
-                dropdownItem.setAttribute(
-                    "aria-selected",
-                    String(isActive)
-                );
-            });
-
-            // Close dropdown after selection.
-            const dropdownButton =
-                document.getElementById("dropdownButton");
-
-            if (dropdownButton) {
-                dropdownButton.setAttribute("aria-expanded", "false");
-                dropdownButton.classList.remove("active");
-            }
-
-            dropdownMenu.classList.remove("open");
-
+        if (subjectsLoaded) {
             applyFilters();
-        });
+        }
     });
 }
 
