@@ -804,6 +804,8 @@ db.connect(
             "📊 Database: zsamo"
         );
 
+        ensureMessageColumns();
+
         console.log(
             "🖥️ Host: localhost"
         );
@@ -1036,11 +1038,20 @@ app.get("/api/conversations", (req, res) => {
             ) AS last_message_time,
 
             (
+                SELECT messages.deleted_at IS NOT NULL
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message_retracted,
+
+            (
                 SELECT COUNT(*)
                 FROM messages
                 WHERE messages.conversation_id = conversations.id
                   AND messages.sender_id <> ?
                   AND COALESCE(messages.is_read, 0) = 0
+                  AND messages.deleted_at IS NULL
             ) AS unread_count
 
         FROM conversations
@@ -1122,11 +1133,20 @@ function getConversationForUser(conversationId, userId, callback) {
             ) AS last_message_time,
 
             (
+                SELECT messages.deleted_at IS NOT NULL
+                FROM messages
+                WHERE messages.conversation_id = conversations.id
+                ORDER BY messages.created_at DESC, messages.id DESC
+                LIMIT 1
+            ) AS last_message_retracted,
+
+            (
                 SELECT COUNT(*)
                 FROM messages
                 WHERE messages.conversation_id = conversations.id
                   AND messages.sender_id <> ?
                   AND COALESCE(messages.is_read, 0) = 0
+                  AND messages.deleted_at IS NULL
             ) AS unread_count
 
         FROM conversations
@@ -1618,7 +1638,9 @@ app.get("/api/conversations/:id/messages", (req, res) => {
             messages.created_at,
             messages.attachment_name,
             messages.attachment_type,
-            messages.attachment_size
+            messages.attachment_size,
+            messages.deleted_at,
+            messages.edited_at
 
         FROM messages
 
@@ -1740,6 +1762,259 @@ app.post("/api/conversations/:id/messages", (req, res) => {
         });
     });
 });
+// ============================================================
+// RETRACT MESSAGE API (üzenet visszavonása)
+// ============================================================
+//
+// A visszavont üzenet sora megmarad (deleted_at kapja az időt), de a
+// szövege és a csatolmánya törlődik, így tartalma sehol nem érhető el.
+// A beszélgetésben "Az üzenet vissza lett vonva" felirat marad.
+
+// A hiányzó oszlopokat a szerver indulásakor létrehozza (egyszeri
+// migráció), így az adatbázist nem kell kézzel módosítani.
+//   deleted_at - mikor vonták vissza az üzenetet
+//   edited_at  - mikor szerkesztették utoljára az üzenetet
+function ensureMessageColumns() {
+
+    ["deleted_at", "edited_at"].forEach((column) => {
+
+        db.query(
+            "SHOW COLUMNS FROM messages LIKE ?",
+            [column],
+            (err, rows) => {
+
+                if (err) {
+                    console.error(`❌ SQL hiba (${column} ellenőrzés):`, err);
+                    return;
+                }
+
+                if (rows.length > 0) {
+                    return;
+                }
+
+                // Az oszlopnév fix listából jön, nem a felhasználótól
+                db.query(
+                    `ALTER TABLE messages ADD COLUMN ${column} TIMESTAMP NULL DEFAULT NULL`,
+                    (err) => {
+
+                        if (err) {
+                            console.error(`❌ SQL hiba (${column} létrehozása):`, err);
+                            return;
+                        }
+
+                        console.log(`✅ messages.${column} oszlop létrehozva`);
+                    }
+                );
+            }
+        );
+    });
+}
+
+
+app.delete("/api/messages/:id", (req, res) => {
+
+    console.log("↩️ DELETE /api/messages/:id");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const messageId = Number(req.params.id);
+
+    if (!Number.isInteger(messageId) || messageId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen üzenet" });
+    }
+
+    // Csak a SAJÁT, még nem visszavont üzenet vonható vissza
+    const selectSql = `
+        SELECT
+            messages.id,
+            messages.conversation_id,
+            messages.attachment_path,
+            conversations.student_id,
+            conversations.tutor_id
+
+        FROM messages
+
+        JOIN conversations
+            ON messages.conversation_id = conversations.id
+
+        WHERE messages.id = ?
+          AND messages.sender_id = ?
+          AND messages.deleted_at IS NULL
+    `;
+
+    db.query(selectSql, [messageId, userId], (err, rows) => {
+
+        if (err) {
+            console.error("❌ SQL hiba (visszavonás, keresés):", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "Az üzenet nem található, vagy nem vonható vissza"
+            });
+        }
+
+        const message = rows[0];
+
+        const updateSql = `
+            UPDATE messages
+            SET content = '',
+                deleted_at = NOW(),
+                attachment_name = NULL,
+                attachment_path = NULL,
+                attachment_type = NULL,
+                attachment_size = NULL
+            WHERE id = ?
+              AND sender_id = ?
+        `;
+
+        db.query(updateSql, [messageId, userId], (err) => {
+
+            if (err) {
+                console.error("❌ SQL hiba (visszavonás, módosítás):", err);
+                return res.status(500).json({ error: "Adatbázis hiba" });
+            }
+
+            // A csatolt fájlt a lemezről is töröljük
+            if (message.attachment_path) {
+
+                fs.unlink(
+                    path.join(
+                        CHAT_UPLOAD_DIR,
+                        path.basename(message.attachment_path)
+                    ),
+                    () => {}
+                );
+            }
+
+            console.log("✅ Üzenet visszavonva:", messageId);
+
+            const recipientId =
+                Number(message.student_id) === Number(userId)
+                    ? message.tutor_id
+                    : message.student_id;
+
+            const payload = {
+                type: "message_retracted",
+                conversation_id: message.conversation_id,
+                message_id: message.id
+            };
+
+            // A másik félnek és a küldő többi böngészőfülének is
+            sendToUser(recipientId, payload);
+            sendToUser(userId, payload);
+
+            res.json({ success: true, message_id: message.id });
+        });
+    });
+});
+
+
+// ============================================================
+// EDIT MESSAGE API (üzenet szerkesztése)
+// ============================================================
+//
+// Csak a saját, még meglévő, szöveges (csatolmány nélküli) üzenet
+// szerkeszthető. A módosítás idejét az edited_at tárolja.
+
+app.patch("/api/messages/:id", (req, res) => {
+
+    console.log("✏️ PATCH /api/messages/:id");
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nincs bejelentkezve" });
+    }
+
+    const userId = req.session.user.id;
+    const messageId = Number(req.params.id);
+
+    if (!Number.isInteger(messageId) || messageId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen üzenet" });
+    }
+
+    const content = String(req.body.content || "").trim();
+
+    if (!content) {
+        return res.status(400).json({ error: "Az üzenet nem lehet üres" });
+    }
+
+    if (content.length > 2000) {
+        return res.status(400).json({ error: "Az üzenet túl hosszú" });
+    }
+
+    const selectSql = `
+        SELECT
+            messages.id,
+            messages.conversation_id,
+            conversations.student_id,
+            conversations.tutor_id
+
+        FROM messages
+
+        JOIN conversations
+            ON messages.conversation_id = conversations.id
+
+        WHERE messages.id = ?
+          AND messages.sender_id = ?
+          AND messages.deleted_at IS NULL
+          AND messages.attachment_path IS NULL
+    `;
+
+    db.query(selectSql, [messageId, userId], (err, rows) => {
+
+        if (err) {
+            console.error("❌ SQL hiba (szerkesztés, keresés):", err);
+            return res.status(500).json({ error: "Adatbázis hiba" });
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "Az üzenet nem található, vagy nem szerkeszthető"
+            });
+        }
+
+        const message = rows[0];
+
+        db.query(
+            `UPDATE messages
+             SET content = ?, edited_at = NOW()
+             WHERE id = ? AND sender_id = ?`,
+            [content, messageId, userId],
+            (err) => {
+
+                if (err) {
+                    console.error("❌ SQL hiba (szerkesztés, módosítás):", err);
+                    return res.status(500).json({ error: "Adatbázis hiba" });
+                }
+
+                console.log("✅ Üzenet szerkesztve:", messageId);
+
+                const recipientId =
+                    Number(message.student_id) === Number(userId)
+                        ? message.tutor_id
+                        : message.student_id;
+
+                const payload = {
+                    type: "message_edited",
+                    conversation_id: message.conversation_id,
+                    message_id: message.id
+                };
+
+                // A másik félnek és a küldő többi böngészőfülének is
+                sendToUser(recipientId, payload);
+                sendToUser(userId, payload);
+
+                res.json({ success: true, message_id: message.id, content });
+            }
+        );
+    });
+});
+
+
 // ============================================================
 // WEBSOCKET
 // ============================================================

@@ -121,7 +121,9 @@ CREATE TABLE `messages` (
   `attachment_name` varchar(255) DEFAULT NULL,
   `attachment_path` varchar(255) DEFAULT NULL,
   `attachment_type` varchar(100) DEFAULT NULL,
-  `attachment_size` int(11) DEFAULT NULL
+  `attachment_size` int(11) DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `edited_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --

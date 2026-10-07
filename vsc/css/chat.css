@@ -765,18 +765,53 @@ body {
         grid-template-columns: 1fr;
     }
 
-    /* Egyszerre egy panel: alapból a lista, egy beszélgetés
-       megnyitása után a chat (.show-chat) */
+    /* Egyszerre egy panel látszik: alapból a lista, egy beszélgetés
+       megnyitása után a chat (.show-chat). A két panel ugyanabban a
+       rácscellában van, és csúszással váltanak. */
+    .conversation-panel,
     .chat-window {
-        display: none;
+        grid-area: 1 / 1;
     }
 
+    /* Lista: látható, a chat előtt */
+    .conversation-panel {
+        transition:
+            transform 0.3s ease,
+            opacity 0.3s ease,
+            visibility 0s linear 0s;
+    }
+
+    /* Chat: jobbra kint, rejtve */
+    .chat-window {
+        transform: translateX(100%);
+        visibility: hidden;
+
+        transition:
+            transform 0.3s ease,
+            visibility 0s linear 0.3s;
+    }
+
+    /* Chat megnyitva: a lista kicsit balra csúszva elhalványul,
+       a chat bejön jobbról. A visibility a mozgás végén vált, hogy
+       a kicsúszó panel ne tűnjön el idő előtt. */
     .chat-container.show-chat .conversation-panel {
-        display: none;
+        transform: translateX(-25%);
+        opacity: 0;
+        visibility: hidden;
+
+        transition:
+            transform 0.3s ease,
+            opacity 0.3s ease,
+            visibility 0s linear 0.3s;
     }
 
     .chat-container.show-chat .chat-window {
-        display: flex;
+        transform: none;
+        visibility: visible;
+
+        transition:
+            transform 0.3s ease,
+            visibility 0s linear 0s;
     }
 
     .chat-back {
@@ -1733,4 +1768,233 @@ button:hover {
         flex-direction: column;
         align-items: flex-start;
     }
+}
+
+
+/* =========================================
+   ANIMÁCIÓK
+========================================= */
+
+/* Új üzenet beúszása: a saját jobbról-lentről, a kapott balról-lentről */
+@keyframes messageIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.message-group.message-new {
+    animation: messageIn 0.25s ease-out;
+}
+
+.message-group.message-new.sent {
+    transform-origin: bottom right;
+}
+
+.message-group.message-new.received {
+    transform-origin: bottom left;
+}
+
+
+/* Aki a rendszerben csökkentett mozgást kért, nem kap animációt */
+@media (prefers-reduced-motion: reduce) {
+
+    .message-group.message-new {
+        animation: none;
+    }
+
+    .conversation-panel,
+    .chat-window,
+    .chat-container.show-chat .conversation-panel,
+    .chat-container.show-chat .chat-window {
+        transition: none;
+    }
+}
+
+
+/* =========================================
+   ÜZENET VISSZAVONÁSA
+========================================= */
+
+/* Gomb + buborék egy sorban (a gomb a buborék mellett jelenik meg) */
+.message-line {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    max-width: 100%;
+    min-width: 0;
+}
+
+.message-line .message {
+    min-width: 0;
+}
+
+.retract-button,
+.edit-button {
+    flex-shrink: 0;
+
+    padding: 4px 8px;
+
+    border: none;
+    border-radius: 12px;
+
+    background: rgba(65, 85, 232, 0.08);
+
+    color: var(--main-blue);
+
+    font-size: 12px;
+    line-height: 1.4;
+
+    cursor: pointer;
+
+    opacity: 0;
+
+    transition:
+        opacity 0.15s ease,
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+/* Egérrel a buborék fölé víve vagy billentyűzettel fókuszálva látszik */
+.message-group:hover .retract-button,
+.message-group:hover .edit-button,
+.retract-button:focus-visible,
+.edit-button:focus-visible,
+.retract-button.confirm {
+    opacity: 1;
+}
+
+.retract-button:hover,
+.edit-button:hover {
+    background: rgba(65, 85, 232, 0.16);
+
+    transform: none;
+}
+
+.retract-button.confirm {
+    background: #e5484d;
+
+    color: white;
+}
+
+.retract-button:disabled,
+.edit-button:disabled {
+    opacity: 0.5;
+
+    cursor: default;
+}
+
+/* Érintőképernyőn nincs hover, ott mindig látszik (halványan) */
+@media (hover: none) {
+
+    .retract-button,
+    .edit-button {
+        opacity: 0.7;
+    }
+}
+
+/* A visszavont üzenet helye */
+.message-group .message.retracted {
+    background: transparent;
+
+    border: 1px dashed rgba(16, 21, 66, 0.25);
+
+    color: rgba(16, 21, 66, 0.5);
+
+    font-style: italic;
+
+    box-shadow: none;
+}
+
+
+/* =========================================
+   ÜZENET SZERKESZTÉSE
+========================================= */
+
+/* A ✎ és a ↩ gomb egymás mellett, a buborék mellett */
+.message-actions {
+    display: flex;
+    align-items: center;
+
+    flex-shrink: 0;
+
+    gap: 4px;
+}
+
+/* A szerkesztő: fehér buborék kékes kerettel */
+.message-group .message.editing {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    width: min(340px, 70vw);
+
+    background: white;
+
+    border: 1.5px solid var(--main-blue);
+
+    color: var(--dark-text);
+
+    box-shadow: none;
+}
+
+.edit-input {
+    width: 100%;
+    padding: 8px 10px;
+
+    border: 1px solid rgba(20, 30, 100, 0.15);
+    border-radius: 8px;
+
+    font: inherit;
+    color: inherit;
+
+    outline: none;
+}
+
+.edit-input:focus {
+    border-color: var(--main-blue);
+}
+
+.edit-actions {
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 6px;
+}
+
+.edit-actions button {
+    padding: 5px 12px;
+
+    border: none;
+    border-radius: 8px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.edit-actions button:hover {
+    transform: none;
+}
+
+.edit-cancel {
+    background: rgba(20, 30, 100, 0.08);
+
+    color: rgba(16, 21, 66, 0.7);
+}
+
+.edit-save {
+    background: var(--main-blue);
+
+    color: white;
 }

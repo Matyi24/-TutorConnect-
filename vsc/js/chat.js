@@ -18,6 +18,19 @@ let typingIndicator = null;
 // Dupla küldés elleni védelem
 let isSending = false;
 
+// Melyik beszélgetés és melyik legnagyobb ID-jú üzenet lett utoljára
+// kirajzolva. Ebből tudjuk, mely üzenetek ÚJAK (azok kapnak animációt).
+let lastRenderedConversationId = null;
+let lastRenderedMessageId = 0;
+
+// A legutóbb kirajzolt üzenetek (a szerkesztéshez kell az eredeti szöveg)
+let currentMessages = [];
+
+// Szerkesztés alatt álló üzenet és a begépelt, még el nem mentett szöveg.
+// Az üzenetek újrarajzolásakor (pl. új üzenet érkezik) is megmaradnak.
+let editingMessageId = null;
+let editingDraft = "";
+
 // Csatolmány (még el nem küldött, kiválasztott fájl)
 let pendingAttachment = null;
 let pendingPreviewUrl = null;
@@ -61,6 +74,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // 4/c. Telefonos nézet: vissza gomb a beszélgetéslistához
         setupMobileNav();
+
+        // 4/d. Saját üzenet visszavonása
+        setupMessageRetract();
+
+        // 4/e. Saját üzenet szerkesztése
+        setupMessageEdit();
 
         // 5. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
         await openTutorFromUrl();
@@ -300,8 +319,10 @@ function createConversationElement(
 
 
     const lastMessage =
-        conversation.last_message ||
-        "Még nincs üzenet.";
+        Number(conversation.last_message_retracted)
+            ? "Az üzenet vissza lett vonva"
+            : conversation.last_message ||
+              "Még nincs üzenet.";
 
 
     // Olvasatlan üzenetek (a megnyitott beszélgetésnél nem jelezzük)
@@ -397,6 +418,9 @@ async function selectConversation(
     // Másik beszélgetésre váltva a kiválasztott fájl nem mehet át
     if (Number(currentConversationId) !== Number(conversationId)) {
         clearAttachment();
+
+        editingMessageId = null;
+        editingDraft = "";
     }
 
     currentConversationId =
@@ -633,6 +657,15 @@ function renderMessages(
     let previousDay = null;
 
 
+    // Csak akkor animálunk, ha ugyanazt a beszélgetést frissítjük
+    // (új üzenet érkezett/elmentve), beszélgetésváltáskor nem.
+    const animateNew =
+        Number(lastRenderedConversationId) ===
+        Number(currentConversationId);
+
+    currentMessages = messages;
+
+
     messages.forEach(
         (message) => {
 
@@ -684,22 +717,93 @@ function renderMessages(
                     : "message-group received";
 
 
+            if (
+                animateNew &&
+                Number(message.id) > lastRenderedMessageId
+            ) {
+
+                group.classList.add("message-new");
+            }
+
+
             const time =
                 formatTime(
                     message.created_at
                 );
 
 
+            const isRetracted = Boolean(message.deleted_at);
+
+            // Éppen szerkesztjük-e ezt az üzenetet?
+            const isEditing =
+                isOwnMessage &&
+                !isRetracted &&
+                Number(message.id) === Number(editingMessageId);
+
+            // Csak a saját, még meglévő üzenet vonható vissza
+            const retractButton =
+                isOwnMessage && !isRetracted && !isEditing
+                    ? `<button type="button" class="retract-button"
+                            data-message-id="${escapeAttribute(message.id)}"
+                            title="Üzenet visszavonása"
+                            aria-label="Üzenet visszavonása">↩</button>`
+                    : "";
+
+            // Csak a saját, szöveges (csatolmány nélküli) üzenet szerkeszthető
+            const editButton =
+                isOwnMessage && !isRetracted && !isEditing &&
+                !message.attachment_name
+                    ? `<button type="button" class="edit-button"
+                            data-message-id="${escapeAttribute(message.id)}"
+                            title="Üzenet szerkesztése"
+                            aria-label="Üzenet szerkesztése">✎</button>`
+                    : "";
+
+            const editedLabel =
+                message.edited_at && !isRetracted
+                    ? " · szerkesztve"
+                    : "";
+
+            let bubble;
+
+            if (isRetracted) {
+
+                bubble = `<div class="message retracted">Az üzenet vissza lett vonva</div>`;
+
+            } else if (isEditing) {
+
+                bubble = `
+                    <div class="message editing">
+                        <input type="text" class="edit-input" maxlength="2000"
+                               value="${escapeAttribute(editingDraft)}"
+                               aria-label="Üzenet szerkesztése">
+                        <div class="edit-actions">
+                            <button type="button" class="edit-cancel">Mégse</button>
+                            <button type="button" class="edit-save">Mentés</button>
+                        </div>
+                    </div>`;
+
+            } else {
+
+                bubble = `<div class="message${
+                        message.attachment_name ? " has-attachment" : ""
+                    }">
+                        ${buildMessageContent(message)}
+                    </div>`;
+            }
+
             group.innerHTML = `
 
                 <span class="message-time">
-                    ${escapeHtml(time)}
+                    ${escapeHtml(time + editedLabel)}
                 </span>
 
-                <div class="message${
-                    message.attachment_name ? " has-attachment" : ""
-                }">
-                    ${buildMessageContent(message)}
+                <div class="message-line">
+                    <span class="message-actions">
+                        ${editButton}
+                        ${retractButton}
+                    </span>
+                    ${bubble}
                 </div>
 
             `;
@@ -709,6 +813,28 @@ function renderMessages(
                 group
             );
         }
+    );
+
+
+    // Szerkesztés közben a beviteli mező kapja vissza a fókuszt
+    // (az újrarajzolás ezt elvenné)
+    const editInput = messagesContainer.querySelector(".edit-input");
+
+    if (editInput) {
+
+        editInput.focus();
+
+        editInput.setSelectionRange(
+            editInput.value.length,
+            editInput.value.length
+        );
+    }
+
+    lastRenderedConversationId = currentConversationId;
+
+    lastRenderedMessageId = messages.reduce(
+        (max, message) => Math.max(max, Number(message.id) || 0),
+        0
     );
 
 
@@ -1404,6 +1530,7 @@ if (messageForm && messageInput) {
 
             if (conversation) {
                 conversation.last_message = savedMessage.content;
+                conversation.last_message_retracted = 0;
                 conversation.last_message_time = savedMessage.created_at;
                 renderConversations();
             }
@@ -1450,6 +1577,13 @@ function connectWebSocket() {
         if (data.type === "typing") {
             handleTyping(data.conversation_id);
         }
+
+        if (
+            data.type === "message_retracted" ||
+            data.type === "message_edited"
+        ) {
+            await handleMessageUpdated(data);
+        }
     });
 
     socket.addEventListener("close", () => {
@@ -1491,6 +1625,7 @@ async function handleIncomingMessage(message) {
 
         // A bal oldali lista frissítése
         conversation.last_message = message.content;
+        conversation.last_message_retracted = 0;
         conversation.last_message_time = message.created_at;
 
         // Ha nem ez a beszélgetés van megnyitva, olvasatlan
@@ -2134,4 +2269,235 @@ function setupMobileNav() {
     back.addEventListener("click", showListView);
 
     header.insertBefore(back, header.firstChild);
+}
+
+
+// ============================================================
+// ÜZENET VISSZAVONÁSA
+// ============================================================
+//
+// A saját üzenet mellett megjelenik egy ↩ gomb (egérrel a buborék
+// fölé víve, érintőképernyőn mindig). Az első kattintás megerősítést
+// kér ("Visszavonás?"), a második elküldi a kérést. A másik félnek a
+// websocket jelzi a változást.
+
+function setupMessageRetract() {
+
+    const container = document.querySelector(".messages");
+
+    if (!container) {
+        return;
+    }
+
+    container.addEventListener("click", async (event) => {
+
+        const button = event.target.closest(".retract-button");
+
+        if (!button) {
+            return;
+        }
+
+        // 1. kattintás: megerősítés kérése (3 mp-ig)
+        if (!button.classList.contains("confirm")) {
+
+            button.classList.add("confirm");
+            button.textContent = "Visszavonás?";
+
+            clearTimeout(button.confirmTimer);
+
+            button.confirmTimer = setTimeout(() => {
+                button.classList.remove("confirm");
+                button.textContent = "↩";
+            }, 3000);
+
+            return;
+        }
+
+        // 2. kattintás: visszavonás
+        clearTimeout(button.confirmTimer);
+
+        button.disabled = true;
+
+        try {
+
+            const response = await fetch(
+                `/api/messages/${encodeURIComponent(button.dataset.messageId)}`,
+                { method: "DELETE" }
+            );
+
+            if (!response.ok) {
+
+                const errorData = await response.json().catch(() => ({}));
+
+                throw new Error(
+                    errorData.error || "Nem sikerült visszavonni az üzenetet."
+                );
+            }
+
+            await loadMessages(currentConversationId);
+            await refreshConversations();
+
+        } catch (error) {
+
+            console.error("❌ Visszavonási hiba:", error);
+
+            button.disabled = false;
+            button.classList.remove("confirm");
+            button.textContent = "↩";
+        }
+    });
+}
+
+
+// A másik fél (vagy a saját másik fülünk) visszavont vagy szerkesztett
+// egy üzenetet
+async function handleMessageUpdated(data) {
+
+    if (
+        Number(data.conversation_id) === Number(currentConversationId)
+    ) {
+        await loadMessages(currentConversationId);
+    }
+
+    await refreshConversations();
+}
+
+
+// ============================================================
+// ÜZENET SZERKESZTÉSE
+// ============================================================
+//
+// A ✎ gomb a buborékot szerkesztővé alakítja (beviteli mező, Mentés és
+// Mégse). Enter ment, Esc megszakít. A begépelt szöveget az editingDraft
+// őrzi, így egy közben érkező új üzenet sem törli el.
+
+function startEditingMessage(messageId) {
+
+    const message = currentMessages.find(
+        (item) => Number(item.id) === Number(messageId)
+    );
+
+    if (!message) {
+        return;
+    }
+
+    editingMessageId = message.id;
+    editingDraft = message.content || "";
+
+    renderMessages(currentMessages);
+}
+
+
+function cancelEditingMessage() {
+
+    editingMessageId = null;
+    editingDraft = "";
+
+    renderMessages(currentMessages);
+}
+
+
+async function saveEditedMessage() {
+
+    const content = editingDraft.trim();
+
+    const message = currentMessages.find(
+        (item) => Number(item.id) === Number(editingMessageId)
+    );
+
+    if (!message || !content) {
+        return;
+    }
+
+    // Nem változott a szöveg: nincs mit menteni
+    if (content === message.content) {
+        cancelEditingMessage();
+        return;
+    }
+
+    const messageId = editingMessageId;
+
+    try {
+
+        const response = await fetch(
+            `/api/messages/${encodeURIComponent(messageId)}`,
+            {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content })
+            }
+        );
+
+        if (!response.ok) {
+
+            const errorData = await response.json().catch(() => ({}));
+
+            throw new Error(
+                errorData.error || "Nem sikerült menteni a szerkesztést."
+            );
+        }
+
+        editingMessageId = null;
+        editingDraft = "";
+
+        await loadMessages(currentConversationId);
+        await refreshConversations();
+
+    } catch (error) {
+
+        // A szerkesztő nyitva marad, a szöveg nem vész el
+        console.error("❌ Szerkesztési hiba:", error);
+    }
+}
+
+
+function setupMessageEdit() {
+
+    const container = document.querySelector(".messages");
+
+    if (!container) {
+        return;
+    }
+
+    container.addEventListener("click", (event) => {
+
+        const editButton = event.target.closest(".edit-button");
+
+        if (editButton) {
+            startEditingMessage(editButton.dataset.messageId);
+            return;
+        }
+
+        if (event.target.closest(".edit-save")) {
+            saveEditedMessage();
+            return;
+        }
+
+        if (event.target.closest(".edit-cancel")) {
+            cancelEditingMessage();
+        }
+    });
+
+    container.addEventListener("input", (event) => {
+
+        if (event.target.classList.contains("edit-input")) {
+            editingDraft = event.target.value;
+        }
+    });
+
+    container.addEventListener("keydown", (event) => {
+
+        if (!event.target.classList.contains("edit-input")) {
+            return;
+        }
+
+        if (event.key === "Enter") {
+            event.preventDefault();
+            saveEditedMessage();
+        }
+
+        if (event.key === "Escape") {
+            cancelEditingMessage();
+        }
+    });
 }
