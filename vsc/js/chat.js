@@ -56,6 +56,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // 4. Új beszélgetés gomb (csak diákoknak)
         setupNewChatButton();
 
+        // 4/b. A fejléc menüje (profil megtekintése)
+        setupChatMenu();
+
         // 5. Ha az URL-ben van ?tutor=ID, azonnal megnyitjuk vele a chatet
         await openTutorFromUrl();
 
@@ -1748,4 +1751,317 @@ async function openTutorPicker() {
     search.addEventListener("input", renderTutors);
 
     renderTutors();
+}
+
+
+// ============================================================
+// CHAT MENÜ (⋮) ÉS OKTATÓ PROFIL
+// ============================================================
+//
+// A fejléc ⋮ gombja egy kis menüt nyit. Jelenleg egyetlen eleme van:
+// "Profil megtekintése". Ez csak diákoknak jelenik meg, mert a másik
+// fél ilyenkor oktató, akinek van profilja (óradíj, értékelések).
+
+let chatMenu = null;
+let profileModal = null;
+let tutorsCache = null;
+
+
+function getOtherTutorId() {
+
+    if (!currentUser || currentUser.role !== "STUDENT") {
+        return null;
+    }
+
+    const conversation = findConversation(currentConversationId);
+
+    return conversation ? conversation.tutor_id : null;
+}
+
+
+function setupChatMenu() {
+
+    const button = document.querySelector(".chat-options");
+    const header = document.querySelector(".chat-header");
+
+    if (!button || !header) {
+        return;
+    }
+
+    chatMenu = document.createElement("div");
+    chatMenu.className = "chat-menu";
+    header.appendChild(chatMenu);
+
+    button.setAttribute("aria-haspopup", "menu");
+    button.setAttribute("aria-expanded", "false");
+
+    button.addEventListener("click", (event) => {
+
+        event.stopPropagation();
+
+        if (chatMenu.classList.contains("open")) {
+            closeChatMenu();
+        } else {
+            openChatMenu();
+        }
+    });
+
+    // Kattintás a menün kívülre vagy Esc: bezárás
+    document.addEventListener("click", closeChatMenu);
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            closeChatMenu();
+        }
+    });
+}
+
+
+function openChatMenu() {
+
+    if (!chatMenu) {
+        return;
+    }
+
+    chatMenu.innerHTML = "";
+
+    // A menü elemei a kiválasztott beszélgetéstől függenek
+    if (currentConversationId && getOtherTutorId()) {
+
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "chat-menu-item";
+        item.textContent = "Profil megtekintése";
+
+        item.addEventListener("click", () => {
+            closeChatMenu();
+            openTutorProfile(getOtherTutorId());
+        });
+
+        chatMenu.appendChild(item);
+
+    } else {
+
+        const empty = document.createElement("div");
+        empty.className = "chat-menu-empty";
+        empty.textContent = "Nincs elérhető művelet.";
+
+        chatMenu.appendChild(empty);
+    }
+
+    chatMenu.classList.add("open");
+
+    document
+        .querySelector(".chat-options")
+        .setAttribute("aria-expanded", "true");
+}
+
+
+function closeChatMenu() {
+
+    if (!chatMenu || !chatMenu.classList.contains("open")) {
+        return;
+    }
+
+    chatMenu.classList.remove("open");
+
+    document
+        .querySelector(".chat-options")
+        .setAttribute("aria-expanded", "false");
+}
+
+
+// ------------------------------------------------------------
+// PROFIL ABLAK
+// ------------------------------------------------------------
+
+function ensureProfileModal() {
+
+    if (profileModal) {
+        return profileModal;
+    }
+
+    profileModal = document.createElement("div");
+    profileModal.className = "profile-modal";
+    profileModal.setAttribute("aria-hidden", "true");
+
+    profileModal.innerHTML = `
+        <div class="profile-overlay"></div>
+
+        <div class="profile-window" role="dialog" aria-modal="true">
+            <button type="button" class="profile-close" aria-label="Profil bezárása">×</button>
+            <div class="profile-content"></div>
+        </div>
+    `;
+
+    document.body.appendChild(profileModal);
+
+    profileModal
+        .querySelector(".profile-overlay")
+        .addEventListener("click", closeTutorProfile);
+
+    profileModal
+        .querySelector(".profile-close")
+        .addEventListener("click", closeTutorProfile);
+
+    document.addEventListener("keydown", (event) => {
+        if (
+            event.key === "Escape" &&
+            profileModal.classList.contains("active")
+        ) {
+            closeTutorProfile();
+        }
+    });
+
+    return profileModal;
+}
+
+
+function closeTutorProfile() {
+
+    if (!profileModal) {
+        return;
+    }
+
+    profileModal.classList.remove("active");
+    profileModal.setAttribute("aria-hidden", "true");
+}
+
+
+async function getTutorById(tutorId) {
+
+    // Az oktatók listáját egyszer kérjük le, utána gyorsítótárból megy
+    if (!tutorsCache) {
+
+        const response = await fetch("/api/tutors");
+
+        if (!response.ok) {
+            throw new Error("Nem sikerült lekérni az oktatókat.");
+        }
+
+        tutorsCache = await response.json();
+    }
+
+    return tutorsCache.find(
+        (tutor) => Number(tutor.id) === Number(tutorId)
+    );
+}
+
+
+function getStars(rating) {
+
+    const rounded = Math.max(
+        0,
+        Math.min(5, Math.round(Number(rating) || 0))
+    );
+
+    return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+}
+
+
+async function openTutorProfile(tutorId) {
+
+    const modal = ensureProfileModal();
+    const content = modal.querySelector(".profile-content");
+
+    content.innerHTML = `<p class="profile-loading">Betöltés...</p>`;
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+
+    let tutor;
+    let reviews = [];
+
+    try {
+
+        tutor = await getTutorById(tutorId);
+
+        if (!tutor) {
+            throw new Error("Az oktató nem található.");
+        }
+
+        const reviewsResponse = await fetch(
+            `/api/tutors/${encodeURIComponent(tutorId)}/reviews`
+        );
+
+        // Az értékelések nélkül is megjelenhet a profil
+        if (reviewsResponse.ok) {
+            reviews = await reviewsResponse.json();
+        }
+
+    } catch (error) {
+
+        console.error("❌ Profil betöltési hiba:", error);
+
+        content.innerHTML = `
+            <p class="profile-loading">Nem sikerült betölteni a profilt.</p>
+        `;
+
+        return;
+    }
+
+    const name = tutor.full_name || "Ismeretlen oktató";
+    const subjects = tutor.subjects || "Nincs megadott tantárgy";
+    const bio = tutor.bio || "Az oktató még nem adott meg bemutatkozást.";
+    const price = Number(tutor.hourly_rate) || 0;
+    const rating = Number(tutor.average_rating) || 0;
+    const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
+
+    const reviewsHtml = reviewCount === 0
+        ? `<p class="profile-no-reviews">Még nincs értékelés.</p>`
+        : reviews.map((review) => {
+
+            const date = new Date(review.created_at);
+
+            const dateText = Number.isNaN(date.getTime())
+                ? ""
+                : date.toLocaleDateString("hu-HU");
+
+            return `
+                <article class="profile-review">
+                    <div class="profile-review-top">
+                        <strong>${escapeHtml(review.reviewer_name || "Névtelen")}</strong>
+                        <span class="profile-review-stars">${getStars(review.rating)}</span>
+                    </div>
+                    ${dateText ? `<span class="profile-review-date">${escapeHtml(dateText)}</span>` : ""}
+                    <p>${escapeHtml(review.comment || "Az értékelő nem írt szöveges értékelést.")}</p>
+                </article>
+            `;
+        }).join("");
+
+    content.innerHTML = `
+        <div class="profile-head">
+            <div class="avatar large">${escapeHtml(getInitials(name))}</div>
+
+            <div>
+                <span class="profile-label">OKTATÓ PROFIL</span>
+                <h2>${escapeHtml(name)}</h2>
+                <p class="profile-subjects">${escapeHtml(subjects)}</p>
+
+                <div class="profile-rating">
+                    <strong>${rating > 0 ? rating.toFixed(1) : "0.0"}</strong>
+                    <span class="profile-review-stars">${getStars(rating)}</span>
+                    <small>${reviewCount} értékelés</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-facts">
+            <div>
+                <span>Óradíj</span>
+                <strong>${price.toLocaleString("hu-HU")} Ft / óra</strong>
+            </div>
+
+            <div>
+                <span>E-mail</span>
+                <strong>${escapeHtml(tutor.email || "Nincs megadva")}</strong>
+            </div>
+        </div>
+
+        <h3>Rólam</h3>
+        <p class="profile-bio">${escapeHtml(bio)}</p>
+
+        <h3>Vélemények</h3>
+        <div class="profile-reviews">${reviewsHtml}</div>
+    `;
 }
