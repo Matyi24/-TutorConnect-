@@ -398,9 +398,10 @@ app.post("/register", async (req, res) => {
             email,
             password_hash,
             role,
-            bio
+            bio,
+            hourly_rate
         )
-        VALUES (?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     `;
 
 
@@ -409,7 +410,8 @@ app.post("/register", async (req, res) => {
         email,
         passwordHash,
         role,
-        ""
+        "",
+        0
     ];
 
 
@@ -820,10 +822,7 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-
-            -- legolcsóbb tantárgy ára (a régi hourly_rate mező helyett)
-            COALESCE(MIN(ts.hourly_rate), 0) AS hourly_rate,
-            COALESCE(MAX(ts.hourly_rate), 0) AS max_hourly_rate,
+            u.hourly_rate,
 
             COALESCE(
                 AVG(CAST(r.rating AS DECIMAL(2,1))),
@@ -836,14 +835,7 @@ app.get("/api/tutors", (req, res) => {
                 DISTINCT s.name
                 ORDER BY s.name
                 SEPARATOR ', '
-            ) AS subjects,
-
-            -- tantárgyanként az ár: "id|név|ár;;id|név|ár"
-            GROUP_CONCAT(
-                DISTINCT CONCAT(s.id, '|', s.name, '|', ts.hourly_rate)
-                ORDER BY s.name
-                SEPARATOR ';;'
-            ) AS subject_prices
+            ) AS subjects
 
         FROM users u
 
@@ -866,8 +858,7 @@ app.get("/api/tutors", (req, res) => {
             u.full_name,
             u.email,
             u.bio,
-            review_stats.average_rating,
-            review_stats.review_count
+            u.hourly_rate
 
         ORDER BY u.full_name ASC
     `;
@@ -1752,279 +1743,6 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 // ============================================================
 // WEBSOCKET
 // ============================================================
-
-// ============================================================
-// ACCOUNT  (replace the old account block in main.js with this)
-// ============================================================
-//
-// GET /api/account  -> the logged-in user's editable data
-//                      (tutors also get their subjects and prices)
-// PUT /api/account  -> update name, email, bio, subjects/prices, password
-//
-// Changing the e-mail or the password requires the CURRENT password,
-// so someone who finds a logged-in browser can't take over the account.
-//
-// DATABASE: tutor_subjects needs a price column. Run once:
-//
-//     ALTER TABLE tutor_subjects
-//         ADD COLUMN hourly_rate INT NOT NULL DEFAULT 0;
-//
-// ============================================================
-
-
-const STRONG_PASSWORD = /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_TUTOR_SUBJECTS = 10;
-const MAX_HOURLY_RATE = 100000;
-
-
-app.get("/api/account", async (req, res) => {
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
-    }
-
-    try {
-
-        const [rows] = await db.promise().query(
-            `SELECT id, full_name, email, role, bio
-             FROM users
-             WHERE id = ?
-             LIMIT 1`,
-            [req.session.user.id]
-        );
-
-        if (rows.length === 0) {
-            return res.status(404).json({ error: "A felhasználó nem található." });
-        }
-
-        const u = rows[0];
-
-        const account = {
-            id: u.id,
-            name: u.full_name,
-            email: u.email,
-            role: u.role,
-            bio: u.bio || ""
-        };
-
-        // A tutor's subjects and prices
-        if (u.role === "TUTOR") {
-
-            const [subjects] = await db.promise().query(
-                `SELECT ts.subject_id, s.name, ts.hourly_rate
-                 FROM tutor_subjects ts
-                 INNER JOIN subjects s ON s.id = ts.subject_id
-                 WHERE ts.tutor_id = ?
-                 ORDER BY s.name`,
-                [u.id]
-            );
-
-            account.subjects = subjects;
-        }
-
-        res.json(account);
-
-    } catch (err) {
-        console.error("❌ GET /api/account error:", err);
-        res.status(500).json({ error: "Adatbázis hiba." });
-    }
-});
-
-
-app.put("/api/account", async (req, res) => {
-
-    if (!req.session.user) {
-        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
-    }
-
-    const userId = req.session.user.id;
-
-    const name = String(req.body.name || "").trim();
-    const email = String(req.body.email || "").trim();
-    const bio = String(req.body.bio ?? "").trim();
-    const currentPassword = String(req.body.currentPassword || "");
-    const newPassword = String(req.body.newPassword || "");
-
-
-    // ---------------- validation ----------------
-
-    if (name.length < 2 || name.length > 60) {
-        return res.status(400).json({ error: "A név 2 és 60 karakter között legyen." });
-    }
-
-    if (!EMAIL_PATTERN.test(email) || email.length > 30) {
-        return res.status(400).json({ error: "Adj meg egy érvényes e-mail címet (legfeljebb 30 karakter)." });
-    }
-
-    if (newPassword && !STRONG_PASSWORD.test(newPassword)) {
-        return res.status(400).json({
-            error: "Az új jelszó legalább 6 karakter legyen, és tartalmazzon számot és speciális karaktert."
-        });
-    }
-
-
-    try {
-
-        // The current row (we need the hash, the current e-mail and the role)
-        const [rows] = await db.promise().query(
-            "SELECT email, role, password_hash FROM users WHERE id = ? LIMIT 1",
-            [userId]
-        );
-
-        if (rows.length === 0) {
-            return res.status(404).json({ error: "A felhasználó nem található." });
-        }
-
-        const current = rows[0];
-        const isTutor = current.role === "TUTOR";
-
-
-        // ---------------- tutor only: bio + subjects ----------------
-
-        let subjectRows = null;     // null = "don't touch the subjects"
-
-        if (isTutor) {
-
-            if (bio.length > 1000) {
-                return res.status(400).json({ error: "A bemutatkozás legfeljebb 1000 karakter lehet." });
-            }
-
-            if (Array.isArray(req.body.subjects)) {
-
-                if (req.body.subjects.length > MAX_TUTOR_SUBJECTS) {
-                    return res.status(400).json({
-                        error: "Legfeljebb " + MAX_TUTOR_SUBJECTS + " tantárgyat adhatsz meg."
-                    });
-                }
-
-                const seen = new Set();
-                subjectRows = [];
-
-                for (const item of req.body.subjects) {
-
-                    const subjectId = Number(item && item.subject_id);
-                    const rate = Number(item && item.hourly_rate);
-
-                    if (!Number.isInteger(subjectId) || subjectId <= 0) {
-                        return res.status(400).json({ error: "Érvénytelen tantárgy." });
-                    }
-
-                    if (seen.has(subjectId)) {
-                        return res.status(400).json({ error: "Egy tantárgy csak egyszer szerepelhet." });
-                    }
-
-                    if (!Number.isInteger(rate) || rate < 0 || rate > MAX_HOURLY_RATE) {
-                        return res.status(400).json({
-                            error: "Az óradíj 0 és 100 000 Ft között legyen."
-                        });
-                    }
-
-                    seen.add(subjectId);
-                    subjectRows.push([userId, subjectId, rate]);
-                }
-
-                // every chosen subject must really exist
-                if (seen.size > 0) {
-
-                    const [found] = await db.promise().query(
-                        "SELECT id FROM subjects WHERE id IN (?)",
-                        [[...seen]]
-                    );
-
-                    if (found.length !== seen.size) {
-                        return res.status(400).json({ error: "Ismeretlen tantárgy." });
-                    }
-                }
-            }
-        }
-
-
-        // ---------------- e-mail / password change needs the current password ----------------
-
-        const emailChanged = email.toLowerCase() !== current.email.toLowerCase();
-
-        if (emailChanged || newPassword) {
-
-            if (!currentPassword) {
-                return res.status(400).json({
-                    error: "E-mail vagy jelszó módosításához add meg a jelenlegi jelszavad."
-                });
-            }
-
-            const ok = await verifyPassword(current.password_hash, currentPassword);
-
-            if (!ok) {
-                return res.status(403).json({ error: "A jelenlegi jelszó hibás." });
-            }
-        }
-
-
-        // ---------------- build the UPDATE ----------------
-
-        const fields = ["full_name = ?", "email = ?"];
-        const values = [name, email];
-
-        if (isTutor) {
-            fields.push("bio = ?");
-            values.push(bio);
-        }
-
-        if (newPassword) {
-            fields.push("password_hash = ?");
-            values.push(await hashPassword(newPassword));
-        }
-
-        values.push(userId);
-
-        await db.promise().query(
-            `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
-            values
-        );
-
-
-        // ---------------- replace the tutor's subjects ----------------
-
-        if (subjectRows !== null) {
-
-            await db.promise().query(
-                "DELETE FROM tutor_subjects WHERE tutor_id = ?",
-                [userId]
-            );
-
-            if (subjectRows.length > 0) {
-                await db.promise().query(
-                    "INSERT INTO tutor_subjects (tutor_id, subject_id, hourly_rate) VALUES ?",
-                    [subjectRows]
-                );
-            }
-        }
-
-
-        // Keep the session in sync so the navbar shows the new data
-        req.session.user.name = name;
-        req.session.user.email = email;
-
-        res.json({
-            success: true,
-            user: {
-                id: userId,
-                name: name,
-                email: email,
-                role: current.role
-            }
-        });
-
-    } catch (err) {
-
-        if (err.code === "ER_DUP_ENTRY") {
-            return res.status(409).json({ error: "Ez az e-mail cím már foglalt." });
-        }
-
-        console.error("❌ PUT /api/account error:", err);
-        res.status(500).json({ error: "Nem sikerült menteni a módosításokat." });
-    }
-});
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 });

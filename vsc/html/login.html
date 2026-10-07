@@ -89,20 +89,6 @@
 </main>
 
 <script src="/js/creator.js"></script>
-<script>
-  // Jelszó megjelenítése / elrejtése (szem ikon)
-  document.querySelectorAll('.toggle-password').forEach(function (button) {
-    button.addEventListener('click', function () {
-      const input = button.parentElement.querySelector('input');
-      const show = input.type === 'password';
-
-      input.type = show ? 'text' : 'password';
-      button.classList.toggle('is-visible', show);
-      button.setAttribute('aria-pressed', String(show));
-      button.setAttribute('aria-label', show ? 'Jelszó elrejtése' : 'Jelszó megjelenítése');
-    });
-  });
-</script>
 <script src="/js/login.js"></script>
 
 </body>
