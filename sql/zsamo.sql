@@ -1,16 +1,16 @@
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
---
--- Host: 127.0.0.1
--- Generation Time: Oct 06, 2026 at 12:36 PM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- ============================================================
+-- zsamo – MERGED dump
+--   base: Oct 06, 2026 dump (messages attachments/edit/delete,
+--         users.hourly_rate, conversation #4)
+--   + from Sep 29, 2026 dump: tutor_subjects.hourly_rate
+--         (per-subject price)
+-- Both hourly_rate columns are kept, so code that uses either
+-- users.hourly_rate or tutor_subjects.hourly_rate keeps working.
+-- ============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
-
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -23,10 +23,6 @@ SET time_zone = "+00:00";
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `availabilities`
---
-
 CREATE TABLE `availabilities` (
   `id` int(11) NOT NULL,
   `tutor_id` int(11) NOT NULL,
@@ -34,10 +30,6 @@ CREATE TABLE `availabilities` (
   `end_time` datetime NOT NULL,
   `is_booked` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
-
---
--- Dumping data for table `availabilities`
---
 
 INSERT INTO `availabilities` (`id`, `tutor_id`, `start_time`, `end_time`, `is_booked`) VALUES
 (1, 3, '2026-09-25 16:00:00', '2026-09-25 17:00:00', 1),
@@ -55,10 +47,6 @@ INSERT INTO `availabilities` (`id`, `tutor_id`, `start_time`, `end_time`, `is_bo
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `bookings`
---
-
 CREATE TABLE `bookings` (
   `id` int(11) NOT NULL,
   `student_id` int(11) DEFAULT NULL,
@@ -70,10 +58,6 @@ CREATE TABLE `bookings` (
   `created_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
---
--- Dumping data for table `bookings`
---
-
 INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_time`, `end_time`, `status_`, `created_at`) VALUES
 (1, 1, 3, 1, '2026-09-25 14:00:00', '2026-09-25 15:00:00', 'CONFIRMED', NULL),
 (2, 2, 4, 8, '2026-09-26 11:00:00', '2026-09-26 12:00:00', 'CONFIRMED', NULL),
@@ -84,20 +68,12 @@ INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_tim
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `conversations`
---
-
 CREATE TABLE `conversations` (
   `id` int(11) NOT NULL,
   `student_id` int(11) NOT NULL,
   `tutor_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
-
---
--- Dumping data for table `conversations`
---
 
 INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
 (1, 1, 3, '2026-09-24 07:38:40'),
@@ -106,10 +82,6 @@ INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUE
 (4, 13, 8, '2026-10-02 08:16:37');
 
 -- --------------------------------------------------------
-
---
--- Table structure for table `messages`
---
 
 CREATE TABLE `messages` (
   `id` int(11) NOT NULL,
@@ -126,10 +98,6 @@ CREATE TABLE `messages` (
   `edited_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
---
--- Dumping data for table `messages`
---
-
 INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`, `attachment_name`, `attachment_path`, `attachment_type`, `attachment_size`) VALUES
 (1, 2, 13, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
 (2, 2, 14, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL),
@@ -140,10 +108,6 @@ INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_rea
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `reviews`
---
-
 CREATE TABLE `reviews` (
   `id` int(11) NOT NULL,
   `booking_id` int(11) DEFAULT NULL,
@@ -152,10 +116,6 @@ CREATE TABLE `reviews` (
   `crated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
---
--- Dumping data for table `reviews`
---
-
 INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VALUES
 (2, 3, '5', 'Nagyon érthetően magyarázott, sokat segített a feladatokban.', NULL),
 (3, 1, '5', 'Nagyon jó óra volt, végre megértettem mindent amiről kérdezni szerettem volna akkoriban.', NULL),
@@ -163,19 +123,11 @@ INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VA
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `subjects`
---
-
 CREATE TABLE `subjects` (
   `id` int(60) NOT NULL,
   `name` varchar(30) NOT NULL,
   `category` varchar(30) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
-
---
--- Dumping data for table `subjects`
---
 
 INSERT INTO `subjects` (`id`, `name`, `category`) VALUES
 (1, 'Matematika', 'Reál'),
@@ -223,42 +175,33 @@ INSERT INTO `subjects` (`id`, `name`, `category`) VALUES
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `tutor_subjects`
---
-
+-- MERGED: per-subject hourly_rate column (from Sep 29 dump)
 CREATE TABLE `tutor_subjects` (
   `tutor_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL
+  `subject_id` int(11) NOT NULL,
+  `hourly_rate` int(10) UNSIGNED NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
---
--- Dumping data for table `tutor_subjects`
---
-
-INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`) VALUES
-(3, 1),
-(3, 2),
-(3, 5),
-(4, 1),
-(4, 8),
-(4, 15),
-(5, 3),
-(5, 6),
-(5, 22),
-(7, 4),
-(7, 5),
-(7, 7),
-(8, 15),
-(8, 16),
-(8, 18);
+INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`, `hourly_rate`) VALUES
+(3, 1, 3100),
+(3, 2, 3500),
+(3, 5, 7000),
+(4, 1, 3000),
+(4, 8, 3000),
+(4, 15, 3000),
+(5, 3, 4000),
+(5, 6, 4000),
+(5, 22, 4000),
+(7, 4, 2800),
+(7, 5, 2800),
+(7, 7, 2800),
+(8, 15, 3200),
+(8, 16, 3200),
+(8, 18, 3200);
 
 -- --------------------------------------------------------
 
---
--- Table structure for table `users`
---
-
+-- users keeps the general hourly_rate (from Oct 06 dump)
 CREATE TABLE `users` (
   `id` int(10) NOT NULL,
   `full_name` varchar(60) NOT NULL,
@@ -269,10 +212,6 @@ CREATE TABLE `users` (
   `hourly_rate` decimal(65,0) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
-
---
--- Dumping data for table `users`
---
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
 (1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13'),
@@ -292,156 +231,93 @@ INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`,
 (15, 'test3', 'test3@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$3zKHJdk9VJGqkFu6DOp++Q$02yCv+X4/yIdyDBnkYKLDFeY1VbljOZABhvvdP5FkpU', 'TUTOR', 'illuminati aktivitás trackelés ', 4000, '2026-09-29 07:19:36');
 
 --
--- Indexes for dumped tables
+-- Indexes
 --
 
---
--- Indexes for table `availabilities`
---
 ALTER TABLE `availabilities`
   ADD PRIMARY KEY (`id`),
   ADD KEY `tutor_id` (`tutor_id`);
 
---
--- Indexes for table `bookings`
---
 ALTER TABLE `bookings`
   ADD PRIMARY KEY (`id`),
   ADD KEY `student_id` (`student_id`),
   ADD KEY `tutor_id` (`tutor_id`),
   ADD KEY `subject_id` (`subject_id`);
 
---
--- Indexes for table `conversations`
---
 ALTER TABLE `conversations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_student_tutor` (`student_id`,`tutor_id`),
   ADD KEY `fk_conversation_tutor` (`tutor_id`);
 
---
--- Indexes for table `messages`
---
 ALTER TABLE `messages`
   ADD PRIMARY KEY (`id`),
   ADD KEY `fk_message_conversation` (`conversation_id`),
   ADD KEY `fk_message_sender` (`sender_id`);
 
---
--- Indexes for table `reviews`
---
 ALTER TABLE `reviews`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `booking_id` (`booking_id`);
 
---
--- Indexes for table `subjects`
---
 ALTER TABLE `subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name` (`name`);
 
---
--- Indexes for table `tutor_subjects`
---
 ALTER TABLE `tutor_subjects`
   ADD PRIMARY KEY (`tutor_id`,`subject_id`),
   ADD KEY `subject_id` (`subject_id`);
 
---
--- Indexes for table `users`
---
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `email` (`email`);
 
 --
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT
 --
 
---
--- AUTO_INCREMENT for table `availabilities`
---
 ALTER TABLE `availabilities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
 
---
--- AUTO_INCREMENT for table `bookings`
---
 ALTER TABLE `bookings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
---
--- AUTO_INCREMENT for table `conversations`
---
 ALTER TABLE `conversations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
---
--- AUTO_INCREMENT for table `messages`
---
 ALTER TABLE `messages`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
---
--- AUTO_INCREMENT for table `reviews`
---
 ALTER TABLE `reviews`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
---
--- AUTO_INCREMENT for table `subjects`
---
 ALTER TABLE `subjects`
   MODIFY `id` int(60) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
---
--- AUTO_INCREMENT for table `users`
---
 ALTER TABLE `users`
   MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
--- Constraints for dumped tables
+-- Constraints
 --
 
---
--- Constraints for table `availabilities`
---
 ALTER TABLE `availabilities`
   ADD CONSTRAINT `availabilities_ibfk_1` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`);
 
---
--- Constraints for table `bookings`
---
 ALTER TABLE `bookings`
   ADD CONSTRAINT `bookings_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `bookings_ibfk_2` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`),
   ADD CONSTRAINT `bookings_ibfk_3` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`);
 
---
--- Constraints for table `conversations`
---
 ALTER TABLE `conversations`
   ADD CONSTRAINT `fk_conversation_student` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_conversation_tutor` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
---
--- Constraints for table `messages`
---
 ALTER TABLE `messages`
   ADD CONSTRAINT `fk_message_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
---
--- Constraints for table `reviews`
---
 ALTER TABLE `reviews`
   ADD CONSTRAINT `reviews_ibfk_1` FOREIGN KEY (`booking_id`) REFERENCES `bookings` (`id`);
 
---
--- Constraints for table `tutor_subjects`
---
 ALTER TABLE `tutor_subjects`
   ADD CONSTRAINT `tutor_subjects_ibfk_1` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `tutor_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
