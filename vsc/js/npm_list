@@ -1,0 +1,33 @@
+anymatch@ extraneous
+├── argon2@0.45.1
+├── balanced-match@ extraneous
+├── better-sqlite3@ extraneous
+├── binary-extensions@ extraneous
+├── brace-expansion@ extraneous
+├── braces@ extraneous
+├── chokidar@ extraneous
+├── express-session@1.19.0
+├── express@5.2.1
+├── fill-range@ extraneous
+├── glob-parent@ extraneous
+├── has-flag@ extraneous
+├── ignore-by-default@ extraneous
+├── is-binary-path@ extraneous
+├── is-extglob@ extraneous
+├── is-glob@ extraneous
+├── is-number@ extraneous
+├── minimatch@ extraneous
+├── multer@2.4.0
+├── mysql2@3.24.5
+├── nodemon@ extraneous
+├── normalize-path@ extraneous
+├── picomatch@ extraneous
+├── pstree.remy@ extraneous
+├── readdirp@ extraneous
+├── semver@ extraneous
+├── simple-update-notifier@ extraneous
+├── supports-color@ extraneous
+├── to-regex-range@ extraneous
+├── touch@ extraneous
+├── undefsafe@ extraneous
+└── ws@8.22.0
