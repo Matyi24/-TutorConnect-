@@ -2070,7 +2070,7 @@ button:hover {
 
 /* A gomb kicsit megnő */
 .new-chat-button:hover {
-    transform: scale(1.1);
+    transform: scale(1.05);
 
     box-shadow:
         0 10px 24px rgba(65, 85, 232, 0.4);
