@@ -1998,3 +1998,265 @@ button:hover {
 
     color: white;
 }
+
+
+/* =========================================
+   ANIMÁCIÓK 2. (gombok, menü, ablakok)
+========================================= */
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes overlayOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+@keyframes windowIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes windowOut {
+    from {
+        opacity: 1;
+        transform: none;
+    }
+    to {
+        opacity: 0;
+        transform: translateY(16px) scale(0.97);
+    }
+}
+
+@keyframes itemIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes avatarPop {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+
+/* ---------- + (új beszélgetés) gomb ---------- */
+
+.new-chat-button {
+    transition:
+        transform 0.3s cubic-bezier(0.3, 1.5, 0.5, 1),
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+/* A gomb kicsit megnő */
+.new-chat-button:hover {
+    transform: scale(1.1);
+
+    box-shadow:
+        0 10px 24px rgba(65, 85, 232, 0.4);
+}
+
+.new-chat-button:active {
+    transform: scale(0.92);
+
+    box-shadow:
+        0 4px 10px rgba(65, 85, 232, 0.3);
+}
+
+
+/* ---------- ⋮ gomb és menü ---------- */
+
+.chat-options {
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+/* Nyitott menünél a gomb kiemelve marad */
+.chat-options[aria-expanded="true"] {
+    background: rgba(65, 85, 232, 0.1);
+
+    color: var(--main-blue);
+}
+
+/* A menü már nem display-jel kapcsol, hogy animálható legyen */
+.chat-menu {
+    display: block;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transform: translateY(-8px) scale(0.95);
+    transform-origin: top right;
+
+    transition:
+        opacity 0.15s ease,
+        transform 0.18s ease,
+        visibility 0s linear 0.18s;
+}
+
+.chat-menu.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+
+    transform: none;
+
+    transition:
+        opacity 0.15s ease,
+        transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2),
+        visibility 0s;
+}
+
+
+/* ---------- Új beszélgetés választó (tutor picker) ---------- */
+
+.tutor-picker-overlay {
+    animation: overlayIn 0.2s ease both;
+}
+
+.tutor-picker {
+    animation: windowIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Bezáráskor kifut (a chat.js 180 ms múlva törli az elemet) */
+.tutor-picker-overlay.closing {
+    animation: overlayOut 0.18s ease both;
+
+    pointer-events: none;
+}
+
+.tutor-picker-overlay.closing .tutor-picker {
+    animation: windowOut 0.18s ease both;
+}
+
+/* A találatok az első megnyitáskor egymás után úsznak be */
+.tutor-picker-list.animate-in .tutor-picker-item {
+    animation: itemIn 0.3s ease both;
+
+    animation-delay: calc(min(var(--i, 0), 10) * 0.04s + 0.1s);
+}
+
+.tutor-picker-item {
+    transition: background 0.15s ease;
+}
+
+
+/* ---------- Oktató profil ablak ---------- */
+
+/* display helyett opacity + visibility, hogy az ablak animálható legyen */
+.profile-modal {
+    display: flex;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    transition:
+        opacity 0.2s ease,
+        visibility 0s linear 0.2s;
+}
+
+.profile-modal.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+
+    transition:
+        opacity 0.2s ease,
+        visibility 0s;
+}
+
+.profile-overlay {
+    backdrop-filter: blur(4px);
+}
+
+.profile-window {
+    transform: translateY(24px) scale(0.96);
+
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.profile-modal.active .profile-window {
+    transform: none;
+}
+
+/* A profil részei egymás után úsznak be (lásd a sorrendet a chat.js-ben) */
+.profile-content > * {
+    animation: itemIn 0.35s ease both;
+}
+
+.profile-content > :nth-child(1) { animation-delay: 0.05s; }
+.profile-content > :nth-child(2) { animation-delay: 0.10s; }
+.profile-content > :nth-child(3) { animation-delay: 0.15s; }
+.profile-content > :nth-child(4) { animation-delay: 0.20s; }
+.profile-content > :nth-child(5) { animation-delay: 0.25s; }
+.profile-content > :nth-child(6) { animation-delay: 0.30s; }
+
+.profile-head .avatar {
+    animation: avatarPop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) 0.1s both;
+}
+
+.profile-review {
+    animation: itemIn 0.35s ease both;
+
+    animation-delay: calc(0.3s + min(var(--i, 0), 8) * 0.06s);
+}
+
+
+/* ---------- Csökkentett mozgás ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .new-chat-button,
+    .chat-options,
+    .chat-menu,
+    .chat-menu.open,
+    .profile-modal,
+    .profile-modal.active,
+    .profile-window,
+    .profile-close {
+        transition: none;
+    }
+
+    .new-chat-button:hover,
+    .new-chat-button:active {
+        transform: none;
+    }
+
+    .tutor-picker-overlay,
+    .tutor-picker,
+    .tutor-picker-overlay.closing,
+    .tutor-picker-overlay.closing .tutor-picker,
+    .tutor-picker-list.animate-in .tutor-picker-item,
+    .profile-content > *,
+    .profile-head .avatar,
+    .profile-review {
+        animation: none;
+    }
+
+    .profile-window {
+        transform: none;
+    }
+}

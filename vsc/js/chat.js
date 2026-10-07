@@ -1805,9 +1805,22 @@ async function openTutorPicker() {
     const list = overlay.querySelector(".tutor-picker-list");
     const search = overlay.querySelector(".tutor-picker-search");
 
+    let closing = false;
+
     function closePicker() {
+
+        if (closing) {
+            return;
+        }
+
+        closing = true;
+
         document.removeEventListener("keydown", onKeyDown);
-        overlay.remove();
+
+        // A kifutó animáció után töröljük az elemet (lásd chat.css)
+        overlay.classList.add("closing");
+
+        setTimeout(() => overlay.remove(), 180);
     }
 
     function onKeyDown(event) {
@@ -1829,6 +1842,10 @@ async function openTutorPicker() {
     search.focus();
 
     let tutors = [];
+
+    // A lépcsőzetes belépés csak az első kirajzolásnál fusson, különben
+    // minden betűnél újra animálódna a lista
+    let animateList = true;
 
     try {
 
@@ -1858,15 +1875,19 @@ async function openTutorPicker() {
 
         list.innerHTML = "";
 
+        list.classList.toggle("animate-in", animateList);
+        animateList = false;
+
         if (filtered.length === 0) {
             list.innerHTML = `<p class="tutor-picker-empty">Nincs találat.</p>`;
             return;
         }
 
-        filtered.forEach((tutor) => {
+        filtered.forEach((tutor, index) => {
 
             const item = document.createElement("div");
             item.className = "tutor-picker-item";
+            item.style.setProperty("--i", index);
 
             item.innerHTML = `
                 <div class="avatar">${escapeHtml(getInitials(tutor.full_name))}</div>
@@ -2153,7 +2174,7 @@ async function openTutorProfile(tutorId) {
 
     const reviewsHtml = reviewCount === 0
         ? `<p class="profile-no-reviews">Még nincs értékelés.</p>`
-        : reviews.map((review) => {
+        : reviews.map((review, index) => {
 
             const date = new Date(review.created_at);
 
@@ -2162,7 +2183,7 @@ async function openTutorProfile(tutorId) {
                 : date.toLocaleDateString("hu-HU");
 
             return `
-                <article class="profile-review">
+                <article class="profile-review" style="--i:${index}">
                     <div class="profile-review-top">
                         <strong>${escapeHtml(review.reviewer_name || "Névtelen")}</strong>
                         <span class="profile-review-stars">${getStars(review.rating)}</span>
