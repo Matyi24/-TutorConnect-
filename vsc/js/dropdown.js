@@ -49,16 +49,13 @@ document.addEventListener("DOMContentLoaded", () => {
             // Kiválasztott szöveg frissítése
             selectedSubject.textContent = selectedText;
 
-            // Aktív elem és aria-selected frissítése
+            // Előző aktív elem eltávolítása
             dropdownItems.forEach(dropdownItem => {
-                const isActive = dropdownItem === item;
-
-                dropdownItem.classList.toggle("active", isActive);
-                dropdownItem.setAttribute(
-                    "aria-selected",
-                    String(isActive)
-                );
+                dropdownItem.classList.remove("active");
             });
+
+            // Kiválasztott elem aktívvá tétele
+            item.classList.add("active");
 
             // Menü bezárása
             dropdownMenu.classList.remove("open");
@@ -69,14 +66,6 @@ document.addEventListener("DOMContentLoaded", () => {
             dropdownButton.setAttribute(
                 "aria-expanded",
                 "false"
-            );
-
-            // Jelezzük az oldal logikájának (index.js), hogy új
-            // kategória lett kiválasztva. A szűrést ott végezzük.
-            document.dispatchEvent(
-                new CustomEvent("categorychange", {
-                    detail: { category: selectedText }
-                })
             );
         });
 

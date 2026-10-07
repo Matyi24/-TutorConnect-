@@ -87,53 +87,34 @@ app.use(sessionMiddleware);
 // STATIC FILES
 // ============================================================
 
-// A böngészőből csak ezek a /js alatti fájlok érhetők el. Minden más
-// (main.js, auth.js, uploads/, starter.bat) a szerver belső ügye.
-// FONTOS: ennek a védelemnek a statikus kiszolgálás ELŐTT kell futnia,
-// különben az express.static már kiadja a fájlt.
-const PUBLIC_JS_FILES = new Set([
-    "creator.js",
-    "chat.js",
-    "index.js",
-    "dropdown.js",
-    "oktatok.js"
-]);
-
-app.use((req, res, next) => {
-
-    let segments;
-
-    try {
-        segments = decodeURIComponent(req.path)
-            .split(/[\\/]+/)
-            .filter(Boolean)
-            .map((segment) => segment.toLowerCase());
-    } catch (error) {
-        return res.status(400).end();
-    }
-
-    const firstSegment = segments[0] || "";
-
-    if (firstSegment === "node_modules") {
-        return res.status(404).end();
-    }
-
-    // /js/<fájl> csak a megengedett listáról; mappa, "..", "." vagy
-    // ismeretlen fájl esetén 404
-    if (firstSegment === "js") {
-
-        if (segments.length !== 2 || !PUBLIC_JS_FILES.has(segments[1])) {
-            return res.status(404).end();
-        }
-    }
-
-    next();
-});
-
 app.use("/css", express.static(path.join(__dirname, "../css")));
 app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 app.use("/images", express.static(path.join(__dirname, "../images")));
+
+// A szerver mappája és a node_modules ne legyen letölthető a böngészőből
+const serverFolderName = path.basename(__dirname).toLowerCase();
+
+app.use((req, res, next) => {
+
+    let firstSegment = "";
+
+    try {
+        firstSegment = decodeURIComponent(req.path)
+            .split(/[\\/]+/)
+            .filter(Boolean)[0] || "";
+    } catch (error) {
+        return res.status(400).end();
+    }
+
+    firstSegment = firstSegment.toLowerCase();
+
+    if (firstSegment === serverFolderName || firstSegment === "node_modules") {
+        return res.status(404).end();
+    }
+
+    next();
+});
 
 
 // Serve the project root from the actual vsc folder regardless of
@@ -364,48 +345,6 @@ app.post("/register", async (req, res) => {
 
         return res.status(400).send(
             "A két jelszó nem egyezik."
-        );
-    }
-
-
-    // Ugyanaz a szabály, mint a register.html-ben: legalább 6 karakter,
-    // 1 szám és 1 speciális karakter. A böngészős ellenőrzést meg lehet
-    // kerülni, ezért a szerver is ellenőrzi.
-    const strongPasswordPattern =
-        /^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/;
-
-    if (
-        typeof password !== "string" ||
-        !strongPasswordPattern.test(password)
-    ) {
-
-        return res.status(400).send(
-            "A jelszónak legalább 6 karakterből kell állnia, és " +
-            "tartalmaznia kell legalább 1 számot és 1 speciális karaktert."
-        );
-    }
-
-
-    if (
-        typeof name !== "string" ||
-        typeof email !== "string" ||
-        name.trim().length === 0 ||
-        name.length > 100
-    ) {
-
-        return res.status(400).send(
-            "Érvénytelen név."
-        );
-    }
-
-
-    if (
-        email.length > 255 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    ) {
-
-        return res.status(400).send(
-            "Érvénytelen e-mail cím."
         );
     }
 
@@ -942,16 +881,6 @@ app.get("/api/tutors", (req, res) => {
             "✅ Tutorok lekérve:",
             results.length
         );
-
-        // Az e-mail cím személyes adat: csak bejelentkezett felhasználó
-        // láthatja, a vendégeknek üresen megy ki (a profil ablak ilyenkor
-        // "Nincs megadva" szöveget mutat).
-        if (!req.session.user) {
-
-            results.forEach((tutor) => {
-                tutor.email = null;
-            });
-        }
 
         res.json(results);
     });
