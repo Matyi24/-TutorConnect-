@@ -481,6 +481,7 @@ body {
     padding: 25px 30px;
 
     overflow-y: auto;
+    overflow-x: hidden;
 
     background:
         linear-gradient(
@@ -499,6 +500,9 @@ body {
     flex-direction: column;
 
     max-width: 65%;
+
+    /* Flex elem alapból nem lehet szűkebb a tartalmánál */
+    min-width: 0;
 }
 
 .message-group.received {
@@ -526,6 +530,10 @@ body {
     font-size: 14px;
 
     line-height: 1.45;
+
+    /* A hosszú, szóköz nélküli szöveg is törjön a buborékon belül */
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .received .message {
