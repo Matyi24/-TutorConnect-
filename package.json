@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "node --watch vsc/js/main.js"
+  "dev": "node --watch vsc/js/main.js",
+   "test": "node --test \"test/*.test.js\""
 },
   "repository": {
     "type": "git",
