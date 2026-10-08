@@ -84,6 +84,36 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 
 // ============================================================
+// PROTECTED PAGES (login required => otherwise 401)
+// ============================================================
+// This must stay BEFORE every express.static() and route below, because
+// the same HTML files can also be reached through /html/foglalas.html,
+// /foglalas.html and /html/foglalas (static serving), not only /foglalas.
+
+const PROTECTED_PAGES = new Set(["foglalas", "foglalasutan"]);
+
+app.use((req, res, next) => {
+    let lastSegment = "";
+
+    try {
+        lastSegment = decodeURIComponent(req.path)
+            .split(/[\\/]+/)
+            .filter(Boolean)
+            .pop() || "";
+    } catch (error) {
+        return res.status(400).end();
+    }
+
+    const pageName = lastSegment.toLowerCase().replace(/\.html?$/, "");
+
+    if (PROTECTED_PAGES.has(pageName) && !(req.session && req.session.user)) {
+        return res.status(401).send("401 - Unauthorized: please log in first.");
+    }
+
+    next();
+});
+
+// ============================================================
 // STATIC FILES
 // ============================================================
 
