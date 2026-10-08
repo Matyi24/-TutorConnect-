@@ -945,6 +945,14 @@ async function openProfile(tutorId) {
         bio;
 
 
+    /* Időpont foglalása gomb (diákoknak) */
+    TCBooking.renderButton(
+        document.getElementById("profileBookingSlot"),
+        tutorId,
+        name
+    );
+
+
     /* =================================================
        MODAL MEGNYITÁSA
     ================================================== */

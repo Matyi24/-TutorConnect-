@@ -445,6 +445,11 @@ async function createNavbar() {
 
     if (isLoggedIn) {
         setupAccountModal(user);
+
+        // Az oktatónak szólunk, ha a profilja még hiányos
+        if (user.role === "TUTOR") {
+            setupProfileReminder();
+        }
     }
 
 
@@ -712,6 +717,64 @@ function injectAccountStyles() {
         }
         .acc-add-row:hover { background: #ebe7fd; }
 
+        .acc-counter { margin-top: 4px; text-align: right; font-size: 12px; color: #8a87a8; }
+        .acc-counter.near-limit { color: #d6336c; font-weight: 700; }
+
+        /* A lábléc linkje (GYIK) a lábléc színét örökölje, ne a böngésző kékjét */
+        .footer a { color: inherit; }
+
+        /* Sáv a navbar alatt: hiányos oktatói profil */
+        .tc-reminder {
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px;
+            padding: 10px 40px; background: #fff4d6; color: #6b4a00;
+            border-bottom: 1px solid #f0d78c; font-size: 14px;
+        }
+        .tc-reminder-text { flex: 1; min-width: 220px; }
+        .tc-reminder-button {
+            padding: 7px 16px; border: 0; border-radius: 10px; background: #5b4de0;
+            color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+        }
+        .tc-reminder-button:hover { background: #4a3ec9; }
+        .tc-reminder-close {
+            width: 30px; height: 30px; padding: 0; border: 0; border-radius: 8px;
+            background: transparent; color: #6b4a00; font-size: 20px; line-height: 1; cursor: pointer;
+        }
+        .tc-reminder-close:hover { background: rgba(107, 74, 0, .12); }
+        @media (max-width: 768px) { .tc-reminder { padding: 10px 20px; } }
+
+        /* Diák: tanulmányaim */
+        .acc-student-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+        .acc-section-sub { margin-top: 6px; }
+        .acc-learn-row { display: grid; grid-template-columns: 1fr 36px; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .acc-student-grid select {
+            width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #d9d4f5;
+            border-radius: 10px; background: #fff; font: inherit; font-size: 14px; color: inherit;
+        }
+        @media (max-width: 520px) { .acc-student-grid { grid-template-columns: 1fr; } }
+
+        /* Fiók törlése */
+        .acc-danger { margin-top: 18px; padding-top: 14px; border-top: 1px solid #e6e1fb; }
+        .acc-danger-link {
+            padding: 0; border: 0; background: transparent; color: #d6336c;
+            font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer;
+        }
+        .acc-danger-box {
+            padding: 14px 16px; border: 1px solid #f5b5c8; border-radius: 12px; background: #fff0f4;
+            color: #7a1d3b; font-size: 13px; line-height: 1.5;
+        }
+        .acc-danger-box p { margin: 0 0 10px; }
+        .acc-danger-box input {
+            box-sizing: border-box; width: 100%; padding: 10px 12px; border: 1px solid #f0a3bb;
+            border-radius: 10px; font: inherit; background: #fff;
+        }
+        .acc-danger-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+        .acc-danger-confirm {
+            padding: 9px 16px; border: 0; border-radius: 10px; background: #d6336c;
+            color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+        }
+        .acc-danger-confirm:hover { background: #b82a5b; }
+        .acc-danger-confirm:disabled { opacity: .6; cursor: default; }
+
         @media (max-width: 520px) {
             .acc-subjects { padding: 16px; }
             .acc-subj-head { display: none; }
@@ -726,6 +789,126 @@ function injectAccountStyles() {
     `;
 
     document.head.appendChild(style);
+}
+
+
+// ============================================================
+// HIÁNYOS OKTATÓI PROFIL FIGYELMEZTETÉS
+// ============================================================
+//
+// Az új oktatónak nincs bemutatkozása és tantárgya, ezért a diákok nem
+// látnak róla semmit. A navbar alatt egy sáv szól, amíg valamelyik
+// hiányzik. A gombja megnyitja a fiókablakot. A ×-szel az adott
+// böngészőmunkamenetre elrejthető. Mentés után újra ellenőrzi magát.
+
+function setupProfileReminder() {
+
+    const DISMISS_KEY = "tcProfileReminderDismissed";
+
+    try {
+        if (sessionStorage.getItem(DISMISS_KEY)) {
+            return;
+        }
+    } catch (error) {
+        // a sessionStorage nem elérhető: a sáv ilyenkor is működik
+    }
+
+    let banner = null;
+
+    function removeBanner() {
+        if (banner) {
+            banner.remove();
+            banner = null;
+        }
+    }
+
+    function showBanner(text) {
+
+        if (!banner) {
+
+            const navbar = document.querySelector(".navbar");
+
+            if (!navbar) {
+                return;
+            }
+
+            banner = document.createElement("div");
+            banner.className = "tc-reminder";
+            banner.setAttribute("role", "status");
+
+            banner.innerHTML = `
+                <span class="tc-reminder-text"></span>
+                <button type="button" class="tc-reminder-button">Profil kitöltése</button>
+                <button type="button" class="tc-reminder-close" aria-label="Elrejtés">×</button>
+            `;
+
+            banner.querySelector(".tc-reminder-button").addEventListener("click", () => {
+                const trigger = document.getElementById("accountButton");
+
+                if (trigger) {
+                    trigger.click();
+                }
+            });
+
+            banner.querySelector(".tc-reminder-close").addEventListener("click", () => {
+
+                try {
+                    sessionStorage.setItem(DISMISS_KEY, "1");
+                } catch (error) {
+                    // nem baj, csak a következő oldalon újra megjelenik
+                }
+
+                removeBanner();
+            });
+
+            navbar.insertAdjacentElement("afterend", banner);
+        }
+
+        banner.querySelector(".tc-reminder-text").textContent = text;
+    }
+
+    async function check() {
+
+        let data;
+
+        try {
+
+            const response = await fetch("/api/account", { credentials: "include" });
+
+            if (!response.ok) {
+                return;
+            }
+
+            data = await response.json();
+
+        } catch (error) {
+            return;
+        }
+
+        const missing = [];
+
+        if (!String(data.bio || "").trim()) {
+            missing.push("bemutatkozás");
+        }
+
+        if (!Array.isArray(data.subjects) || data.subjects.length === 0) {
+            missing.push("tantárgy és óradíj");
+        }
+
+        if (missing.length === 0) {
+            removeBanner();
+            return;
+        }
+
+        showBanner(
+            "Hiányos a profilod, ezért a diákok kevés információt látnak rólad. Hiányzik: " +
+            missing.join(" és ") + "."
+        );
+    }
+
+    document.addEventListener("tc:account-saved", check);
+
+    check();
 }
 
 
@@ -798,7 +981,7 @@ function setupAccountModal(user) {
 
                             <div class="acc-field">
                                 <label for="accEmail">E-mail</label>
-                                <input type="email" id="accEmail" maxlength="30" required>
+                                <input type="email" id="accEmail" maxlength="100" required>
                             </div>
 
                             <div id="accTutorFields" hidden>
@@ -807,6 +990,7 @@ function setupAccountModal(user) {
                                     <label for="accBio">Bemutatkozás</label>
                                     <textarea id="accBio" maxlength="1000"
                                         placeholder="Írj magadról pár mondatot..."></textarea>
+                                    <div class="acc-counter" id="accBioCount" aria-live="polite">0 / 1000</div>
                                 </div>
 
                             </div>
@@ -838,12 +1022,82 @@ function setupAccountModal(user) {
 
                     </div>
 
+                    <!-- STUDENT ONLY: level, grade and what they want help with -->
+                    <div class="acc-subjects" id="accStudentBox" hidden>
+
+                        <div class="acc-section">Tanulmányaim</div>
+                        <p class="acc-hint">
+                            Ezt látják az oktatók, akikkel beszélgetsz.
+                        </p>
+
+                        <div class="acc-student-grid">
+
+                            <div class="acc-field">
+                                <label for="accLevel">Iskolai szint</label>
+                                <select id="accLevel">
+                                    <option value="">Nincs megadva</option>
+                                    <option value="Általános iskola">Általános iskola</option>
+                                    <option value="Középiskola">Középiskola</option>
+                                    <option value="Egyetem / főiskola">Egyetem / főiskola</option>
+                                    <option value="Felnőtt / egyéb">Felnőtt / egyéb</option>
+                                </select>
+                            </div>
+
+                            <div class="acc-field">
+                                <label for="accGrade">Osztály / évfolyam</label>
+                                <input type="text" id="accGrade" maxlength="30"
+                                    placeholder="Pl. 10. osztály, 2. évfolyam">
+                            </div>
+
+                        </div>
+
+                        <div class="acc-section acc-section-sub">Miből kérnél segítséget?</div>
+
+                        <div id="accLearnRows"></div>
+
+                        <button type="button" class="acc-add-row" id="accLearnAdd">
+                            + Tantárgy hozzáadása
+                        </button>
+
+                    </div>
+
                     <div class="acc-message" id="accMessage" role="status"></div>
 
                     <div class="acc-actions">
                         <button type="button" class="logout" id="logoutButton">Kilépés</button>
                         <button type="button" class="acc-cancel" id="accCancel">Mégse</button>
                         <button type="submit" class="acc-save" id="accSave">Mentés</button>
+                    </div>
+
+                    <div class="acc-danger" id="accDanger">
+
+                        <button type="button" class="acc-danger-link" id="accDeleteOpen">
+                            Fiók törlése
+                        </button>
+
+                        <div class="acc-danger-box" id="accDeleteBox" hidden>
+
+                            <p>
+                                <strong>Biztosan törlöd a fiókodat?</strong>
+                                A neved és a személyes adataid anonimizálódnak
+                                („Törölt felhasználó"), a tantárgyaid és a profilod törlődik,
+                                és többé nem tudsz belépni. A korábbi beszélgetéseid szövege
+                                a másik félnél megmarad, de már nem köthető hozzád.
+                                A csatolt fájljaid törlődnek. <strong>Ez nem vonható vissza.</strong>
+                            </p>
+
+                            <input type="password" id="accDeletePw"
+                                placeholder="Jelenlegi jelszavad" autocomplete="current-password">
+
+                            <div class="acc-danger-actions">
+                                <button type="button" class="acc-cancel" id="accDeleteCancel">Mégse</button>
+                                <button type="button" class="acc-danger-confirm" id="accDeleteConfirm">
+                                    Végleges törlés
+                                </button>
+                            </div>
+
+                        </div>
+
                     </div>
 
                 </form>
@@ -873,6 +1127,18 @@ function setupAccountModal(user) {
         field("accNewPw").value = "";
         field("accNewPw2").value = "";
     }
+
+    // Hány karakter van még hátra a bemutatkozásból
+    function updateBioCount() {
+
+        const length = field("accBio").value.length;
+        const counter = field("accBioCount");
+
+        counter.textContent = length + " / 1000";
+        counter.classList.toggle("near-limit", length >= 900);
+    }
+
+    field("accBio").addEventListener("input", updateBioCount);
 
     function setHeader(name) {
         field("accTitle").textContent = name;
@@ -1068,6 +1334,150 @@ function setupAccountModal(user) {
     field("accAddRow").addEventListener("click", () => addSubjectRow());
 
 
+    // ---------------- student: what they want help with ----------------
+
+    // A tantárgy csak egyszer választható: a többi sorban letiltjuk
+    function refreshLearnRows() {
+
+        const rows = field("accLearnRows");
+        const selects = Array.from(rows.querySelectorAll(".acc-subj-select"));
+        const chosen = new Set(selects.map(select => select.value).filter(Boolean));
+
+        selects.forEach(select => {
+            Array.from(select.options).forEach(option => {
+                option.disabled =
+                    option.value !== "" &&
+                    chosen.has(option.value) &&
+                    option.value !== select.value;
+            });
+        });
+
+        field("accLearnAdd").hidden = rows.children.length >= MAX_SUBJECT_ROWS;
+    }
+
+    function addLearnRow(subjectId) {
+
+        const rows = field("accLearnRows");
+
+        if (rows.children.length >= MAX_SUBJECT_ROWS) {
+            return;
+        }
+
+        const row = document.createElement("div");
+        row.className = "acc-learn-row";
+
+        const select = buildSubjectSelect(subjectId);
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "acc-subj-remove";
+        remove.textContent = "×";
+        remove.setAttribute("aria-label", "Sor törlése");
+
+        remove.addEventListener("click", () => {
+
+            if (rows.children.length > 1) {
+                row.remove();
+            } else {
+                select.value = "";
+            }
+
+            refreshLearnRows();
+        });
+
+        select.addEventListener("change", refreshLearnRows);
+
+        row.append(select, remove);
+        rows.appendChild(row);
+
+        refreshLearnRows();
+    }
+
+    async function fillLearnRows(saved) {
+
+        await loadSubjectList();
+
+        field("accLearnRows").innerHTML = "";
+
+        if (saved.length === 0) {
+            addLearnRow();
+        } else {
+            saved.forEach(item => addLearnRow(item.subject_id));
+        }
+    }
+
+    // A kiválasztott tantárgyak azonosítói (az üres sorok kimaradnak)
+    function collectLearning() {
+
+        return Array.from(field("accLearnRows").querySelectorAll(".acc-subj-select"))
+            .map(select => select.value)
+            .filter(Boolean)
+            .map(Number);
+    }
+
+    field("accLearnAdd").addEventListener("click", () => addLearnRow());
+
+
+    // ---------------- delete account (anonymisation) ----------------
+
+    function resetDeleteBox() {
+        field("accDeleteBox").hidden = true;
+        field("accDeleteOpen").hidden = false;
+        field("accDeletePw").value = "";
+    }
+
+    field("accDeleteOpen").addEventListener("click", () => {
+        field("accDeleteBox").hidden = false;
+        field("accDeleteOpen").hidden = true;
+        field("accDeletePw").focus();
+    });
+
+    field("accDeleteCancel").addEventListener("click", resetDeleteBox);
+
+    field("accDeleteConfirm").addEventListener("click", async () => {
+
+        const password = field("accDeletePw").value;
+
+        if (!password) {
+            showMessage("A fiók törléséhez add meg a jelenlegi jelszavad.", "error");
+            return;
+        }
+
+        const button = field("accDeleteConfirm");
+        button.disabled = true;
+        showMessage("Törlés...", "");
+
+        try {
+
+            const response = await fetch("/api/account", {
+                method: "DELETE",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ currentPassword: password })
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                showMessage(data.error || "Nem sikerült törölni a fiókot.", "error");
+                return;
+            }
+
+            // A fiók anonimizálva, a munkamenet megszűnt
+            window.location.href = "/index";
+
+        } catch (error) {
+
+            console.error("Fióktörlési hiba:", error);
+            showMessage("Hálózati hiba, próbáld újra.", "error");
+
+        } finally {
+
+            button.disabled = false;
+        }
+    });
+
+
     // ---------------- open / close ----------------
 
     async function openModal() {
@@ -1078,6 +1488,7 @@ function setupAccountModal(user) {
 
         showMessage("Betöltés...", "");
         clearPasswords();
+        resetDeleteBox();
 
         try {
 
@@ -1097,8 +1508,21 @@ function setupAccountModal(user) {
             field("accTutorFields").hidden = !isTutor;
             field("accSubjectsBox").hidden = !isTutor;
 
+            const isStudent = data.role === "STUDENT";
+            field("accStudentBox").hidden = !isStudent;
+
+            // Az admin fiókot itt nem lehet törölni
+            field("accDanger").hidden = data.role === "ADMIN";
+
+            if (isStudent) {
+                field("accLevel").value = data.school_level || "";
+                field("accGrade").value = data.grade || "";
+                await fillLearnRows(data.learning_subjects || []);
+            }
+
             if (isTutor) {
                 field("accBio").value = data.bio;
+                updateBioCount();
                 await fillSubjectRows(data.subjects || []);
             }
 
@@ -1188,6 +1612,12 @@ function setupAccountModal(user) {
             payload.subjects = subjectList;
         }
 
+        if (!field("accStudentBox").hidden) {
+            payload.school_level = field("accLevel").value;
+            payload.grade = field("accGrade").value;
+            payload.learning_subjects = collectLearning();
+        }
+
         saveButton.disabled = true;
         showMessage("Mentés...", "");
 
@@ -1213,6 +1643,9 @@ function setupAccountModal(user) {
 
             clearPasswords();
             showMessage("Sikeresen mentve.", "success");
+
+            // A hiányos profilra figyelmeztető sáv ebből tudja, hogy újra kell nézni
+            document.dispatchEvent(new CustomEvent("tc:account-saved"));
 
         } catch (error) {
 

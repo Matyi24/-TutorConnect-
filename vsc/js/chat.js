@@ -1539,10 +1539,8 @@ if (messageForm && messageInput) {
 
             console.error("❌ Üzenetküldési hiba:", error);
 
-            // Fájlküldésnél a hibát a felhasználó is látja
-            if (pendingAttachment) {
-                showAttachmentError(error.message);
-            }
+            // A hibát (pl. a másik fél törölte a fiókját) a felhasználó is látja
+            showAttachmentError(error.message);
 
         } finally {
             isSending = false;
@@ -1944,6 +1942,19 @@ function getOtherTutorId() {
 }
 
 
+// A másik fél diákja? (oktatóként beszélgetünk vele)
+function getOtherStudentId() {
+
+    if (!currentUser || currentUser.role !== "TUTOR") {
+        return null;
+    }
+
+    const conversation = findConversation(currentConversationId);
+
+    return conversation ? conversation.student_id : null;
+}
+
+
 function setupChatMenu() {
 
     const button = document.querySelector(".chat-options");
@@ -2001,6 +2012,21 @@ function openChatMenu() {
         item.addEventListener("click", () => {
             closeChatMenu();
             openTutorProfile(getOtherTutorId());
+        });
+
+        chatMenu.appendChild(item);
+
+    } else if (currentConversationId && getOtherStudentId()) {
+
+        // Oktatóként a diák profilját nézhetjük meg
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "chat-menu-item";
+        item.textContent = "Diák profilja";
+
+        item.addEventListener("click", () => {
+            closeChatMenu();
+            openStudentProfile(getOtherStudentId());
         });
 
         chatMenu.appendChild(item);
@@ -2124,6 +2150,29 @@ function getStars(rating) {
 }
 
 
+// Az /api/tutors "id|név|ár;;id|név|ár" formában adja a tantárgyankénti
+// árakat -> [{ id, name, hourly_rate }]
+function parseSubjectPrices(value) {
+
+    if (!value) {
+        return [];
+    }
+
+    return String(value)
+        .split(";;")
+        .map((item) => {
+
+            const [id, name, rate] = item.split("|");
+
+            return {
+                id: Number(id),
+                name: name || "",
+                hourly_rate: Number(rate) || 0
+            };
+        });
+}
+
+
 async function openTutorProfile(tutorId) {
 
     const modal = ensureProfileModal();
@@ -2168,9 +2217,38 @@ async function openTutorProfile(tutorId) {
     const name = tutor.full_name || "Ismeretlen oktató";
     const subjects = tutor.subjects || "Nincs megadott tantárgy";
     const bio = tutor.bio || "Az oktató még nem adott meg bemutatkozást.";
-    const price = Number(tutor.hourly_rate) || 0;
     const rating = Number(tutor.average_rating) || 0;
     const reviewCount = Array.isArray(reviews) ? reviews.length : 0;
+
+    // Az óradíj tantárgyanként más lehet: tartományt és listát mutatunk
+    const prices = parseSubjectPrices(tutor.subject_prices);
+
+    let priceSummary = "Nincs megadva";
+
+    if (prices.length > 0) {
+
+        const rates = prices.map((item) => item.hourly_rate);
+        const min = Math.min(...rates);
+        const max = Math.max(...rates);
+
+        priceSummary = min === max
+            ? `${min.toLocaleString("hu-HU")} Ft / óra`
+            : `${min.toLocaleString("hu-HU")} – ${max.toLocaleString("hu-HU")} Ft / óra`;
+    }
+
+    const pricesHtml = prices.length === 0
+        ? ""
+        : `
+            <h3>Tantárgyak és óradíjak</h3>
+            <ul class="profile-prices">
+                ${prices.map((item) => `
+                    <li>
+                        <span>${escapeHtml(item.name)}</span>
+                        <strong>${item.hourly_rate.toLocaleString("hu-HU")} Ft / óra</strong>
+                    </li>
+                `).join("")}
+            </ul>
+        `;
 
     const reviewsHtml = reviewCount === 0
         ? `<p class="profile-no-reviews">Még nincs értékelés.</p>`
@@ -2214,7 +2292,7 @@ async function openTutorProfile(tutorId) {
         <div class="profile-facts">
             <div>
                 <span>Óradíj</span>
-                <strong>${price.toLocaleString("hu-HU")} Ft / óra</strong>
+                <strong>${escapeHtml(priceSummary)}</strong>
             </div>
 
             <div>
@@ -2223,12 +2301,23 @@ async function openTutorProfile(tutorId) {
             </div>
         </div>
 
+        <div id="chatBookingSlot"></div>
+
+        ${pricesHtml}
+
         <h3>Rólam</h3>
         <p class="profile-bio">${escapeHtml(bio)}</p>
 
         <h3>Vélemények</h3>
         <div class="profile-reviews">${reviewsHtml}</div>
     `;
+
+    // Időpont foglalása gomb (a diák az oktató profiljából is foglalhat)
+    TCBooking.renderButton(
+        content.querySelector("#chatBookingSlot"),
+        tutorId,
+        name
+    );
 }
 
 
@@ -2521,4 +2610,89 @@ function setupMessageEdit() {
             cancelEditingMessage();
         }
     });
+}
+
+
+// ============================================================
+// DIÁK PROFIL (oktatóknak)
+// ============================================================
+//
+// Az oktató a ⋮ menüből megnézheti, kivel beszélget: iskolai szint,
+// osztály és hogy miből kér segítséget. E-mail cím nem jelenik meg.
+
+async function openStudentProfile(studentId) {
+
+    const modal = ensureProfileModal();
+    const content = modal.querySelector(".profile-content");
+
+    content.innerHTML = `<p class="profile-loading">Betöltés...</p>`;
+
+    modal.classList.add("active");
+    modal.setAttribute("aria-hidden", "false");
+
+    let student;
+
+    try {
+
+        const response = await fetch(
+            `/api/students/${encodeURIComponent(studentId)}/profile`
+        );
+
+        if (!response.ok) {
+            throw new Error("Nem sikerült lekérni a diák profilját.");
+        }
+
+        student = await response.json();
+
+    } catch (error) {
+
+        console.error("❌ Diák profil betöltési hiba:", error);
+
+        content.innerHTML = `
+            <p class="profile-loading">Nem sikerült betölteni a profilt.</p>
+        `;
+
+        return;
+    }
+
+    const name = student.name || "Ismeretlen diák";
+
+    const summary = [student.school_level, student.grade]
+        .filter(Boolean)
+        .join(" · ");
+
+    const subjectsHtml = student.subjects.length === 0
+        ? `<p class="profile-no-reviews">A diák még nem adott meg tantárgyat.</p>`
+        : `<div class="profile-chips">${
+            student.subjects.map((subject) =>
+                `<span class="profile-chip">${escapeHtml(subject)}</span>`
+            ).join("")
+        }</div>`;
+
+    content.innerHTML = `
+        <div class="profile-head">
+            <div class="avatar large">${escapeHtml(getInitials(name))}</div>
+
+            <div>
+                <span class="profile-label">DIÁK PROFIL</span>
+                <h2>${escapeHtml(name)}</h2>
+                <p class="profile-subjects">${escapeHtml(summary || "Nincs megadott adat")}</p>
+            </div>
+        </div>
+
+        <div class="profile-facts">
+            <div>
+                <span>Iskolai szint</span>
+                <strong>${escapeHtml(student.school_level || "Nincs megadva")}</strong>
+            </div>
+
+            <div>
+                <span>Osztály / évfolyam</span>
+                <strong>${escapeHtml(student.grade || "Nincs megadva")}</strong>
+            </div>
+        </div>
+
+        <h3>Ebből kér segítséget</h3>
+        ${subjectsHtml}
+    `;
 }

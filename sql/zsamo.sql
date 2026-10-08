@@ -54,8 +54,10 @@ CREATE TABLE `bookings` (
   `subject_id` int(11) DEFAULT NULL,
   `start_time` timestamp NULL DEFAULT NULL,
   `end_time` timestamp NULL DEFAULT NULL,
-  `status_` enum('PENDING','CONFIRMED','REJECTED','COMPLETED') DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL
+  `status_` enum('PENDING','CONFIRMED','REJECTED','COMPLETED','CANCELLED') DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `price` int(10) UNSIGNED DEFAULT NULL,
+  `note` varchar(300) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_time`, `end_time`, `status_`, `created_at`) VALUES
@@ -205,12 +207,15 @@ INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`, `hourly_rate`) VALUES
 CREATE TABLE `users` (
   `id` int(10) NOT NULL,
   `full_name` varchar(60) NOT NULL,
-  `email` varchar(30) NOT NULL,
+  `email` varchar(100) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('STUDENT','TUTOR','ADMIN','') NOT NULL,
   `bio` text NOT NULL,
   `hourly_rate` decimal(65,0) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `school_level` varchar(30) DEFAULT NULL,
+  `grade` varchar(30) DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
@@ -321,6 +326,17 @@ ALTER TABLE `reviews`
 ALTER TABLE `tutor_subjects`
   ADD CONSTRAINT `tutor_subjects_ibfk_1` FOREIGN KEY (`tutor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `tutor_subjects_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE;
+--
+-- Table structure for table `student_subjects`
+-- (miből kér segítséget a diák)
+--
+
+CREATE TABLE `student_subjects` (
+  `student_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  PRIMARY KEY (`student_id`,`subject_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

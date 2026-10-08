@@ -6,53 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/foglalas.css">
-    <title>TutorConnect</title>
+    <title>Foglalásaim | TutorConnect</title>
 </head>
 
 <body>
-<div class="dashboard-section">
-        <h2 class="section-title">Válasszon egyet:</h2>
-        
-        <div class="tutor-cards-container">
-            <!-- 1. Kártya: Közelgő foglalásaim -->
-            <a href="foglalasutan" class="tutor-card">
-                <div class="card-icon">📅</div>
-                <div class="card-content">
-                    <h3>Közelgő foglalásaim</h3>
-                    <span class="card-arrow">&rarr;</span>
-                </div>
-            </a>
+<main class="dashboard-section">
+    <h2 class="section-title">Foglalásaim</h2>
+    <p class="section-sub">Kövesd nyomon az óráidat, és kezeld a foglalásokat egy helyen.</p>
 
-            <!-- 2. Kártya: Függőben lévő foglalásaim -->
-            <a href="foglalasutan" class="tutor-card">
-                <div class="card-icon">⏳</div>
-                <div class="card-content">
-                    <h3>Függőben lévő foglalásaim</h3>
-                    <span class="card-arrow">&rarr;</span>
-                </div>
-            </a>
-
-            <!-- 3. Kártya: Lemondott foglalásaim -->
-            <a href="foglalasutan" class="tutor-card">
-                <div class="card-icon">❌</div>
-                <div class="card-content">
-                    <h3>Lemondott foglalásaim</h3>
-                    <span class="card-arrow">&rarr;</span>
-                </div>
-            </a>
-
-            <!-- 4. Kártya: Korábbi foglalásaim -->
-            <a href="foglalasutan" class="tutor-card">
-                <div class="card-icon">📁</div>
-                <div class="card-content">
-                    <h3>Korábbi foglalásaim</h3>
-                    <span class="card-arrow">&rarr;</span>
-                </div>
-            </a>
-        </div>
+    <!-- A tartalmat a foglalas.js tölti fel (szerepkör szerint) -->
+    <div id="hubRoot">
+        <p class="hub-message">Betöltés...</p>
     </div>
+</main>
 
 </body>
 <script src="/js/creator.js"></script>
+<script src="/js/foglalas.js"></script>
 
 </html>

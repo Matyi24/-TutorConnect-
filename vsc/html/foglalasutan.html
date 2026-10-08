@@ -6,12 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/foglalasutan.css">
-    <title>TutorConnect</title>
+    <title>Foglalások | TutorConnect</title>
 </head>
 
 <body>
-    
+<main class="bk-page">
+
+    <a class="bk-back" href="/foglalas">&larr; Vissza</a>
+
+    <h2 class="bk-title">Foglalások</h2>
+
+    <!-- Állapotfülek (a számokkal) -->
+    <nav class="bk-tabs" id="bkTabs" aria-label="Foglalások állapota"></nav>
+
+    <div class="bk-feedback" id="bkFeedback" role="status"></div>
+
+    <!-- A foglalások listája -->
+    <div id="bkList"><p class="bk-empty">Betöltés...</p></div>
+</main>
+
 </body>
 <script src="/js/creator.js"></script>
+<script src="/js/foglalasutan.js"></script>
 
 </html>

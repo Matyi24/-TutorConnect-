@@ -83,6 +83,24 @@ const sessionMiddleware = session({
 
 app.use(sessionMiddleware);
 
+// A törölt (anonimizált) fiókok azonosítói. Ha egy ilyen felhasználónak
+// még él egy munkamenete egy másik böngészőben, a következő kérésnél
+// kijelentkeztetjük. Induláskor az adatbázisból töltődik fel.
+const deletedUserIds = new Set();
+
+app.use((req, res, next) => {
+
+    if (
+        req.session &&
+        req.session.user &&
+        deletedUserIds.has(Number(req.session.user.id))
+    ) {
+        delete req.session.user;
+    }
+
+    next();
+});
+
 // ============================================================
 // STATIC FILES
 // ============================================================
@@ -345,6 +363,22 @@ app.post("/register", async (req, res) => {
 
         return res.status(400).send(
             "A két jelszó nem egyezik."
+        );
+    }
+
+
+    if (String(name).length > 60) {
+
+        return res.status(400).send(
+            "A név legfeljebb 60 karakter lehet."
+        );
+    }
+
+
+    if (String(email).length > MAX_EMAIL_LENGTH) {
+
+        return res.status(400).send(
+            "Az e-mail cím legfeljebb " + MAX_EMAIL_LENGTH + " karakter lehet."
         );
     }
 
@@ -805,6 +839,9 @@ db.connect(
         );
 
         ensureMessageColumns();
+        ensureUserEmailLength();
+        ensureProfileSchema();
+        ensureBookingSchema();
 
         console.log(
             "🖥️ Host: localhost"
@@ -882,6 +919,7 @@ app.get("/api/tutors", (req, res) => {
             ON review_stats.tutor_id = u.id
 
         WHERE u.role = 'TUTOR'
+          AND u.deleted_at IS NULL
 
         GROUP BY
             u.id,
@@ -1006,7 +1044,7 @@ app.get("/api/stats", (req, res) => {
 
     const sql = `
         SELECT
-            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR') AS tutor_count,
+            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL) AS tutor_count,
             (SELECT COUNT(*) FROM bookings) AS booking_count,
             (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
     `;
@@ -1225,7 +1263,7 @@ app.post("/api/conversations", (req, res) => {
 
     // 3. Létezik ez az oktató?
     db.query(
-        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR'",
+        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
         [tutorId],
         (err, tutors) => {
 
@@ -1486,7 +1524,11 @@ app.post("/api/conversations/:id/attachments", (req, res) => {
 
         // Résztvevője-e a bejelentkezett user ennek a beszélgetésnek?
         const checkSql = `
-            SELECT id, student_id, tutor_id FROM conversations
+            SELECT id, student_id, tutor_id,
+                   (SELECT COUNT(*) FROM users
+                    WHERE id IN (conversations.student_id, conversations.tutor_id)
+                      AND deleted_at IS NOT NULL) AS deleted_count
+            FROM conversations
             WHERE id = ?
               AND (student_id = ? OR tutor_id = ?)
         `;
@@ -1503,6 +1545,14 @@ app.post("/api/conversations/:id/attachments", (req, res) => {
                 discard();
                 return res.status(403).json({
                     error: "Nem vagy résztvevője ennek a beszélgetésnek"
+                });
+            }
+
+            // A másik fél törölte a fiókját: neki már nem lehet küldeni
+            if (Number(rows[0].deleted_count) > 0) {
+                discard();
+                return res.status(403).json({
+                    error: "A beszélgetés másik tagja törölte a fiókját."
                 });
             }
 
@@ -1735,7 +1785,11 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 
     // 3. Résztvevője-e a bejelentkezett user ennek a beszélgetésnek?
     const checkSql = `
-        SELECT id, student_id, tutor_id FROM conversations
+        SELECT id, student_id, tutor_id,
+               (SELECT COUNT(*) FROM users
+                WHERE id IN (conversations.student_id, conversations.tutor_id)
+                  AND deleted_at IS NOT NULL) AS deleted_count
+        FROM conversations
         WHERE id = ?
           AND (student_id = ? OR tutor_id = ?)
     `;
@@ -1750,6 +1804,13 @@ app.post("/api/conversations/:id/messages", (req, res) => {
         if (rows.length === 0) {
             return res.status(403).json({
                 error: "Nem vagy résztvevője ennek a beszélgetésnek"
+            });
+        }
+
+        // A másik fél törölte a fiókját: neki már nem lehet írni
+        if (Number(rows[0].deleted_count) > 0) {
+            return res.status(403).json({
+                error: "A beszélgetés másik tagja törölte a fiókját."
             });
         }
 
@@ -1810,6 +1871,189 @@ app.post("/api/conversations/:id/messages", (req, res) => {
 // migráció), így az adatbázist nem kell kézzel módosítani.
 //   deleted_at - mikor vonták vissza az üzenetet
 //   edited_at  - mikor szerkesztették utoljára az üzenetet
+// Diák profil és fióktörlés: a hiányzó oszlopok és a tábla létrehozása
+// induláskor (egyszeri migráció), a törölt fiókok betöltése.
+//   users.school_level  - iskolai szint (pl. "Középiskola")
+//   users.grade         - osztály / évfolyam (szabad szöveg)
+//   users.deleted_at    - mikor törölték (anonimizálták) a fiókot
+//   student_subjects    - miből kér segítséget a diák
+async function ensureProfileSchema() {
+
+    try {
+
+        const pool = db.promise();
+
+        const columns = [
+            ["school_level", "VARCHAR(30) NULL DEFAULT NULL"],
+            ["grade", "VARCHAR(30) NULL DEFAULT NULL"],
+            ["deleted_at", "TIMESTAMP NULL DEFAULT NULL"]
+        ];
+
+        for (const [column, definition] of columns) {
+
+            const [found] = await pool.query(
+                "SHOW COLUMNS FROM users LIKE ?",
+                [column]
+            );
+
+            if (found.length === 0) {
+
+                // Az oszlopnév fix listából jön, nem a felhasználótól
+                await pool.query(
+                    `ALTER TABLE users ADD COLUMN ${column} ${definition}`
+                );
+
+                console.log(`✅ users.${column} oszlop létrehozva`);
+            }
+        }
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS student_subjects (
+                student_id INT NOT NULL,
+                subject_id INT NOT NULL,
+                PRIMARY KEY (student_id, subject_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+
+        const [deleted] = await pool.query(
+            "SELECT id FROM users WHERE deleted_at IS NOT NULL"
+        );
+
+        deleted.forEach((row) => deletedUserIds.add(Number(row.id)));
+
+    } catch (err) {
+
+        console.error("❌ SQL hiba (profil séma):", err);
+    }
+}
+
+
+// Foglalás: a hiányzó oszlopok és a lemondás státusza.
+//   bookings.status_  - új érték: CANCELLED (lemondta valamelyik fél)
+//   bookings.price    - a foglaláskor érvényes ár (Ft)
+//   bookings.note     - a diák üzenete az oktatónak
+async function ensureBookingSchema() {
+
+    try {
+
+        const pool = db.promise();
+
+        const [status] = await pool.query(
+            `SELECT COLUMN_TYPE AS type
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'bookings'
+               AND COLUMN_NAME = 'status_'`
+        );
+
+        if (status.length > 0 && !String(status[0].type).includes("CANCELLED")) {
+
+            await pool.query(
+                `ALTER TABLE bookings MODIFY status_
+                 ENUM('PENDING','CONFIRMED','REJECTED','COMPLETED','CANCELLED')
+                 DEFAULT NULL`
+            );
+
+            console.log("✅ bookings.status_ bővítve: CANCELLED");
+        }
+
+        const columns = [
+            ["price", "INT UNSIGNED NULL DEFAULT NULL"],
+            ["note", "VARCHAR(300) NULL DEFAULT NULL"]
+        ];
+
+        for (const [column, definition] of columns) {
+
+            const [found] = await pool.query(
+                "SHOW COLUMNS FROM bookings LIKE ?",
+                [column]
+            );
+
+            if (found.length === 0) {
+
+                // Az oszlopnév fix listából jön, nem a felhasználótól
+                await pool.query(
+                    `ALTER TABLE bookings ADD COLUMN ${column} ${definition}`
+                );
+
+                console.log(`✅ bookings.${column} oszlop létrehozva`);
+            }
+        }
+
+        // Egy foglaláshoz legfeljebb egy értékelés (ha az adatbázisban már van
+        // egyedi index a booking_id-n, nem hozunk létre újat). Ha a régi adatokban
+        // már van duplikált értékelés, az index nem hozható létre: ilyenkor
+        // csak figyelmeztetünk, a szerver ettől még ellenőrzi a duplikációt.
+        const [index] = await pool.query(
+            "SHOW INDEX FROM reviews WHERE Column_name = 'booking_id' AND Non_unique = 0"
+        );
+
+        if (index.length === 0) {
+
+            try {
+
+                await pool.query(
+                    "ALTER TABLE reviews ADD UNIQUE KEY uq_reviews_booking (booking_id)"
+                );
+
+                console.log("✅ reviews: egyedi index (foglalásonként 1 értékelés)");
+
+            } catch (indexError) {
+
+                console.warn(
+                    "⚠️ reviews: az egyedi index nem hozható létre " +
+                    "(van duplikált értékelés a régi adatokban):",
+                    indexError.code
+                );
+            }
+        }
+
+    } catch (err) {
+
+        console.error("❌ SQL hiba (foglalás séma):", err);
+    }
+}
+
+
+// A users.email oszlop eredetileg VARCHAR(30) volt, amibe a hosszabb
+// valódi e-mail címek nem fértek el. Induláskor VARCHAR(100)-ra bővítjük
+// (a UNIQUE kulcs megmarad).
+function ensureUserEmailLength() {
+
+    db.query(
+        `SELECT CHARACTER_MAXIMUM_LENGTH AS len
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'users'
+           AND COLUMN_NAME = 'email'`,
+        (err, rows) => {
+
+            if (err) {
+                console.error("❌ SQL hiba (email hossz ellenőrzés):", err);
+                return;
+            }
+
+            if (rows.length === 0 || Number(rows[0].len) >= MAX_EMAIL_LENGTH) {
+                return;
+            }
+
+            db.query(
+                `ALTER TABLE users MODIFY email VARCHAR(${MAX_EMAIL_LENGTH}) NOT NULL`,
+                (err) => {
+
+                    if (err) {
+                        console.error("❌ SQL hiba (email bővítés):", err);
+                        return;
+                    }
+
+                    console.log(`✅ users.email VARCHAR(${MAX_EMAIL_LENGTH})-ra bővítve`);
+                }
+            );
+        }
+    );
+}
+
+
 function ensureMessageColumns() {
 
     ["deleted_at", "edited_at"].forEach((column) => {
@@ -2066,7 +2310,11 @@ server.on("upgrade", (req, socket, head) => {
     // A session cookie alapján megnézzük, ki csatlakozik
     sessionMiddleware(req, {}, () => {
 
-        if (!req.session || !req.session.user) {
+        if (
+            !req.session ||
+            !req.session.user ||
+            deletedUserIds.has(Number(req.session.user.id))
+        ) {
             socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
             socket.destroy();
             return;
@@ -2176,6 +2424,19 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_TUTOR_SUBJECTS = 10;
 const MAX_HOURLY_RATE = 100000;
 
+// A users.email oszlop hossza (lásd ensureUserEmailLength)
+const MAX_EMAIL_LENGTH = 100;
+
+// Diák profil
+const SCHOOL_LEVELS = [
+    "Általános iskola",
+    "Középiskola",
+    "Egyetem / főiskola",
+    "Felnőtt / egyéb"
+];
+const MAX_STUDENT_SUBJECTS = 10;
+const MAX_GRADE_LENGTH = 30;
+
 
 app.get("/api/account", async (req, res) => {
 
@@ -2186,7 +2447,7 @@ app.get("/api/account", async (req, res) => {
     try {
 
         const [rows] = await db.promise().query(
-            `SELECT id, full_name, email, role, bio
+            `SELECT id, full_name, email, role, bio, school_level, grade
              FROM users
              WHERE id = ?
              LIMIT 1`,
@@ -2222,6 +2483,23 @@ app.get("/api/account", async (req, res) => {
             account.subjects = subjects;
         }
 
+        // A diák tanulmányai
+        if (u.role === "STUDENT") {
+
+            const [learning] = await db.promise().query(
+                `SELECT ss.subject_id, s.name
+                 FROM student_subjects ss
+                 INNER JOIN subjects s ON s.id = ss.subject_id
+                 WHERE ss.student_id = ?
+                 ORDER BY s.name`,
+                [u.id]
+            );
+
+            account.school_level = u.school_level || "";
+            account.grade = u.grade || "";
+            account.learning_subjects = learning;
+        }
+
         res.json(account);
 
     } catch (err) {
@@ -2252,8 +2530,10 @@ app.put("/api/account", async (req, res) => {
         return res.status(400).json({ error: "A név 2 és 60 karakter között legyen." });
     }
 
-    if (!EMAIL_PATTERN.test(email) || email.length > 30) {
-        return res.status(400).json({ error: "Adj meg egy érvényes e-mail címet (legfeljebb 30 karakter)." });
+    if (!EMAIL_PATTERN.test(email) || email.length > MAX_EMAIL_LENGTH) {
+        return res.status(400).json({
+            error: "Adj meg egy érvényes e-mail címet (legfeljebb " + MAX_EMAIL_LENGTH + " karakter)."
+        });
     }
 
     if (newPassword && !STRONG_PASSWORD.test(newPassword)) {
@@ -2277,6 +2557,7 @@ app.put("/api/account", async (req, res) => {
 
         const current = rows[0];
         const isTutor = current.role === "TUTOR";
+        const isStudent = current.role === "STUDENT";
 
 
         // ---------------- tutor only: bio + subjects ----------------
@@ -2339,6 +2620,76 @@ app.put("/api/account", async (req, res) => {
         }
 
 
+        // ---------------- student only: level, grade, learning subjects ----------------
+
+        let schoolLevel;            // undefined = "don't touch"
+        let grade;
+        let learningRows = null;    // null = "don't touch the subjects"
+
+        if (isStudent) {
+
+            if (req.body.school_level !== undefined) {
+
+                schoolLevel = String(req.body.school_level || "").trim();
+
+                if (schoolLevel && !SCHOOL_LEVELS.includes(schoolLevel)) {
+                    return res.status(400).json({ error: "Érvénytelen iskolai szint." });
+                }
+            }
+
+            if (req.body.grade !== undefined) {
+
+                grade = String(req.body.grade || "").trim();
+
+                if (grade.length > MAX_GRADE_LENGTH) {
+                    return res.status(400).json({
+                        error: "Az osztály legfeljebb " + MAX_GRADE_LENGTH + " karakter lehet."
+                    });
+                }
+            }
+
+            if (Array.isArray(req.body.learning_subjects)) {
+
+                if (req.body.learning_subjects.length > MAX_STUDENT_SUBJECTS) {
+                    return res.status(400).json({
+                        error: "Legfeljebb " + MAX_STUDENT_SUBJECTS + " tantárgyat adhatsz meg."
+                    });
+                }
+
+                const seen = new Set();
+                learningRows = [];
+
+                for (const item of req.body.learning_subjects) {
+
+                    const subjectId = Number(item);
+
+                    if (!Number.isInteger(subjectId) || subjectId <= 0) {
+                        return res.status(400).json({ error: "Érvénytelen tantárgy." });
+                    }
+
+                    if (seen.has(subjectId)) {
+                        return res.status(400).json({ error: "Egy tantárgy csak egyszer szerepelhet." });
+                    }
+
+                    seen.add(subjectId);
+                    learningRows.push([userId, subjectId]);
+                }
+
+                if (seen.size > 0) {
+
+                    const [found] = await db.promise().query(
+                        "SELECT id FROM subjects WHERE id IN (?)",
+                        [[...seen]]
+                    );
+
+                    if (found.length !== seen.size) {
+                        return res.status(400).json({ error: "Ismeretlen tantárgy." });
+                    }
+                }
+            }
+        }
+
+
         // ---------------- e-mail / password change needs the current password ----------------
 
         const emailChanged = email.toLowerCase() !== current.email.toLowerCase();
@@ -2367,6 +2718,16 @@ app.put("/api/account", async (req, res) => {
         if (isTutor) {
             fields.push("bio = ?");
             values.push(bio);
+        }
+
+        if (isStudent && schoolLevel !== undefined) {
+            fields.push("school_level = ?");
+            values.push(schoolLevel || null);
+        }
+
+        if (isStudent && grade !== undefined) {
+            fields.push("grade = ?");
+            values.push(grade || null);
         }
 
         if (newPassword) {
@@ -2400,6 +2761,24 @@ app.put("/api/account", async (req, res) => {
         }
 
 
+        // ---------------- replace the student's learning subjects ----------------
+
+        if (learningRows !== null) {
+
+            await db.promise().query(
+                "DELETE FROM student_subjects WHERE student_id = ?",
+                [userId]
+            );
+
+            if (learningRows.length > 0) {
+                await db.promise().query(
+                    "INSERT INTO student_subjects (student_id, subject_id) VALUES ?",
+                    [learningRows]
+                );
+            }
+        }
+
+
         // Keep the session in sync so the navbar shows the new data
         req.session.user.name = name;
         req.session.user.email = email;
@@ -2422,6 +2801,928 @@ app.put("/api/account", async (req, res) => {
 
         console.error("❌ PUT /api/account error:", err);
         res.status(500).json({ error: "Nem sikerült menteni a módosításokat." });
+    }
+});
+
+
+
+// ============================================================
+// BOOKINGS (foglalás)
+// ============================================================
+//
+// Menete:
+//   1. Az oktató szabad időpontokat ad meg (availabilities).
+//   2. A diák kiválaszt egyet + egy tantárgyat -> a foglalás PENDING,
+//      az időpont foglalt (is_booked = 1).
+//   3. Az oktató elfogadja (CONFIRMED) vagy elutasítja (REJECTED).
+//      Bármelyik fél lemondhatja (CANCELLED) az óra kezdete előtt.
+//      Elutasításkor és lemondáskor az időpont újra szabad lesz.
+//   4. Az elfogadott foglalás az óra végén magától COMPLETED lesz
+//      (ez után lehet értékelni).
+//
+// Az időpont lefoglalása egyetlen atomi UPDATE-tel történik, így két
+// diák nem foglalhatja le ugyanazt.
+
+const BOOKING_FILTERS = {
+    pending:   "b.status_ = 'PENDING' AND b.start_time >= NOW()",
+    upcoming:  "b.status_ = 'CONFIRMED' AND b.end_time >= NOW()",
+    cancelled: "b.status_ IN ('REJECTED', 'CANCELLED')",
+    past:      "b.status_ = 'COMPLETED'"
+};
+
+const SLOT_MINUTES = [30, 45, 60, 90, 120];
+const MAX_REPEAT_WEEKS = 12;
+const MAX_FUTURE_SLOTS = 300;
+const MAX_DAYS_AHEAD = 120;
+const MAX_BOOKING_NOTE = 300;
+
+
+// Lejárt foglalások rendezése (minden foglalás-lekérés előtt)
+async function refreshBookingStatuses() {
+
+    const pool = db.promise();
+
+    // Az óra véget ért: teljesítettnek számít
+    await pool.query(
+        `UPDATE bookings SET status_ = 'COMPLETED'
+         WHERE status_ = 'CONFIRMED' AND end_time < NOW()`
+    );
+
+    // Senki nem hagyta jóvá, és az időpont elmúlt: lejárt
+    await pool.query(
+        `UPDATE bookings SET status_ = 'CANCELLED'
+         WHERE status_ = 'PENDING' AND start_time < NOW()`
+    );
+}
+
+
+function requireLogin(req, res) {
+
+    if (!req.session.user) {
+        res.status(401).json({ error: "Nem vagy bejelentkezve." });
+        return false;
+    }
+
+    return true;
+}
+
+
+// ---------------- oktató: szabad időpontok kezelése ----------------
+
+app.get("/api/availability", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    if (req.session.user.role !== "TUTOR") {
+        return res.status(403).json({ error: "Csak oktatónak." });
+    }
+
+    try {
+
+        const [rows] = await db.promise().query(
+            `SELECT id, start_time, end_time, is_booked
+             FROM availabilities
+             WHERE tutor_id = ? AND end_time > NOW()
+             ORDER BY start_time
+             LIMIT ?`,
+            [req.session.user.id, MAX_FUTURE_SLOTS]
+        );
+
+        res.json(rows);
+
+    } catch (err) {
+        console.error("❌ GET /api/availability error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+app.post("/api/availability", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    if (req.session.user.role !== "TUTOR") {
+        return res.status(403).json({ error: "Csak oktató adhat meg időpontot." });
+    }
+
+    const userId = req.session.user.id;
+
+    const startText = String(req.body.start || "");
+    const minutes = Number(req.body.minutes);
+    const repeatWeeks = Number(req.body.repeat_weeks || 1);
+
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(startText)) {
+        return res.status(400).json({ error: "Érvénytelen kezdési időpont." });
+    }
+
+    const firstStart = new Date(startText);
+
+    if (Number.isNaN(firstStart.getTime())) {
+        return res.status(400).json({ error: "Érvénytelen kezdési időpont." });
+    }
+
+    if (!SLOT_MINUTES.includes(minutes)) {
+        return res.status(400).json({ error: "Érvénytelen időtartam." });
+    }
+
+    if (
+        !Number.isInteger(repeatWeeks) ||
+        repeatWeeks < 1 ||
+        repeatWeeks > MAX_REPEAT_WEEKS
+    ) {
+        return res.status(400).json({
+            error: "Az ismétlés 1 és " + MAX_REPEAT_WEEKS + " hét között legyen."
+        });
+    }
+
+    const now = new Date();
+    const horizon = new Date(now.getTime() + MAX_DAYS_AHEAD * 24 * 3600 * 1000);
+
+    if (firstStart <= now) {
+        return res.status(400).json({ error: "Az időpont legyen a jövőben." });
+    }
+
+    try {
+
+        const pool = db.promise();
+
+        const [count] = await pool.query(
+            "SELECT COUNT(*) AS n FROM availabilities WHERE tutor_id = ? AND end_time > NOW()",
+            [userId]
+        );
+
+        if (Number(count[0].n) + repeatWeeks > MAX_FUTURE_SLOTS) {
+            return res.status(400).json({
+                error: "Legfeljebb " + MAX_FUTURE_SLOTS + " jövőbeli időpontod lehet."
+            });
+        }
+
+        let created = 0;
+        let skipped = 0;
+
+        for (let week = 0; week < repeatWeeks; week++) {
+
+            const start = new Date(firstStart);
+            start.setDate(start.getDate() + 7 * week);
+
+            const end = new Date(start.getTime() + minutes * 60 * 1000);
+
+            // Túl messzi időpontot nem veszünk fel
+            if (start > horizon) {
+                skipped++;
+                continue;
+            }
+
+            // Ütközik egy meglévő időponttal?
+            const [overlap] = await pool.query(
+                `SELECT id FROM availabilities
+                 WHERE tutor_id = ? AND start_time < ? AND end_time > ?
+                 LIMIT 1`,
+                [userId, end, start]
+            );
+
+            if (overlap.length > 0) {
+                skipped++;
+                continue;
+            }
+
+            await pool.query(
+                `INSERT INTO availabilities (tutor_id, start_time, end_time, is_booked)
+                 VALUES (?, ?, ?, 0)`,
+                [userId, start, end]
+            );
+
+            created++;
+        }
+
+        if (created === 0) {
+            return res.status(409).json({
+                error: "Az időpont ütközik egy már megadottal, vagy túl messze van."
+            });
+        }
+
+        res.status(201).json({ created, skipped });
+
+    } catch (err) {
+        console.error("❌ POST /api/availability error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+app.delete("/api/availability/:id", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    if (req.session.user.role !== "TUTOR") {
+        return res.status(403).json({ error: "Csak oktatónak." });
+    }
+
+    const slotId = Number(req.params.id);
+
+    if (!Number.isInteger(slotId) || slotId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen időpont." });
+    }
+
+    try {
+
+        // Csak a saját, még le nem foglalt időpont törölhető
+        const [result] = await db.promise().query(
+            "DELETE FROM availabilities WHERE id = ? AND tutor_id = ? AND is_booked = 0",
+            [slotId, req.session.user.id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                error: "Az időpont nem található, vagy már le van foglalva."
+            });
+        }
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error("❌ DELETE /api/availability error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+// ---------------- diák: szabad időpontok és tantárgyak ----------------
+
+app.get("/api/tutors/:id/availability", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    const tutorId = Number(req.params.id);
+
+    if (!Number.isInteger(tutorId) || tutorId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen oktató." });
+    }
+
+    try {
+
+        const pool = db.promise();
+
+        const [tutor] = await pool.query(
+            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+            [tutorId]
+        );
+
+        if (tutor.length === 0) {
+            return res.status(404).json({ error: "Az oktató nem található." });
+        }
+
+        const [slots] = await pool.query(
+            `SELECT id, start_time, end_time
+             FROM availabilities
+             WHERE tutor_id = ? AND is_booked = 0 AND start_time > NOW()
+             ORDER BY start_time
+             LIMIT 100`,
+            [tutorId]
+        );
+
+        const [subjects] = await pool.query(
+            `SELECT s.id, s.name, ts.hourly_rate
+             FROM tutor_subjects ts
+             INNER JOIN subjects s ON s.id = ts.subject_id
+             WHERE ts.tutor_id = ?
+             ORDER BY s.name`,
+            [tutorId]
+        );
+
+        res.json({ slots, subjects });
+
+    } catch (err) {
+        console.error("❌ GET /api/tutors/:id/availability error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+// ---------------- diák: foglalás létrehozása ----------------
+
+app.post("/api/bookings", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    if (req.session.user.role !== "STUDENT") {
+        return res.status(403).json({ error: "Csak diák foglalhat időpontot." });
+    }
+
+    const studentId = req.session.user.id;
+
+    const slotId = Number(req.body.availability_id);
+    const subjectId = Number(req.body.subject_id);
+    const note = String(req.body.note || "").trim();
+
+    if (!Number.isInteger(slotId) || slotId <= 0) {
+        return res.status(400).json({ error: "Válassz időpontot." });
+    }
+
+    if (!Number.isInteger(subjectId) || subjectId <= 0) {
+        return res.status(400).json({ error: "Válassz tantárgyat." });
+    }
+
+    if (note.length > MAX_BOOKING_NOTE) {
+        return res.status(400).json({
+            error: "Az üzenet legfeljebb " + MAX_BOOKING_NOTE + " karakter lehet."
+        });
+    }
+
+    try {
+
+        const pool = db.promise();
+
+        const [slots] = await pool.query(
+            `SELECT a.id, a.tutor_id, a.start_time, a.end_time
+             FROM availabilities a
+             INNER JOIN users u ON u.id = a.tutor_id
+             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL`,
+            [slotId]
+        );
+
+        if (slots.length === 0) {
+            return res.status(404).json({ error: "Az időpont nem található." });
+        }
+
+        const slot = slots[0];
+
+        // Az oktató tanítja-e ezt a tantárgyat, és mennyiért?
+        const [rates] = await pool.query(
+            "SELECT hourly_rate FROM tutor_subjects WHERE tutor_id = ? AND subject_id = ?",
+            [slot.tutor_id, subjectId]
+        );
+
+        if (rates.length === 0) {
+            return res.status(400).json({ error: "Az oktató nem tanítja ezt a tantárgyat." });
+        }
+
+        // A diáknak nem lehet két foglalása egy időben
+        const [clash] = await pool.query(
+            `SELECT id FROM bookings
+             WHERE student_id = ?
+               AND status_ IN ('PENDING', 'CONFIRMED')
+               AND start_time < ? AND end_time > ?
+             LIMIT 1`,
+            [studentId, slot.end_time, slot.start_time]
+        );
+
+        if (clash.length > 0) {
+            return res.status(409).json({
+                error: "Ebben az idősávban már van egy foglalásod."
+            });
+        }
+
+        // Az időpont lefoglalása: csak akkor sikerül, ha még szabad.
+        const [claim] = await pool.query(
+            `UPDATE availabilities SET is_booked = 1
+             WHERE id = ? AND is_booked = 0 AND start_time > NOW()`,
+            [slotId]
+        );
+
+        if (claim.affectedRows === 0) {
+            return res.status(409).json({
+                error: "Ezt az időpontot már lefoglalták, vagy lejárt."
+            });
+        }
+
+        const minutes = (new Date(slot.end_time) - new Date(slot.start_time)) / 60000;
+        const price = Math.round(Number(rates[0].hourly_rate) * minutes / 60);
+
+        let bookingId;
+
+        try {
+
+            const [result] = await pool.query(
+                `INSERT INTO bookings
+                    (student_id, tutor_id, subject_id, start_time, end_time,
+                     status_, created_at, price, note)
+                 VALUES (?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?)`,
+                [
+                    studentId, slot.tutor_id, subjectId,
+                    slot.start_time, slot.end_time,
+                    price, note || null
+                ]
+            );
+
+            bookingId = result.insertId;
+
+        } catch (insertError) {
+
+            // Sikertelen mentés: az időpont újra szabad
+            await pool.query(
+                "UPDATE availabilities SET is_booked = 0 WHERE id = ?",
+                [slotId]
+            );
+
+            throw insertError;
+        }
+
+        console.log("📅 Új foglalás:", bookingId);
+
+        sendToUser(slot.tutor_id, { type: "booking_update" });
+
+        res.status(201).json({ id: bookingId, status: "PENDING", price });
+
+    } catch (err) {
+        console.error("❌ POST /api/bookings error:", err);
+        res.status(500).json({ error: "Nem sikerült a foglalás." });
+    }
+});
+
+
+// ---------------- foglalások listája ----------------
+
+app.get("/api/bookings/summary", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    try {
+
+        await refreshBookingStatuses();
+
+        const [rows] = await db.promise().query(
+            `SELECT
+                SUM(b.status_ = 'PENDING' AND b.start_time >= NOW())   AS pending,
+                SUM(b.status_ = 'CONFIRMED' AND b.end_time >= NOW())   AS upcoming,
+                SUM(b.status_ IN ('REJECTED', 'CANCELLED'))            AS cancelled,
+                SUM(b.status_ = 'COMPLETED')                           AS past
+             FROM bookings b
+             WHERE b.student_id = ? OR b.tutor_id = ?`,
+            [req.session.user.id, req.session.user.id]
+        );
+
+        const row = rows[0];
+
+        res.json({
+            pending: Number(row.pending) || 0,
+            upcoming: Number(row.upcoming) || 0,
+            cancelled: Number(row.cancelled) || 0,
+            past: Number(row.past) || 0
+        });
+
+    } catch (err) {
+        console.error("❌ GET /api/bookings/summary error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+app.get("/api/bookings", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    const filter = String(req.query.status || "upcoming");
+
+    if (!Object.prototype.hasOwnProperty.call(BOOKING_FILTERS, filter)) {
+        return res.status(400).json({ error: "Érvénytelen szűrő." });
+    }
+
+    const userId = req.session.user.id;
+
+    // A közelgők időrendben, a régiek visszafelé
+    const order = (filter === "pending" || filter === "upcoming") ? "ASC" : "DESC";
+
+    try {
+
+        await refreshBookingStatuses();
+
+        // A szűrő fix listából jön, nem a felhasználótól
+        const [rows] = await db.promise().query(
+            `SELECT
+                b.id,
+                b.status_ AS status,
+                b.start_time,
+                b.end_time,
+                b.price,
+                b.note,
+                (b.student_id = ?) AS as_student,
+                CASE WHEN b.student_id = ? THEN b.tutor_id ELSE b.student_id END AS other_id,
+                CASE WHEN b.student_id = ? THEN tutor.full_name ELSE student.full_name END AS other_name,
+                subject.name AS subject_name,
+                (b.start_time > NOW()) AS in_future,
+                EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review,
+                (SELECT r.rating FROM reviews r WHERE r.booking_id = b.id LIMIT 1) AS review_rating,
+                (SELECT r.comment_ FROM reviews r WHERE r.booking_id = b.id LIMIT 1) AS review_comment
+
+             FROM bookings b
+             LEFT JOIN users tutor ON tutor.id = b.tutor_id
+             LEFT JOIN users student ON student.id = b.student_id
+             LEFT JOIN subjects subject ON subject.id = b.subject_id
+
+             WHERE (b.student_id = ? OR b.tutor_id = ?)
+               AND ${BOOKING_FILTERS[filter]}
+
+             ORDER BY b.start_time ${order}
+             LIMIT 200`,
+            [userId, userId, userId, userId, userId]
+        );
+
+        res.json(rows.map((row) => ({
+            id: row.id,
+            status: row.status,
+            start_time: row.start_time,
+            end_time: row.end_time,
+            price: row.price,
+            note: row.note,
+            as_student: Boolean(row.as_student),
+            other_id: row.other_id,
+            other_name: row.other_name,
+            subject_name: row.subject_name,
+            has_review: Boolean(row.has_review),
+            review: row.review_rating
+                ? { rating: Number(row.review_rating), comment: row.review_comment || "" }
+                : null,
+            // A művelet-gombokhoz: mit tehet a felhasználó ezzel a foglalással
+            can_confirm: !row.as_student && row.status === "PENDING" && Boolean(row.in_future),
+            can_reject: !row.as_student && row.status === "PENDING" && Boolean(row.in_future),
+            can_cancel: (row.status === "PENDING" || row.status === "CONFIRMED") && Boolean(row.in_future)
+        })));
+
+    } catch (err) {
+        console.error("❌ GET /api/bookings error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+// ---------------- értékelés írása ----------------
+//
+// A teljesített óra után a diák egyszer értékelheti az oktatót
+// (1-5 csillag + opcionális szöveg). Az értékelés nem szerkeszthető
+// és nem törölhető, így hiteles marad.
+//
+// FONTOS: ennek az alábbi általános "/:id/:action" útvonal előtt kell
+// szerepelnie, különben az "review" érvénytelen műveletként elbukna.
+
+const MAX_REVIEW_COMMENT = 1000;
+
+app.post("/api/bookings/:id/review", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    if (req.session.user.role !== "STUDENT") {
+        return res.status(403).json({ error: "Csak diák értékelhet." });
+    }
+
+    const userId = req.session.user.id;
+    const bookingId = Number(req.params.id);
+    const rating = Number(req.body.rating);
+    const comment = String(req.body.comment || "").trim();
+
+    if (!Number.isInteger(bookingId) || bookingId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen foglalás." });
+    }
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Az értékelés 1 és 5 csillag között legyen." });
+    }
+
+    if (comment.length > MAX_REVIEW_COMMENT) {
+        return res.status(400).json({
+            error: "A vélemény legfeljebb " + MAX_REVIEW_COMMENT + " karakter lehet."
+        });
+    }
+
+    try {
+
+        const pool = db.promise();
+
+        await refreshBookingStatuses();
+
+        // Csak a saját foglalás
+        const [rows] = await pool.query(
+            "SELECT id, tutor_id, status_ AS status FROM bookings WHERE id = ? AND student_id = ?",
+            [bookingId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A foglalás nem található." });
+        }
+
+        if (rows[0].status !== "COMPLETED") {
+            return res.status(409).json({
+                error: "Csak a teljesített órát lehet értékelni."
+            });
+        }
+
+        const [existing] = await pool.query(
+            "SELECT id FROM reviews WHERE booking_id = ? LIMIT 1",
+            [bookingId]
+        );
+
+        if (existing.length > 0) {
+            return res.status(409).json({ error: "Ezt az órát már értékelted." });
+        }
+
+        const [result] = await pool.query(
+            `INSERT INTO reviews (booking_id, rating, comment_, crated_at)
+             VALUES (?, ?, ?, NOW())`,
+            [bookingId, String(rating), comment || null]
+        );
+
+        console.log("⭐ Új értékelés:", result.insertId, "foglalás:", bookingId);
+
+        sendToUser(rows[0].tutor_id, { type: "booking_update" });
+
+        res.status(201).json({ id: result.insertId, rating });
+
+    } catch (err) {
+
+        // Két egyszerre elküldött értékelést az egyedi index fogja meg
+        if (err.code === "ER_DUP_ENTRY") {
+            return res.status(409).json({ error: "Ezt az órát már értékelted." });
+        }
+
+        console.error("❌ POST /api/bookings/:id/review error:", err);
+        res.status(500).json({ error: "Nem sikerült menteni az értékelést." });
+    }
+});
+
+
+// ---------------- elfogadás, elutasítás, lemondás ----------------
+
+const BOOKING_ACTIONS = {
+    confirm: { from: "PENDING",   to: "CONFIRMED", tutorOnly: true,  frees: false },
+    reject:  { from: "PENDING",   to: "REJECTED",  tutorOnly: true,  frees: true  },
+    cancel:  { from: null,        to: "CANCELLED", tutorOnly: false, frees: true  }
+};
+
+app.post("/api/bookings/:id/:action", async (req, res) => {
+
+    if (!requireLogin(req, res)) return;
+
+    const action = BOOKING_ACTIONS[req.params.action];
+    const bookingId = Number(req.params.id);
+
+    if (!action || !Number.isInteger(bookingId) || bookingId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen kérés." });
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+
+        const pool = db.promise();
+
+        await refreshBookingStatuses();
+
+        const [rows] = await pool.query(
+            `SELECT id, student_id, tutor_id, start_time, end_time, status_ AS status,
+                    (start_time > NOW()) AS in_future
+             FROM bookings
+             WHERE id = ? AND (student_id = ? OR tutor_id = ?)`,
+            [bookingId, userId, userId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A foglalás nem található." });
+        }
+
+        const booking = rows[0];
+        const isTutor = Number(booking.tutor_id) === Number(userId);
+
+        if (action.tutorOnly && !isTutor) {
+            return res.status(403).json({ error: "Ezt csak az oktató teheti meg." });
+        }
+
+        // Lemondani csak függő vagy elfogadott, még el nem kezdődött órát lehet
+        const allowedFrom = action.from
+            ? [action.from]
+            : ["PENDING", "CONFIRMED"];
+
+        if (!allowedFrom.includes(booking.status) || !booking.in_future) {
+            return res.status(409).json({
+                error: "A foglalás jelenlegi állapotában ez nem lehetséges."
+            });
+        }
+
+        // A státuszt csak akkor írjuk át, ha közben nem változott
+        const [result] = await pool.query(
+            "UPDATE bookings SET status_ = ? WHERE id = ? AND status_ = ?",
+            [action.to, bookingId, booking.status]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(409).json({ error: "A foglalás időközben megváltozott." });
+        }
+
+        // Elutasításkor és lemondáskor az időpont újra szabad
+        if (action.frees) {
+
+            await pool.query(
+                `UPDATE availabilities SET is_booked = 0
+                 WHERE tutor_id = ? AND start_time = ? AND end_time = ?`,
+                [booking.tutor_id, booking.start_time, booking.end_time]
+            );
+        }
+
+        console.log("📅 Foglalás", bookingId, "->", action.to);
+
+        const otherId = isTutor ? booking.student_id : booking.tutor_id;
+
+        sendToUser(otherId, { type: "booking_update" });
+
+        res.json({ success: true, status: action.to });
+
+    } catch (err) {
+        console.error("❌ POST /api/bookings/:id/:action error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+// ============================================================
+// STUDENT PROFILE (az oktatónak, akivel a diák beszélget)
+// ============================================================
+//
+// Csak az a TUTOR kérheti le, akinek van beszélgetése az adott diákkal.
+// E-mail cím nem megy ki.
+
+app.get("/api/students/:id/profile", async (req, res) => {
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+    }
+
+    if (req.session.user.role !== "TUTOR") {
+        return res.status(403).json({ error: "Csak oktató nézheti meg a diák profilját." });
+    }
+
+    const studentId = Number(req.params.id);
+
+    if (!Number.isInteger(studentId) || studentId <= 0) {
+        return res.status(400).json({ error: "Érvénytelen diák." });
+    }
+
+    try {
+
+        const [shared] = await db.promise().query(
+            "SELECT id FROM conversations WHERE tutor_id = ? AND student_id = ? LIMIT 1",
+            [req.session.user.id, studentId]
+        );
+
+        if (shared.length === 0) {
+            return res.status(403).json({ error: "Nincs közös beszélgetésetek." });
+        }
+
+        const [rows] = await db.promise().query(
+            `SELECT id, full_name, school_level, grade, deleted_at
+             FROM users
+             WHERE id = ? AND role = 'STUDENT'
+             LIMIT 1`,
+            [studentId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ error: "A diák nem található." });
+        }
+
+        const student = rows[0];
+
+        const [learning] = await db.promise().query(
+            `SELECT s.name
+             FROM student_subjects ss
+             INNER JOIN subjects s ON s.id = ss.subject_id
+             WHERE ss.student_id = ?
+             ORDER BY s.name`,
+            [studentId]
+        );
+
+        res.json({
+            id: student.id,
+            name: student.full_name,
+            school_level: student.school_level || "",
+            grade: student.grade || "",
+            subjects: learning.map((item) => item.name),
+            deleted: Boolean(student.deleted_at)
+        });
+
+    } catch (err) {
+        console.error("❌ GET /api/students/:id/profile error:", err);
+        res.status(500).json({ error: "Adatbázis hiba." });
+    }
+});
+
+
+// ============================================================
+// DELETE ACCOUNT (anonimizálás)
+// ============================================================
+//
+// A fiók nem törlődik fizikailag, mert a beszélgetések, foglalások és
+// értékelések hivatkoznak rá. Helyette anonimizáljuk:
+//   - a név "Törölt felhasználó", az e-mail egy értelmetlen cím,
+//     a jelszó érvénytelen, a bemutatkozás, szint, osztály törlődik
+//   - a tantárgyak (és oktatónak az óradíjak) törlődnek
+//   - a csatolmányos üzenetei visszavonódnak (a fájl is törlődik)
+//   - a szöveges üzenetei a beszélgetés másik tagjánál megmaradnak,
+//     de már nem köthetők névhez
+//   - az oktató eltűnik az oktatók listájából
+// A művelethez a jelenlegi jelszó kell, és nem vonható vissza.
+
+app.delete("/api/account", async (req, res) => {
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: "Nem vagy bejelentkezve." });
+    }
+
+    const userId = req.session.user.id;
+    const currentPassword = String(req.body.currentPassword || "");
+
+    if (!currentPassword) {
+        return res.status(400).json({
+            error: "A fiók törléséhez add meg a jelenlegi jelszavad."
+        });
+    }
+
+    try {
+
+        const pool = db.promise();
+
+        const [rows] = await pool.query(
+            "SELECT password_hash, role, deleted_at FROM users WHERE id = ? LIMIT 1",
+            [userId]
+        );
+
+        if (rows.length === 0 || rows[0].deleted_at) {
+            return res.status(404).json({ error: "A felhasználó nem található." });
+        }
+
+        if (rows[0].role === "ADMIN") {
+            return res.status(403).json({ error: "Admin fiók itt nem törölhető." });
+        }
+
+        const ok = await verifyPassword(rows[0].password_hash, currentPassword);
+
+        if (!ok) {
+            return res.status(403).json({ error: "A jelenlegi jelszó hibás." });
+        }
+
+        // 1) a csatolmányos üzenetei visszavonódnak, a fájlok törlődnek
+        const [files] = await pool.query(
+            `SELECT attachment_path FROM messages
+             WHERE sender_id = ? AND attachment_path IS NOT NULL`,
+            [userId]
+        );
+
+        await pool.query(
+            `UPDATE messages
+             SET content = '',
+                 deleted_at = NOW(),
+                 attachment_name = NULL,
+                 attachment_path = NULL,
+                 attachment_type = NULL,
+                 attachment_size = NULL
+             WHERE sender_id = ? AND attachment_path IS NOT NULL`,
+            [userId]
+        );
+
+        files.forEach((file) => {
+            fs.unlink(
+                path.join(CHAT_UPLOAD_DIR, path.basename(file.attachment_path)),
+                () => {}
+            );
+        });
+
+        // 2) tantárgyak, óradíjak
+        await pool.query("DELETE FROM tutor_subjects WHERE tutor_id = ?", [userId]);
+        await pool.query("DELETE FROM student_subjects WHERE student_id = ?", [userId]);
+
+        // 3) a felhasználó sora anonimizálva
+        await pool.query(
+            `UPDATE users
+             SET full_name = 'Törölt felhasználó',
+                 email = ?,
+                 password_hash = '!deleted',
+                 bio = '',
+                 school_level = NULL,
+                 grade = NULL,
+                 deleted_at = NOW()
+             WHERE id = ?`,
+            ["deleted-" + userId + "@deleted.invalid", userId]
+        );
+
+        deletedUserIds.add(Number(userId));
+
+        console.log("🗑️ Fiók anonimizálva:", userId);
+
+        // 4) nyitott websocket kapcsolatai bezárulnak
+        const sockets = clients.get(Number(userId));
+
+        if (sockets) {
+            sockets.forEach((ws) => ws.close());
+        }
+
+        // 5) kijelentkeztetés
+        req.session.destroy(() => {
+            res.clearCookie("connect.sid");
+            res.json({ success: true });
+        });
+
+    } catch (err) {
+
+        console.error("❌ DELETE /api/account error:", err);
+        res.status(500).json({ error: "Nem sikerült törölni a fiókot." });
     }
 });
 
