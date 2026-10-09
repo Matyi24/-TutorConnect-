@@ -859,9 +859,10 @@ async function openProfile(tutorId) {
         "Az oktató még nem adott meg bemutatkozást.";
 
 
+    // Vendégeknek a szerver nem adja ki az e-mail címet
     const email =
         tutor.email ||
-        "Nincs megadva";
+        "Bejelentkezés után látható";
 
 
     const displayPrice =
@@ -943,14 +944,6 @@ async function openProfile(tutorId) {
 
     profileBio.textContent =
         bio;
-
-
-    /* Időpont foglalása gomb (diákoknak) */
-    TCBooking.renderButton(
-        document.getElementById("profileBookingSlot"),
-        tutorId,
-        name
-    );
 
 
     /* =================================================
@@ -1405,9 +1398,40 @@ resetFilters.addEventListener(
    INDÍTÁS
 ===================================================== */
 
+// A főoldalról érkező /oktatok?subject=Matematika link tantárgyát
+// beállítja a szűrőben (kis- és nagybetűre nem érzékeny egyezés).
+function applySubjectFromUrl() {
+
+    const wanted =
+        new URLSearchParams(window.location.search)
+            .get("subject");
+
+
+    if (!wanted) {
+        return;
+    }
+
+
+    const option =
+        Array.from(subjectSelect.options).find(
+            item =>
+                item.value.trim().toLowerCase() ===
+                wanted.trim().toLowerCase()
+        );
+
+
+    if (option) {
+        subjectSelect.value =
+            option.value;
+    }
+}
+
+
 async function init() {
 
     await loadSubjects();
+
+    applySubjectFromUrl();
 
     await loadTutors();
 

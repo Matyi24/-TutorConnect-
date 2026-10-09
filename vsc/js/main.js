@@ -9,7 +9,7 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 
 
-const { hashPassword, verifyPassword } = require("./auth");
+const { hashPassword, verifyPassword, debug, DEBUG_LOGS } = require("./auth");
 
 const app = express();
 
@@ -105,34 +105,63 @@ app.use((req, res, next) => {
 // STATIC FILES
 // ============================================================
 
-app.use("/css", express.static(path.join(__dirname, "../css")));
-app.use("/js", express.static(path.join(__dirname, "../js")));
-app.use("/html", express.static(path.join(__dirname, "../html")));
-app.use("/images", express.static(path.join(__dirname, "../images")));
+// A /js mappából a böngészőnek CSAK az itt felsorolt kliens fájlok járnak.
+// A mappában a szerver forráskódja is van (main.js, auth.js), amely az
+// adatbázis-hozzáférést és a session titkot tartalmazza, ezért azt soha
+// nem szabad kiszolgálni.
+//
+// Fehérlistát használunk, nem tiltólistát: ha egy új kliens fájl
+// kimarad innen, az azonnal látszik (404), míg egy tiltólistáról
+// elfelejtett szerverfájl csendben kiszivárogna.
+// ÚJ KLIENS SCRIPT HOZZÁADÁSAKOR ITT IS FEL KELL VENNI!
+const PUBLIC_JS_FILES = new Set([
+    "creator.js",
+    "chat.js",
+    "index.js",
+    "dropdown.js",
+    "oktatok.js",
+    "booking.js",
+    "foglalas.js",
+    "foglalasutan.js"
+]);
 
-// A szerver mappája és a node_modules ne legyen letölthető a böngészőből
-const serverFolderName = path.basename(__dirname).toLowerCase();
-
+// Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
+// express.static már kiadja a fájlt.
 app.use((req, res, next) => {
 
-    let firstSegment = "";
+    let segments;
 
     try {
-        firstSegment = decodeURIComponent(req.path)
+        segments = decodeURIComponent(req.path)
             .split(/[\\/]+/)
-            .filter(Boolean)[0] || "";
+            .filter(Boolean)
+            .map((segment) => segment.toLowerCase());
     } catch (error) {
         return res.status(400).end();
     }
 
-    firstSegment = firstSegment.toLowerCase();
+    const firstSegment = segments[0] || "";
 
-    if (firstSegment === serverFolderName || firstSegment === "node_modules") {
+    if (firstSegment === "node_modules") {
         return res.status(404).end();
+    }
+
+    // /js/<fájl>: csak a fehérlistáról. Mappa, "..", "." vagy ismeretlen
+    // fájlnév (pl. MAIN.JS, main.js., main~1.js) esetén 404.
+    if (firstSegment === "js") {
+
+        if (segments.length !== 2 || !PUBLIC_JS_FILES.has(segments[1])) {
+            return res.status(404).end();
+        }
     }
 
     next();
 });
+
+app.use("/css", express.static(path.join(__dirname, "../css")));
+app.use("/js", express.static(path.join(__dirname, "../js")));
+app.use("/html", express.static(path.join(__dirname, "../html")));
+app.use("/images", express.static(path.join(__dirname, "../images")));
 
 
 // Serve the project root from the actual vsc folder regardless of
@@ -328,8 +357,9 @@ app.post("/register", async (req, res) => {
     console.log("==========================================");
 
 
-    console.log("\n📥 RAW DATA RECEIVED:");
-    console.log(req.body);
+    // A kérés törzse a jelszót is tartalmazza: csak teszt-naplózásnál írjuk ki
+    debug("\n📥 RAW DATA RECEIVED:");
+    debug(req.body);
 
 
     const {
@@ -955,6 +985,16 @@ app.get("/api/tutors", (req, res) => {
         );
 
 
+        // Az e-mail cím személyes adat: csak bejelentkezett felhasználó
+        // láthatja. A vendégeknek üresen megy ki.
+        if (!req.session.user) {
+
+            results.forEach((tutor) => {
+                tutor.email = null;
+            });
+        }
+
+
         res.json(results);
 
     });
@@ -1402,9 +1442,71 @@ app.post("/api/conversations/:id/read", (req, res) => {
 // ============================================================
 
 // Feltöltött fájlok helye (a böngészőből közvetlenül nem érhető el)
-const CHAT_UPLOAD_DIR = path.join(__dirname, "uploads", "chat");
+//
+// A fájlok a nyilvánosan kiszolgált vsc mappán KÍVÜL vannak
+// (projekt/uploads/chat). Így a böngésző nem érheti el őket közvetlenül,
+// csak a /api/messages/:id/attachment végponton keresztül, amely
+// ellenőrzi, hogy a kérő tagja-e a beszélgetésnek.
+// Az UPLOAD_DIR környezeti változóval át lehet írni.
+const CHAT_UPLOAD_DIR = process.env.UPLOAD_DIR
+    ? path.resolve(process.env.UPLOAD_DIR)
+    : path.join(__dirname, "..", "..", "uploads", "chat");
+
+// A régi hely (vsc/js/uploads/chat) a nyilvános /js mappában volt
+const LEGACY_UPLOAD_DIR = path.join(__dirname, "uploads", "chat");
 
 fs.mkdirSync(CHAT_UPLOAD_DIR, { recursive: true });
+
+// A korábban a régi helyre feltöltött fájlok átköltöztetése az újra
+// (egyszeri; ha nincs régi mappa, nem csinál semmit)
+function migrateLegacyUploads() {
+
+    if (!fs.existsSync(LEGACY_UPLOAD_DIR)) {
+        return;
+    }
+
+    let moved = 0;
+
+    for (const name of fs.readdirSync(LEGACY_UPLOAD_DIR)) {
+
+        const from = path.join(LEGACY_UPLOAD_DIR, name);
+        const to = path.join(CHAT_UPLOAD_DIR, name);
+
+        try {
+
+            if (!fs.statSync(from).isFile() || fs.existsSync(to)) {
+                continue;
+            }
+
+            try {
+                fs.renameSync(from, to);
+            } catch (renameError) {
+                // Másik meghajtóra nem lehet átnevezni: másolás + törlés
+                fs.copyFileSync(from, to);
+                fs.unlinkSync(from);
+            }
+
+            moved++;
+
+        } catch (error) {
+            console.error("❌ Feltöltött fájl átköltöztetése sikertelen:", name, error.message);
+        }
+    }
+
+    // A régi mappák törlése, ha kiürültek
+    try {
+        fs.rmdirSync(LEGACY_UPLOAD_DIR);
+        fs.rmdirSync(path.dirname(LEGACY_UPLOAD_DIR));
+    } catch (error) {
+        // nem üres, vagy már nincs: nem baj
+    }
+
+    if (moved > 0) {
+        console.log(`📦 ${moved} feltöltött fájl átköltöztetve a nyilvános mappából`);
+    }
+}
+
+migrateLegacyUploads();
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -3736,5 +3838,10 @@ server.listen(3000, () => {
     console.log("\n==========================================");
     console.log("🌍 SERVER RUNNING");
     console.log("➡️ http://localhost:3000");
+    console.log(
+        DEBUG_LOGS
+            ? "🐞 Teszt-naplózás: BE (a jelszavak is kiíródnak, élesben ne használd)"
+            : "🔒 Teszt-naplózás: KI"
+    );
     console.log("==========================================\n");
 });
