@@ -1,21 +1,47 @@
 const argon2 = require("argon2");
 
+// ============================================================
+// TESZT-NAPLÓZÁS
+// ============================================================
+//
+// Az alábbi naplók a nyers jelszót és a hash-t is kiírják a konzolra.
+// Ez fejlesztés közben hasznos, de élesben veszélyes (a naplót látja a
+// szerver gazdája, a hosting és a naplógyűjtő szolgáltatás is).
+//
+// Ezért csak akkor futnak, ha:
+//   - a NODE_ENV nem "production", ÉS
+//   - a DEBUG_LOGS környezeti változó nem "false".
+//
+// Fejlesztéskor tehát minden marad a régi (nem kell semmit beállítani).
+// Élesben a NODE_ENV=production beállítás kikapcsolja őket.
+
+const DEBUG_LOGS =
+    process.env.NODE_ENV !== "production" &&
+    process.env.DEBUG_LOGS !== "false";
+
+function debug(...args) {
+
+    if (DEBUG_LOGS) {
+        console.log(...args);
+    }
+}
+
 async function hashPassword(password) {
 
-    console.log("\n------------------------------------------");
-    console.log("🔐 AUTH.JS - hashPassword() CALLED");
-    console.log("------------------------------------------");
+    debug("\n------------------------------------------");
+    debug("🔐 AUTH.JS - hashPassword() CALLED");
+    debug("------------------------------------------");
 
-    console.log("📥 RAW PASSWORD RECEIVED:");
-    console.log(password);
+    debug("📥 RAW PASSWORD RECEIVED:");
+    debug(password);
 
-    console.log("\n📊 PASSWORD INFORMATION:");
-    console.log("Type:", typeof password);
-    console.log("Length:", password.length);
+    debug("\n📊 PASSWORD INFORMATION:");
+    debug("Type:", typeof password);
+    debug("Length:", password.length);
 
 
 try {
-    console.log("\n⚙️ Starting Argon2id hashing...");
+    debug("\n⚙️ Starting Argon2id hashing...");
 
     const hash = await argon2.hash(password, {
         type: argon2.argon2id,
@@ -23,14 +49,14 @@ try {
         timeCost: 4,
         parallelism: 1
     });
-    console.log("\n✅ ARGON2 HASHING COMPLETE");
-    console.log("📤 HASH GENERATED:");
-    console.log(hash);
-    console.log("\n📊 HASH INFORMATION:");
-    console.log("Type:", typeof hash);
-    console.log("Length:", hash.length);
-    console.log("\n📤 Returning hash to main.js...");
-    console.log("------------------------------------------\n");
+    debug("\n✅ ARGON2 HASHING COMPLETE");
+    debug("📤 HASH GENERATED:");
+    debug(hash);
+    debug("\n📊 HASH INFORMATION:");
+    debug("Type:", typeof hash);
+    debug("Length:", hash.length);
+    debug("\n📤 Returning hash to main.js...");
+    debug("------------------------------------------\n");
 return hash;
 } catch (err) {
 
@@ -51,20 +77,20 @@ return hash;
 
 async function verifyPassword(hash, password) {
 
-    console.log("\n------------------------------------------");
-    console.log("🔍 AUTH.JS - verifyPassword() CALLED");
-    console.log("------------------------------------------");
+    debug("\n------------------------------------------");
+    debug("🔍 AUTH.JS - verifyPassword() CALLED");
+    debug("------------------------------------------");
 
-    console.log("📥 HASH RECEIVED:");
-    console.log(hash);
+    debug("📥 HASH RECEIVED:");
+    debug(hash);
 
-    console.log("\n📥 RAW PASSWORD RECEIVED:");
-    console.log(password);
+    debug("\n📥 RAW PASSWORD RECEIVED:");
+    debug(password);
 
 
     try {
 
-        console.log("\n⚙️ Argon2 verifying...");
+        debug("\n⚙️ Argon2 verifying...");
 
         const result = await argon2.verify(
             hash,
@@ -72,10 +98,10 @@ async function verifyPassword(hash, password) {
         );
 
 
-        console.log("✅ Verification finished");
-        console.log("Result:", result);
+        debug("✅ Verification finished");
+        debug("Result:", result);
 
-        console.log("------------------------------------------\n");
+        debug("------------------------------------------\n");
 
 
         return result;
@@ -91,5 +117,7 @@ async function verifyPassword(hash, password) {
 
 module.exports = {
     hashPassword,
-    verifyPassword
+    verifyPassword,
+    debug,
+    DEBUG_LOGS
 };

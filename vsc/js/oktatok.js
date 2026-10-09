@@ -859,9 +859,10 @@ async function openProfile(tutorId) {
         "Az oktató még nem adott meg bemutatkozást.";
 
 
+    // Vendégeknek a szerver nem adja ki az e-mail címet
     const email =
         tutor.email ||
-        "Nincs megadva";
+        "Bejelentkezés után látható";
 
 
     const displayPrice =
