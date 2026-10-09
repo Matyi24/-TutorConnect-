@@ -945,14 +945,6 @@ async function openProfile(tutorId) {
         bio;
 
 
-    /* Időpont foglalása gomb (diákoknak) */
-    TCBooking.renderButton(
-        document.getElementById("profileBookingSlot"),
-        tutorId,
-        name
-    );
-
-
     /* =================================================
        MODAL MEGNYITÁSA
     ================================================== */
@@ -1405,9 +1397,40 @@ resetFilters.addEventListener(
    INDÍTÁS
 ===================================================== */
 
+// A főoldalról érkező /oktatok?subject=Matematika link tantárgyát
+// beállítja a szűrőben (kis- és nagybetűre nem érzékeny egyezés).
+function applySubjectFromUrl() {
+
+    const wanted =
+        new URLSearchParams(window.location.search)
+            .get("subject");
+
+
+    if (!wanted) {
+        return;
+    }
+
+
+    const option =
+        Array.from(subjectSelect.options).find(
+            item =>
+                item.value.trim().toLowerCase() ===
+                wanted.trim().toLowerCase()
+        );
+
+
+    if (option) {
+        subjectSelect.value =
+            option.value;
+    }
+}
+
+
 async function init() {
 
     await loadSubjects();
+
+    applySubjectFromUrl();
 
     await loadTutors();
 

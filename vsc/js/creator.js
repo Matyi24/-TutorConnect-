@@ -214,31 +214,10 @@ async function createNavbar() {
 
     if (!isLoggedIn) {
 
-        /*navLinks = `
-
-            <a href="/index">
-                <li>Főoldal</li>
-            </a>
-
-
-            <a href="/subs">
-                <li>Tantárgyak</li>
-            </a>
-
-
-            <a href="/gyik">
-                <li>GYIK</li>
-            </a>
-
-        `;*/
         navLinks = `
+
             <a href="/index">
                 <li>Főoldal</li>
-            </a>
-
-
-            <a href="/chat">
-                <li>Chat</li>
             </a>
 
 
@@ -246,17 +225,11 @@ async function createNavbar() {
                 <li>Tantárgyak</li>
             </a>
 
+
             <a href="/gyik">
                 <li>GYIK</li>
             </a>
 
-            <a href="/oktatok">
-                <li>Oktatók</li>
-            </a>
-
-            <a href="/foglalas">
-                <li>Foglalás</li>
-            </a>
         `;
 
         accountArea = `
@@ -1715,32 +1688,36 @@ body.insertAdjacentHTML(
     "beforeend",
 
     `
-
     <footer class="footer">
 
         <ul>
 
             <li>
-                Kapcsolat
+                <a style="color: inherit;" href="/kapcsolatok">
+                    Kapcsolatok
+                </a>
             </li>
 
             <li>
-                <a href="gyik">
+                <a style="color: inherit;" href="/gyik">
                     GYIK
                 </a>
             </li>
 
             <li>
-                Adatvédelem
+                <a style="color: inherit;" href="/adatvedelem">
+                        Adatvédelem
+                </a>
             </li>
 
             <li>
-                Felhasználási feltételek
+                <a style="color: inherit;" href="/felhasz_feltetelek">
+                    Felhasználási feltételek
+                </a>
             </li>
 
         </ul>
 
     </footer>
-
     `
 );
