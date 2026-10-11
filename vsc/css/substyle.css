@@ -1035,3 +1035,209 @@ button:hover {
         padding: 12px 13px;
     }
 }
+
+
+/* =========================================================
+   DARK THEME  (html[data-theme="dark"], set by creator.js)
+   Navbar and footer are intentionally left untouched.
+========================================================= */
+
+html[data-theme="dark"] body {
+    background-color: #0f1320;
+    background-image: none;
+}
+
+/* page background */
+html[data-theme="dark"] .subjects-page {
+    background: #0f1320;
+}
+
+/* hero */
+html[data-theme="dark"] .subjects-hero {
+    background: linear-gradient(135deg, #1a2036 0%, #1e1b3a 100%);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .hero-label,
+html[data-theme="dark"] .search-icon {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .subjects-hero h1,
+html[data-theme="dark"] .filter-header h2,
+html[data-theme="dark"] .subjects-header h2 {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .subjects-hero p,
+html[data-theme="dark"] .subjects-header p {
+    color: #a3a7c4;
+}
+
+/* search */
+html[data-theme="dark"] .subject-search {
+    background: #171c2e;
+    border-color: #2a3150;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .subject-search:focus-within {
+    border-color: #7b8cff;
+    box-shadow: 0 0 0 4px rgba(123, 140, 255, 0.18);
+}
+
+html[data-theme="dark"] .subject-search input {
+    color: #e8eaf4;
+}
+
+html[data-theme="dark"] .subject-search input::placeholder {
+    color: #7c819f;
+}
+
+/* filter panel */
+html[data-theme="dark"] .subject-filter {
+    background: #171c2e;
+    border-color: #2a3150;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .filter-header button {
+    color: #8f9bff;
+}
+
+html[data-theme="dark"] .filter-header button:hover {
+    color: #b3bcff;
+}
+
+html[data-theme="dark"] .filter-group label {
+    color: #a3a7c4;
+}
+
+/* selector + dropdown */
+html[data-theme="dark"] .subject-selector {
+    background: #1d2338;
+    border-color: #2f3757;
+    color: #e8eaf4;
+}
+
+html[data-theme="dark"] .subject-selector:hover {
+    border-color: #444e7a;
+}
+
+html[data-theme="dark"] .dropdown-button {
+    background: #2a3150;
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .dropdown-button:hover {
+    background: #343c63;
+}
+
+html[data-theme="dark"] .dropdown-button .arrow {
+    border-color: #a9b4ff;
+}
+
+/* keep the active state blue; it was overridden by the rule above */
+html[data-theme="dark"] .dropdown-button.active {
+    background: var(--main-blue);
+}
+
+html[data-theme="dark"] .dropdown-button.active:hover {
+    background: var(--main-blue-dark);
+}
+
+html[data-theme="dark"] .dropdown-button.active .arrow {
+    border-color: #fff;
+}
+
+html[data-theme="dark"] .dropdown-menu {
+    background: #171c2e;
+    border-color: #2a3150;
+    box-shadow:
+        0 15px 35px rgba(0, 0, 0, 0.5),
+        0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .dropdown-item {
+    color: #d5d8ea;
+}
+
+html[data-theme="dark"] .dropdown-item:hover {
+    background: #232a47;
+    color: #9fb0ff;
+}
+
+html[data-theme="dark"] .dropdown-item.active,
+html[data-theme="dark"] .dropdown-item.active:hover {
+    color: #fff;
+}
+
+/* count pill */
+html[data-theme="dark"] #subjectCount {
+    background: #252c4d;
+    color: #a9b4ff;
+}
+
+/* subject cards */
+html[data-theme="dark"] .subcard,
+html[data-theme="dark"] .no-results {
+    background: #171c2e;
+    border-color: #2a3150;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .subcard:hover {
+    border-color: #4a56a0;
+    box-shadow: 0 16px 35px rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"] .subject-icon {
+    background: #252c4d;
+    color: #9fb0ff;
+}
+
+html[data-theme="dark"] .subcard:hover .subject-icon {
+    background: #2f3866;
+}
+
+html[data-theme="dark"] .subject-info h2 {
+    color: #9fb0ff;
+}
+
+html[data-theme="dark"] .subject-info p,
+html[data-theme="dark"] .no-results p {
+    color: #9a9fbd;
+}
+
+html[data-theme="dark"] .subject-arrow {
+    color: #7c819f;
+}
+
+html[data-theme="dark"] .subcard:hover .subject-arrow {
+    color: #9fb0ff;
+}
+
+html[data-theme="dark"] .no-results h3 {
+    color: #e8eaf4;
+}
+
+/* section label + tutor count (no light-mode rules; they inherit body text) */
+html[data-theme="dark"] .section-label {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .tutor-count {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: #252c4d;
+    color: #a9b4ff;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+html[data-theme="dark"] .tutor-count.no-tutors {
+    background: #3a2430;
+    color: #ff9aa8;
+}
