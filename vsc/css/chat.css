@@ -2324,3 +2324,320 @@ button:hover {
     font-size: 13px;
     font-weight: 600;
 }
+html[data-theme="dark"] {
+    --dark-text: #e8eaf4;
+    --border: rgba(255, 255, 255, 0.09);
+}
+
+/* ---------- layout surfaces ---------- */
+
+html[data-theme="dark"] .chat-container {
+    background: #0f1320;
+}
+
+html[data-theme="dark"] .conversation-panel {
+    background: #131828;
+}
+
+html[data-theme="dark"] .chat-window {
+    background: #0f1320;
+}
+
+html[data-theme="dark"] .messages {
+    background: #0f1320;
+}
+
+/* ---------- muted text (was rgba(16, 21, 66, x)) ---------- */
+
+html[data-theme="dark"] .conversation-header p,
+html[data-theme="dark"] .conversation-info p,
+html[data-theme="dark"] .online-status,
+html[data-theme="dark"] .tutor-picker-info p,
+html[data-theme="dark"] .tutor-picker-empty,
+html[data-theme="dark"] .no-conversations,
+html[data-theme="dark"] .chat-menu-empty,
+html[data-theme="dark"] .attachment-chip-size,
+html[data-theme="dark"] .profile-loading,
+html[data-theme="dark"] .profile-no-reviews,
+html[data-theme="dark"] .profile-rating small,
+html[data-theme="dark"] .profile-facts span {
+    color: #9aa0bd;
+}
+
+html[data-theme="dark"] .profile-subjects {
+    color: #b0b5cf;
+}
+
+html[data-theme="dark"] .conversation-info span,
+html[data-theme="dark"] .message-time,
+html[data-theme="dark"] .profile-review-date {
+    color: #7c819f;
+}
+
+html[data-theme="dark"] .search-icon,
+html[data-theme="dark"] .chat-options,
+html[data-theme="dark"] .tutor-picker-close,
+html[data-theme="dark"] .attachment-remove {
+    color: #8e94b3;
+}
+
+/* ---------- conversation list ---------- */
+
+html[data-theme="dark"] .conversation-search {
+    background: #1b2034;
+}
+
+html[data-theme="dark"] .conversation-search:focus-within {
+    border-color: rgba(138, 160, 255, 0.55);
+    box-shadow: 0 0 0 3px rgba(138, 160, 255, 0.14);
+}
+
+html[data-theme="dark"] .conversation-search input::placeholder,
+html[data-theme="dark"] .message-form input::placeholder {
+    color: #6f7791;
+}
+
+html[data-theme="dark"] .conversation:hover {
+    background: rgba(138, 160, 255, 0.08);
+}
+
+html[data-theme="dark"] .conversation.active {
+    background: rgba(138, 160, 255, 0.15);
+}
+
+html[data-theme="dark"] .avatar {
+    background: #252c4d;
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .conversation.unread .conversation-info h3,
+html[data-theme="dark"] .conversation.unread .conversation-info .conversation-bottom p {
+    color: #fff;
+}
+
+/* ---------- chat header ---------- */
+
+html[data-theme="dark"] .chat-back {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .chat-options:hover,
+html[data-theme="dark"] .chat-options[aria-expanded="true"] {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+/* ---------- messages ---------- */
+
+html[data-theme="dark"] .received .message {
+    background: #222942;
+    color: #e8eaf4;
+}
+
+html[data-theme="dark"] .sent .message {
+    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .date-separator span {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a3a9c8;
+}
+
+html[data-theme="dark"] .typing-indicator span {
+    background: #222942;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    color: #b0b5cf;
+}
+
+html[data-theme="dark"] .message .file-badge {
+    background: #2f3866;
+    color: #c3ccff;
+}
+
+html[data-theme="dark"] .message-group .message.retracted {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #8e94b3;
+}
+
+/* ---------- message form ---------- */
+
+html[data-theme="dark"] .message-form {
+    background: #131828;
+}
+
+html[data-theme="dark"] .message-form input {
+    background: #1b2034;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="dark"] .message-form input:focus {
+    border-color: rgba(138, 160, 255, 0.55);
+    box-shadow: 0 0 0 3px rgba(138, 160, 255, 0.14);
+}
+
+html[data-theme="dark"] .attachment-button {
+    background: #222942;
+    color: #9aa0bd;
+}
+
+html[data-theme="dark"] .attachment-button:hover {
+    background: #2f3866;
+    color: #c3ccff;
+}
+
+/* ---------- attachment preview bar ---------- */
+
+html[data-theme="dark"] .attachment-bar {
+    background: #131828;
+    border-top-color: var(--border);
+}
+
+html[data-theme="dark"] .attachment-bar.error {
+    color: #ff9aa8;
+}
+
+html[data-theme="dark"] .attachment-chip {
+    background: #1b2034;
+    border-color: rgba(138, 160, 255, 0.25);
+}
+
+html[data-theme="dark"] .attachment-chip .file-badge {
+    background: #2f3866;
+    color: #c3ccff;
+}
+
+html[data-theme="dark"] .attachment-remove:hover {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+/* ---------- edit / retract buttons ---------- */
+
+html[data-theme="dark"] .retract-button,
+html[data-theme="dark"] .edit-button {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .retract-button:hover,
+html[data-theme="dark"] .edit-button:hover {
+    background: rgba(138, 160, 255, 0.26);
+}
+
+html[data-theme="dark"] .retract-button.confirm {
+    background: #e5484d;
+    color: #fff;
+}
+
+html[data-theme="dark"] .message-group .message.editing {
+    background: #1b2034;
+    border-color: #8aa0ff;
+    color: #e8eaf4;
+}
+
+html[data-theme="dark"] .edit-input {
+    background: #0f1320;
+    border-color: rgba(255, 255, 255, 0.18);
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] .edit-input:focus {
+    border-color: #8aa0ff;
+}
+
+html[data-theme="dark"] .edit-cancel {
+    background: rgba(255, 255, 255, 0.08);
+    color: #c3c7e0;
+}
+
+/* ---------- ⋮ menu ---------- */
+
+html[data-theme="dark"] .chat-menu {
+    background: #1b2034;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .chat-menu-item:hover {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+/* ---------- new conversation picker ---------- */
+
+html[data-theme="dark"] .tutor-picker-overlay {
+    background: rgba(5, 6, 14, 0.7);
+}
+
+html[data-theme="dark"] .tutor-picker {
+    background: #171c2e;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="dark"] .tutor-picker-search {
+    background: #1b2034;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: var(--dark-text);
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] .tutor-picker-search:focus {
+    border-color: rgba(138, 160, 255, 0.55);
+    box-shadow: 0 0 0 3px rgba(138, 160, 255, 0.14);
+}
+
+html[data-theme="dark"] .tutor-picker-close:hover {
+    background: rgba(138, 160, 255, 0.14);
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .tutor-picker-item:hover {
+    background: rgba(138, 160, 255, 0.10);
+}
+
+/* ---------- profile popup ---------- */
+
+html[data-theme="dark"] .profile-overlay {
+    background: rgba(5, 6, 14, 0.75);
+}
+
+html[data-theme="dark"] .profile-window {
+    background: #171c2e;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="dark"] .profile-close {
+    background: rgba(138, 160, 255, 0.14);
+    color: #c3c7e0;
+}
+
+html[data-theme="dark"] .profile-close:hover {
+    background: var(--main-blue);
+    color: #fff;
+}
+
+html[data-theme="dark"] .profile-label {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .profile-facts > div,
+html[data-theme="dark"] .profile-prices li {
+    background: #1d2338;
+}
+
+html[data-theme="dark"] .profile-prices strong {
+    color: #a9b4ff;
+}
+
+html[data-theme="dark"] .profile-chip {
+    background: rgba(138, 160, 255, 0.16);
+    color: #b3c0ff;
+}
+
+/* ---------- scrollbar ---------- */
+
+html[data-theme="dark"] .conversation-list::-webkit-scrollbar-thumb,
+html[data-theme="dark"] .messages::-webkit-scrollbar-thumb {
+    background: rgba(138, 160, 255, 0.28);
+}

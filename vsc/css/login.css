@@ -1221,3 +1221,134 @@ form::after {
         transition-duration: 0.01ms !important;
     }
 }
+html[data-theme="dark"] {
+    --auth-bg: #0f1320;
+    --auth-white: #171c2b;
+
+    --auth-text: #eef0f6;
+    --auth-muted: #9aa3b5;
+    --auth-label: #c3c9d8;
+
+    --auth-border: #2a3144;
+    --auth-input: #1d2335;
+
+    --auth-danger: #ff7a8e;
+
+    --auth-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.5),
+        0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* the blue accent is too dark to read as link text on a dark page */
+html[data-theme="dark"] .account_create a,
+html[data-theme="dark"] .register_text a {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .account_create a:hover,
+html[data-theme="dark"] .register_text a:hover {
+    color: #b3c0ff;
+}
+
+/* page + background */
+html[data-theme="dark"] .container {
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(108, 140, 255, 0.14),
+            transparent 34%
+        ),
+        linear-gradient(
+            180deg,
+            #121729 0%,
+            #0f1320 100%
+        );
+}
+
+html[data-theme="dark"] .container::before {
+    background-image:
+        linear-gradient(
+            rgba(138, 160, 255, 0.05) 1px,
+            transparent 1px
+        ),
+        linear-gradient(
+            90deg,
+            rgba(138, 160, 255, 0.05) 1px,
+            transparent 1px
+        );
+}
+
+/* rings: the white fills become dark fills */
+html[data-theme="dark"] .container::after {
+    border-color: rgba(138, 160, 255, 0.14);
+
+    box-shadow:
+        0 0 0 70px rgba(18, 23, 41, 0.85),
+        0 0 0 71px rgba(138, 160, 255, 0.07),
+
+        0 0 0 145px rgba(18, 23, 41, 0.8),
+        0 0 0 146px rgba(138, 160, 255, 0.055),
+
+        0 0 0 230px rgba(18, 23, 41, 0.65),
+        0 0 0 231px rgba(138, 160, 255, 0.045);
+}
+
+/* card */
+html[data-theme="dark"] form {
+    background: rgba(23, 28, 43, 0.95);
+}
+
+html[data-theme="dark"] form::after {
+    background:
+        linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.07),
+            transparent
+        );
+}
+
+/* inputs */
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] .field input:hover,
+html[data-theme="dark"] .field select:hover {
+    background: #232a42;
+    border-color: #3a4366;
+}
+
+html[data-theme="dark"] .field input:focus,
+html[data-theme="dark"] .field select:focus {
+    background: #232a42;
+    border-color: rgba(138, 160, 255, 0.7);
+
+    box-shadow:
+        0 0 0 4px rgba(138, 160, 255, 0.14),
+        0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+html[data-theme="dark"] .field input::placeholder {
+    color: #6f7791;
+}
+
+/* browser autofill paints inputs light yellow/white; keep them dark */
+html[data-theme="dark"] .field input:-webkit-autofill,
+html[data-theme="dark"] .field input:-webkit-autofill:hover,
+html[data-theme="dark"] .field input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--auth-text);
+    box-shadow: 0 0 0 1000px #1d2335 inset;
+    caret-color: var(--auth-text);
+}
+
+/* password eye */
+html[data-theme="dark"] .toggle-password {
+    color: #7c849c;
+}
+
+html[data-theme="dark"] .toggle-password:hover {
+    color: #8aa0ff;
+    background: rgba(138, 160, 255, 0.12);
+}
