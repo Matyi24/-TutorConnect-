@@ -896,6 +896,33 @@ body {
     gap: 12px;
 }
 
+/* A navbar a főoldalival (style.css) azonosan nézzen ki.
+   A chat.css nem nulláz margót/belső margót, és a body sormagassága is más
+   (normal helyett 1.6), ezért itt, csak a navbar-ra pótoljuk: így a menü
+   nem tolódik el, és a navbar sem lesz magasabb. A chat elrendezését
+   ez nem érinti. */
+.navbar {
+    line-height: 1.6;
+}
+
+.navbar ul {
+    margin: 0;
+    padding: 0;
+}
+
+.logout {
+    background-color: red;
+    color: var(--white);
+    font-weight: bold;
+}
+
+.user-name {
+    color: var(--white);
+    font-size: large;
+    font-weight: bold;
+    margin-right: 25px;
+}
+
 .cta-buttons .login {
     background: transparent;
     color: var(--white);
@@ -939,8 +966,11 @@ a {
     text-decoration: none;
 }
 
-/* Buttons */
-.navbar button {
+/* Buttons
+   A sötét mód kapcsoló (.theme-toggle) saját méretezést kap a creator.js-ből
+   (36x36 px, kerek). Ha ez a szabály is érné, a 24 px-es oldalsó belső
+   margó kisajtolná az ikont, és üres gomb maradna. */
+.navbar button:not(.theme-toggle) {
     font-family: inherit;
     font-size: 1rem;
     padding: 12px 24px;
@@ -956,9 +986,13 @@ button:hover {
 
 
 /* Footer navigation and support links. */
+/* A chat oldalon a lábléc vékony sáv, hogy a beszélgetésnek jusson hely.
+   A chat.css nem nulláz margót/belső margót, ezért az ul-nek ezt itt kell
+   megadni, különben a böngésző alapértelmezett 16 px margója és 40 px bal
+   belső margója magasra és kissé eltolva mutatná. */
 .footer {
     flex-shrink: 0;
-    padding: 32px 40px;
+    padding: 12px 24px;
     background: var(--main-blue-dark);
     text-align: center;
     width: 100%;
@@ -967,14 +1001,17 @@ button:hover {
 .footer ul {
     display: flex;
     justify-content: center;
-    gap: 28px;
+    gap: 24px;
+    margin: 0;
+    padding: 0;
     list-style: none;
     flex-wrap: wrap;
 }
 
 .footer li {
     color: var(--main-blue-light);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
     cursor: pointer;
     transition: color 0.15s ease;
 }
@@ -2640,4 +2677,104 @@ html[data-theme="dark"] .profile-chip {
 html[data-theme="dark"] .conversation-list::-webkit-scrollbar-thumb,
 html[data-theme="dark"] .messages::-webkit-scrollbar-thumb {
     background: rgba(138, 160, 255, 0.28);
+}
+
+
+/* =====================================================
+   KÉPNÉZEGETŐ
+===================================================== */
+
+.image-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 56px 24px 24px;
+    background: rgba(10, 12, 24, 0.82);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.22s ease, visibility 0.22s ease;
+}
+
+.image-viewer.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.image-viewer-img {
+    max-width: min(92vw, 1400px);
+    max-height: calc(100vh - 150px);
+    object-fit: contain;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.55);
+    transform: scale(0.92);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.image-viewer.visible .image-viewer-img {
+    transform: scale(1);
+}
+
+.image-viewer-close {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.image-viewer-close:hover {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.image-viewer-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 92vw;
+    color: #e6e9f7;
+    font-size: 13px;
+}
+
+.image-viewer-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.image-viewer-open {
+    flex: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.image-viewer-open:hover {
+    background: rgba(255, 255, 255, 0.26);
+}
+
+body.viewer-open {
+    overflow: hidden;
+}
+
+.message-image-link {
+    cursor: zoom-in;
 }

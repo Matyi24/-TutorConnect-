@@ -671,3 +671,231 @@ body {
         transition: none;
     }
 }
+
+
+/* =========================================
+   SÖTÉT MÓD
+========================================= */
+
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+    background: #0f1320;
+}
+
+html[data-theme="dark"] .bk-back {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .bk-title {
+    color: #eef0f8;
+}
+
+/* Állapotfülek */
+html[data-theme="dark"] .bk-tab {
+    background: #171c2e;
+
+    color: #cbd3ff;
+}
+
+html[data-theme="dark"] .bk-tab:hover {
+    border-color: #3a4268;
+}
+
+html[data-theme="dark"] .bk-tab.active {
+    background: #4f46e5;
+
+    color: #fff;
+}
+
+html[data-theme="dark"] .bk-tab-count {
+    background: #232b48;
+
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .bk-tab.active .bk-tab-count {
+    background: rgba(255, 255, 255, 0.25);
+
+    color: #fff;
+}
+
+html[data-theme="dark"] .bk-feedback.success {
+    color: #7ee29a;
+}
+
+html[data-theme="dark"] .bk-feedback.error {
+    color: #ff8fb3;
+}
+
+/* Üres állapot és kártyák */
+html[data-theme="dark"] .bk-empty {
+    background: #171c2e;
+
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .bk-empty a {
+    color: #8aa0ff;
+}
+
+html[data-theme="dark"] .bk-card {
+    background: #171c2e;
+
+    border-color: #2a3150;
+
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .bk-date {
+    background: #232b48;
+
+    color: #cbd3ff;
+}
+
+html[data-theme="dark"] .bk-main h3 {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .bk-meta {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .bk-meta strong {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .bk-note {
+    background: #1d2338;
+
+    color: #a3a7c4;
+}
+
+/* Állapotjelzők */
+html[data-theme="dark"] .bk-status.pending   { background: rgba(255, 169, 77, 0.16);  color: #ffc46b; }
+html[data-theme="dark"] .bk-status.confirmed { background: rgba(81, 207, 102, 0.16);  color: #7ee29a; }
+html[data-theme="dark"] .bk-status.rejected  { background: rgba(255, 107, 154, 0.16); color: #ff8fb3; }
+html[data-theme="dark"] .bk-status.cancelled { background: rgba(255, 255, 255, 0.08); color: #a3a7c4; }
+html[data-theme="dark"] .bk-status.completed { background: rgba(138, 160, 255, 0.16); color: #9db1ff; }
+
+/* Gombok */
+html[data-theme="dark"] .bk-btn.primary {
+    background: #8aa0ff;
+
+    color: #0f1320;
+}
+
+html[data-theme="dark"] .bk-btn.primary:hover:not(:disabled) {
+    background: #a5b5ff;
+}
+
+html[data-theme="dark"] .bk-btn.ghost {
+    border-color: #3a4268;
+
+    color: #e8eaf4;
+}
+
+html[data-theme="dark"] .bk-btn.ghost:hover:not(:disabled) {
+    background: rgba(138, 160, 255, 0.12);
+}
+
+html[data-theme="dark"] .bk-btn.danger {
+    border-color: #7a2c47;
+
+    color: #ff8fb3;
+}
+
+html[data-theme="dark"] .bk-btn.danger:hover:not(:disabled) {
+    background: rgba(255, 107, 154, 0.12);
+}
+
+/* A megerősítésre váró gomb sötétben is piros, fehér felirattal */
+html[data-theme="dark"] .bk-btn.confirm,
+html[data-theme="dark"] .bk-btn.confirm:hover:not(:disabled) {
+    border-color: #b82a5b;
+
+    background: #d6336c;
+
+    color: #fff;
+}
+
+html[data-theme="dark"] .bk-btn.confirm:hover:not(:disabled) {
+    background: #b82a5b;
+}
+
+/* Értékelés a kártyán */
+html[data-theme="dark"] .bk-review {
+    background: #2b2410;
+
+    border-color: #4a3d14;
+}
+
+html[data-theme="dark"] .bk-review-label {
+    color: #f3d98b;
+}
+
+html[data-theme="dark"] .bk-review-text {
+    color: #e6dcc0;
+}
+
+html[data-theme="dark"] .bk-review-none {
+    color: #a3a7c4;
+}
+
+/* Értékelő ablak */
+html[data-theme="dark"] .rv-window {
+    background: #171c2e;
+
+    color: #eef0f8;
+
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+html[data-theme="dark"] .rv-close {
+    background: rgba(138, 160, 255, 0.12);
+
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .rv-close:hover {
+    background: #8aa0ff;
+
+    color: #0f1320;
+}
+
+html[data-theme="dark"] .rv-sub,
+html[data-theme="dark"] .rv-stars-label,
+html[data-theme="dark"] .rv-note,
+html[data-theme="dark"] .rv-label small {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .rv-star {
+    color: #3a4268;
+}
+
+html[data-theme="dark"] .rv-star.on {
+    color: #f4a623;
+}
+
+html[data-theme="dark"] .rv-window textarea {
+    background: #1d2338;
+
+    border-color: #2f3860;
+
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .rv-window textarea:focus {
+    border-color: #8aa0ff;
+
+    box-shadow: 0 0 0 3px rgba(138, 160, 255, 0.2);
+}
+
+html[data-theme="dark"] .rv-error {
+    background: rgba(255, 107, 154, 0.12);
+
+    color: #ff8fb3;
+}

@@ -32,6 +32,18 @@
     padding: 0;
 }
 
+/* A görgetősáv rejtett, mint a többi oldalon (style.css). Enélkül egy
+   15 px-es sáv foglalna helyet, a navbar keskenyebb lenne, és az elemei
+   néhány pixellel odébb ülnének, mint a főoldalon. */
+*::-webkit-scrollbar {
+    display: none;
+}
+
+* {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
 html {
     scroll-behavior: smooth;
 }
@@ -112,6 +124,20 @@ button:hover {
 .cta-buttons {
     display: flex;
     gap: 12px;
+}
+
+/* A főoldali (style.css) navbarral azonos felhasználónév és kilépés gomb */
+.logout {
+    background-color: red;
+    color: var(--white);
+    font-weight: bold;
+}
+
+.user-name {
+    color: var(--white);
+    font-size: large;
+    font-weight: bold;
+    margin-right: 25px;
 }
 
 .cta-buttons .login,
@@ -1244,4 +1270,161 @@ html[data-theme="dark"] .tutor-count {
 html[data-theme="dark"] .tutor-count.no-tutors {
     background: #3a2430;
     color: #ff9aa8;
+}
+
+
+/* =========================================================
+   TANTÁRGY KÁRTYÁK v2: kategóriaszín, oktatószám, üres tárgyak
+========================================================= */
+
+.section-label {
+    display: block;
+    margin-bottom: 6px;
+
+    color: #5265f5;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+}
+
+.subcard {
+    --cat: 82, 101, 245;
+    --cat-light: 159, 176, 255;
+}
+
+.subcard[data-category="Reál"]               { --cat: 62, 98, 240;   --cat-light: 143, 168, 255; }
+.subcard[data-category="Humán"]              { --cat: 140, 84, 226;  --cat-light: 196, 160, 255; }
+.subcard[data-category="Nyelvek"]            { --cat: 14, 145, 110;  --cat-light: 94, 214, 172; }
+.subcard[data-category="Természettudomány"]  { --cat: 8, 145, 178;   --cat-light: 94, 207, 230; }
+.subcard[data-category="Művészet"]           { --cat: 222, 90, 62;   --cat-light: 255, 150, 120; }
+.subcard[data-category="Gazdaság"]           { --cat: 190, 120, 6;   --cat-light: 250, 200, 90; }
+.subcard[data-category="Egyéb"]              { --cat: 100, 110, 140; --cat-light: 170, 178, 205; }
+
+.subcard .subject-icon {
+    background: rgba(var(--cat), 0.12);
+    color: rgb(var(--cat));
+}
+
+.subcard:hover .subject-icon {
+    background: rgba(var(--cat), 0.2);
+}
+
+.subcard .subject-info h2 {
+    color: #2c3466;
+}
+
+.subcard:hover .subject-info h2 {
+    color: rgb(var(--cat));
+}
+
+.subject-info p {
+    display: inline-block;
+    padding: 1px 9px;
+    border-radius: 999px;
+    background: rgba(var(--cat), 0.1);
+    color: rgb(var(--cat));
+    font-size: 11.5px;
+    font-weight: 700;
+}
+
+.tutor-count {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 9px;
+    color: #1f7a56;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+.tutor-count::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2fbf86;
+    box-shadow: 0 0 0 3px rgba(47, 191, 134, 0.18);
+}
+
+.tutor-count.no-tutors {
+    color: #9a9cb5;
+    font-weight: 500;
+}
+
+.tutor-count.no-tutors::before {
+    background: #c9cbdc;
+    box-shadow: none;
+}
+
+.subcard-empty {
+    background: #fbfbfe;
+    box-shadow: none;
+}
+
+.subcard-empty .subject-icon {
+    filter: saturate(0.4);
+    opacity: 0.8;
+}
+
+.subcard-empty .subject-info h2 {
+    color: #6b7090;
+}
+
+/* ---------- sötét mód ---------- */
+
+html[data-theme="dark"] .subcard .subject-icon {
+    background: rgba(var(--cat-light), 0.14);
+    color: rgb(var(--cat-light));
+}
+
+html[data-theme="dark"] .subcard:hover .subject-icon {
+    background: rgba(var(--cat-light), 0.24);
+}
+
+html[data-theme="dark"] .subcard .subject-info h2 {
+    color: #e3e7ff;
+}
+
+html[data-theme="dark"] .subcard:hover .subject-info h2 {
+    color: rgb(var(--cat-light));
+}
+
+html[data-theme="dark"] .subject-info p {
+    background: rgba(var(--cat-light), 0.14);
+    color: rgb(var(--cat-light));
+}
+
+html[data-theme="dark"] .tutor-count {
+    display: flex;
+    margin-top: 9px;
+    padding: 0;
+    background: transparent;
+    color: #6fe0b0;
+    font-size: 12.5px;
+}
+
+html[data-theme="dark"] .tutor-count::before {
+    background: #3fd59a;
+    box-shadow: 0 0 0 3px rgba(63, 213, 154, 0.16);
+}
+
+html[data-theme="dark"] .tutor-count.no-tutors {
+    color: #7a7f9c;
+}
+
+html[data-theme="dark"] .tutor-count.no-tutors::before {
+    background: #3a4366;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .subcard-empty {
+    background: #131829;
+}
+
+html[data-theme="dark"] .subcard-empty .subject-info h2 {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .filter-header p {
+    color: #9a9fbd;
 }

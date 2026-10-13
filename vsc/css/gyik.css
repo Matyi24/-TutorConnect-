@@ -18,7 +18,8 @@ body {
         ),
         #F7F7FC;
     color: #17172E;
-    font-family: Inter, Arial, Helvetica, sans-serif;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.6;
 }
 
 /* ==================================================
@@ -354,4 +355,95 @@ body {
     .faq-text h1 {
         font-size: 30px;
     }
+}
+
+
+/* ==================================================
+   SÖTÉT MÓD
+================================================== */
+
+html[data-theme="dark"] body {
+    background:
+        radial-gradient(
+            circle at 20% 20%,
+            rgba(138, 160, 255, 0.10),
+            transparent 30%
+        ),
+        #0f1320;
+
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .faq-panel {
+    background:
+        radial-gradient(
+            circle at 85% 15%,
+            rgba(138, 160, 255, 0.10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 20% 100%,
+            rgba(94, 203, 171, 0.05),
+            transparent 35%
+        ),
+        linear-gradient(
+            135deg,
+            #171c2e,
+            #141829 50%,
+            #101423
+        );
+
+    border-color: #2a3150;
+
+    box-shadow:
+        0 30px 100px rgba(0, 0, 0, 0.45),
+        0 0 50px rgba(138, 160, 255, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+html[data-theme="dark"] .faq-item {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .faq-item:hover {
+    color: #8aa0ff;
+
+    background: rgba(138, 160, 255, 0.08);
+}
+
+html[data-theme="dark"] .faq-item.active {
+    color: #eef0f8;
+
+    background:
+        linear-gradient(
+            90deg,
+            rgba(138, 160, 255, 0.18),
+            rgba(138, 160, 255, 0.03)
+        );
+
+    box-shadow:
+        inset 3px 0 0 #8aa0ff,
+        0 10px 35px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .faq-number,
+html[data-theme="dark"] .faq-arrow,
+html[data-theme="dark"] .faq-tag {
+    color: #8aa0ff;
+}
+
+/* A cím színátmenetes szöveg: csak a háttérképet cseréljük, hogy a
+   background-clip: text megmaradjon */
+html[data-theme="dark"] .faq-text h1 {
+    background-image:
+        linear-gradient(
+            90deg,
+            #eef0f8 0%,
+            #eef0f8 35%,
+            #8aa0ff 100%
+        );
+}
+
+html[data-theme="dark"] .faq-text p {
+    color: #a3a7c4;
 }
