@@ -627,3 +627,179 @@ body {
 
     width: 100%;
 }
+
+
+/* =========================================
+   SÖTÉT MÓD
+========================================= */
+
+/* A natív elemek (dátumválasztó, legördülő, görgetősáv) is sötétek */
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+html[data-theme="dark"] body {
+    background: #0f1320;
+}
+
+html[data-theme="dark"] .section-title {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .section-sub,
+html[data-theme="dark"] .hub-message {
+    color: #a3a7c4;
+}
+
+/* Figyelmeztetés az oktatónak */
+html[data-theme="dark"] .hub-alert {
+    background: #2b2410;
+
+    border-color: #4a3d14;
+
+    color: #f3d98b;
+}
+
+html[data-theme="dark"] .hub-alert a {
+    background: #f4a623;
+
+    color: #2a1d00;
+}
+
+/* Állapot-kártyák */
+html[data-theme="dark"] .hub-card {
+    background: #171c2e;
+
+    border-color: #2a3150;
+
+    color: #eef0f8;
+
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .hub-card:hover {
+    border-color: var(--tone);
+
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="dark"] .hub-card.tone-upcoming  { --tone: #51cf66; --tone-bg: rgba(81, 207, 102, 0.14); }
+html[data-theme="dark"] .hub-card.tone-pending   { --tone: #ffa94d; --tone-bg: rgba(255, 169, 77, 0.14); }
+html[data-theme="dark"] .hub-card.tone-cancelled { --tone: #ff6b9a; --tone-bg: rgba(255, 107, 154, 0.14); }
+html[data-theme="dark"] .hub-card.tone-past      { --tone: #8aa0ff; --tone-bg: rgba(138, 160, 255, 0.14); }
+
+html[data-theme="dark"] .hub-card h3 {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .hub-card p {
+    color: #a3a7c4;
+}
+
+/* Felhívás: új foglalás / belépés */
+html[data-theme="dark"] .hub-cta {
+    background: #171c2e;
+
+    border-color: #2a3150;
+
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+}
+
+html[data-theme="dark"] .hub-cta strong {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .hub-cta p {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .hub-cta-button {
+    background: #8aa0ff;
+
+    color: #0f1320;
+
+    box-shadow: 0 8px 18px rgba(138, 160, 255, 0.25);
+}
+
+html[data-theme="dark"] .hub-cta-button:hover {
+    background: #a5b5ff;
+}
+
+/* Oktató: szabad időpontok */
+html[data-theme="dark"] .avail-panel {
+    background: #171c2e;
+
+    border-color: #2a3150;
+}
+
+html[data-theme="dark"] .avail-panel h3 {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .avail-hint {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .avail-field label {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .avail-field input,
+html[data-theme="dark"] .avail-field select {
+    background: #1d2338;
+
+    border-color: #2f3860;
+
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .avail-field input:focus,
+html[data-theme="dark"] .avail-field select:focus {
+    border-color: #8aa0ff;
+
+    box-shadow: 0 0 0 3px rgba(138, 160, 255, 0.2);
+}
+
+html[data-theme="dark"] .avail-add {
+    background: #8aa0ff;
+
+    color: #0f1320;
+}
+
+html[data-theme="dark"] .avail-add:hover:not(:disabled) {
+    background: #a5b5ff;
+}
+
+html[data-theme="dark"] .avail-message.error {
+    color: #ff8fb3;
+}
+
+html[data-theme="dark"] .avail-message.success {
+    color: #7ee29a;
+}
+
+html[data-theme="dark"] .avail-day-title {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .avail-slot {
+    background: #232b48;
+
+    color: #cbd3ff;
+}
+
+html[data-theme="dark"] .avail-slot.booked {
+    background: rgba(81, 207, 102, 0.16);
+
+    color: #7ee29a;
+}
+
+html[data-theme="dark"] .avail-remove {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .avail-remove:hover {
+    background: rgba(255, 107, 154, 0.18);
+
+    color: #ff8fb3;
+}

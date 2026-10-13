@@ -272,6 +272,16 @@ function displaySubjects(subjects) {
 
     updateSubjectCount(subjects.length);
 
+    // Akinek van oktatója, az előre kerül (a sorrend egyébként megmarad)
+    subjects = subjects
+        .map((subject, order) => ({
+            subject,
+            order,
+            count: getTutorCountForSubject(subject.name)
+        }))
+        .sort((a, b) => (b.count > 0) - (a.count > 0) || a.order - b.order)
+        .map(item => item.subject);
+
     subjects.forEach((subject, index) => {
         const link = document.createElement("a");
 
@@ -281,6 +291,7 @@ function displaySubjects(subjects) {
         const card = document.createElement("div");
 
         card.classList.add("subcard");
+        card.dataset.category = subject.category || "";
         card.style.animationDelay = `${index * 0.06}s`;
 
         /* Icon */
@@ -314,6 +325,7 @@ function displaySubjects(subjects) {
 
         if (tutorCount === 0) {
             tutorBadge.classList.add("no-tutors");
+            card.classList.add("subcard-empty");
             tutorBadge.textContent = "Jelenleg nincs oktató";
         } else if (tutorCount === 1) {
             tutorBadge.textContent = "1 elérhető oktató";

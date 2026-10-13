@@ -167,6 +167,34 @@
             .bk-success p { font-size: 14px; color: rgba(33, 37, 41, .75); line-height: 1.6; }
             .bk-success a { display: inline-block; margin-top: 8px; color: #4c6ef5; font-weight: 700; }
 
+            /* ---------- sötét mód ---------- */
+            html[data-theme="dark"] .bk-window {
+                background: #171c2e; color: #eef0f8; box-shadow: 0 30px 80px rgba(0, 0, 0, .6);
+            }
+            html[data-theme="dark"] .bk-close { background: rgba(138, 160, 255, .12); color: #a3a7c4; }
+            html[data-theme="dark"] .bk-close:hover { background: #8aa0ff; color: #0f1320; }
+            html[data-theme="dark"] .bk-sub,
+            html[data-theme="dark"] .bk-label small { color: #a3a7c4; }
+            html[data-theme="dark"] .bk-window select,
+            html[data-theme="dark"] .bk-window textarea {
+                background: #1d2338; border-color: #2f3860; color: #eef0f8; color-scheme: dark;
+            }
+            html[data-theme="dark"] .bk-window select:focus,
+            html[data-theme="dark"] .bk-window textarea:focus {
+                border-color: #8aa0ff; box-shadow: 0 0 0 3px rgba(138, 160, 255, .2);
+            }
+            html[data-theme="dark"] .bk-slot { background: #1d2338; border-color: #2f3860; color: #9db1ff; }
+            html[data-theme="dark"] .bk-slot:hover { background: #232b48; }
+            html[data-theme="dark"] .bk-slot.selected { background: #8aa0ff; border-color: #8aa0ff; color: #0f1320; }
+            html[data-theme="dark"] .bk-empty,
+            html[data-theme="dark"] .bk-summary { background: #1d2338; color: #cbd3ff; }
+            html[data-theme="dark"] .bk-empty a { color: #8aa0ff; }
+            html[data-theme="dark"] .bk-error { background: rgba(255, 107, 154, .12); color: #ff8fb3; }
+            html[data-theme="dark"] .bk-submit { background: #8aa0ff; color: #0f1320; }
+            html[data-theme="dark"] .bk-submit:hover:not(:disabled) { background: #a5b5ff; }
+            html[data-theme="dark"] .bk-success p { color: #a3a7c4; }
+            html[data-theme="dark"] .bk-success a { color: #8aa0ff; }
+
             @media (prefers-reduced-motion: reduce) {
                 .bk-modal, .bk-modal.open, .bk-window { transition: none; }
             }

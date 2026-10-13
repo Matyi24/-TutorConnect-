@@ -432,6 +432,21 @@ function createTutorCard(tutor) {
         "Nincs megadott tantárgy";
 
 
+    // Tantárgyak címkékként: legfeljebb 3, a többi "+N"
+    const subjectList =
+        tutor.subjects
+            ? String(tutor.subjects).split(",").map((x) => x.trim()).filter(Boolean)
+            : [];
+
+    const subjectChips =
+        subjectList.length === 0
+            ? '<span class="chip chip-empty">Nincs megadott tantárgy</span>'
+            : subjectList.slice(0, 3).map((x) => `<span class="chip">${escapeHtml(x)}</span>`).join("") +
+              (subjectList.length > 3
+                  ? `<span class="chip chip-more" title="${escapeHtml(subjectList.slice(3).join(", "))}">+${subjectList.length - 3}</span>`
+                  : "");
+
+
     const initials =
         getInitials(name);
 
@@ -497,62 +512,34 @@ function createTutorCard(tutor) {
 
         <!-- TANTÁRGY -->
 
-        <span class="subject">
-            ${escapeHtml(subjects)}
-        </span>
+        <div class="subject-chips">${subjectChips}</div>
 
 
         <!-- ÉRTÉKELÉS -->
 
-        <div class="rating">
-
-            <span>
-                ★
-            </span>
-
-            <strong>
-
-                ${
-                    rating > 0
-                        ? rating.toFixed(1)
-                        : "Nincs"
-                }
-
-            </strong>
-
-
-            <small>
-
-                ${reviewCount}
-                ${
-                    reviewCount === 1
-                        ? " értékelés"
-                        : " értékelés"
-                }
-
-            </small>
-
+        <div class="rating ${rating > 0 ? "" : "rating-none"}">
+            ${
+                rating > 0
+                    ? `<span>★</span><strong>${rating.toFixed(1)}</strong><small>${reviewCount} értékelés</small>`
+                    : `<span>★</span><small>Még nincs értékelés</small>`
+            }
         </div>
 
 
         <!-- ÁR -->
 
         <div class="price">
-
-            <strong>
-                ${price.toLocaleString("hu-HU")} Ft${displayPrice.from ? "-tól" : ""}
-            </strong>
-
-            <span>
-                / óra
-            </span>
-
+            ${
+                price > 0
+                    ? `<strong>${price.toLocaleString("hu-HU")} Ft${displayPrice.from ? "-tól" : ""}</strong><span>/ óra</span>`
+                    : `<strong class="price-none">Ár egyeztetéssel</strong>`
+            }
         </div>
 
 
         <!-- BEMUTATKOZÁS -->
 
-        <p class="description">
+        <p class="description${tutor.bio ? "" : " empty"}">
             ${escapeHtml(bio)}
         </p>
 
@@ -944,6 +931,17 @@ async function openProfile(tutorId) {
 
     profileBio.textContent =
         bio;
+
+
+    /* Időpont foglalása gomb (diákoknak, a booking.js rajzolja ki) */
+    if (window.TCBooking) {
+
+        TCBooking.renderButton(
+            document.getElementById("profileBookingSlot"),
+            tutorId,
+            name
+        );
+    }
 
 
     /* =================================================

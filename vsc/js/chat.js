@@ -2696,3 +2696,103 @@ async function openStudentProfile(studentId) {
         ${subjectsHtml}
     `;
 }
+
+
+// ============================================================
+// KÉPNÉZEGETŐ (lightbox)
+// ============================================================
+//
+// A chatben küldött képre kattintva nem új lapon nyílik meg, hanem
+// a képernyő közepén nagyítva, sötét háttér előtt. Bezárás: háttérre
+// vagy a × gombra kattintással, vagy Esc-szel. Az eredeti linkre
+// (új lapon megnyitás, letöltés) a "Megnyitás külön" gomb marad.
+
+function setupImageViewer() {
+
+    const viewer = document.createElement("div");
+    viewer.className = "image-viewer";
+    viewer.setAttribute("aria-hidden", "true");
+    viewer.innerHTML = `
+        <button type="button" class="image-viewer-close" aria-label="Bezárás">×</button>
+        <img class="image-viewer-img" alt="">
+        <div class="image-viewer-bar">
+            <span class="image-viewer-name"></span>
+            <a class="image-viewer-open" target="_blank" rel="noopener">Megnyitás külön lapon</a>
+        </div>
+    `;
+
+    document.body.appendChild(viewer);
+
+    const img = viewer.querySelector(".image-viewer-img");
+    const nameBox = viewer.querySelector(".image-viewer-name");
+    const openLink = viewer.querySelector(".image-viewer-open");
+    let closeTimer = null;
+
+    function open(src, name) {
+
+        clearTimeout(closeTimer);
+
+        img.src = src;
+        img.alt = name || "";
+        nameBox.textContent = name || "";
+        openLink.href = src;
+
+        viewer.setAttribute("aria-hidden", "false");
+        viewer.classList.add("visible");
+        document.body.classList.add("viewer-open");
+    }
+
+    function close() {
+
+        if (!viewer.classList.contains("visible")) {
+            return;
+        }
+
+        viewer.classList.remove("visible");
+        viewer.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("viewer-open");
+
+        // a kép a lecsengő animáció után törlődik
+        closeTimer = setTimeout(() => { img.removeAttribute("src"); }, 250);
+    }
+
+    document.addEventListener("click", (event) => {
+
+        const link = event.target.closest(".message-image-link");
+
+        if (!link) {
+            return;
+        }
+
+        // Ctrl/Cmd/középső kattintás: maradjon a böngésző alapműködése
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const thumb = link.querySelector("img");
+
+        open(link.href, thumb ? thumb.alt : "");
+    });
+
+    viewer.addEventListener("click", (event) => {
+
+        // csak a háttér és a × zár, a képre és a sávra kattintás nem
+        if (
+            event.target === viewer ||
+            event.target.closest(".image-viewer-close")
+        ) {
+            close();
+        }
+    });
+
+    document.addEventListener("keydown", (event) => {
+
+        if (event.key === "Escape") {
+            close();
+        }
+    });
+}
+
+setupImageViewer();

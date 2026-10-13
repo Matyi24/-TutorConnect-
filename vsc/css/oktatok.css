@@ -1434,3 +1434,78 @@ html[data-theme="dark"] .profile-reviews-empty {
     background: #1d2338;
     border-color: #343c63;
 }
+
+
+/* =====================================================
+   KÁRTYA: címkék, értékelés, ár (v2)
+===================================================== */
+
+.subject-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 6px;
+    min-height: 56px;
+    margin-bottom: 14px;
+}
+
+.chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eeecff;
+    color: #5546d6;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.chip-more {
+    background: #f1f0f6;
+    color: #6f6c80;
+    cursor: help;
+}
+
+.chip-empty {
+    background: #f4f3f8;
+    color: #9b98a8;
+    font-weight: 600;
+}
+
+.rating-none > span {
+    color: #d3d0de;
+}
+
+.price-none {
+    color: var(--text-light);
+    font-size: 14px !important;
+    font-weight: 600;
+}
+
+.description.empty {
+    color: #a6a3b3;
+    font-style: italic;
+}
+
+html[data-theme="dark"] .chip {
+    background: rgba(138, 160, 255, 0.16);
+    color: #b3c0ff;
+}
+
+html[data-theme="dark"] .chip-more,
+html[data-theme="dark"] .chip-empty {
+    background: #232a42;
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .rating-none > span {
+    color: #3a4366;
+}
+
+html[data-theme="dark"] .description.empty {
+    color: #7a7f9c;
+}
+
+@media (max-width: 700px) {
+    .subject-chips { min-height: 0; }
+}

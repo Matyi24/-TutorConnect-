@@ -122,7 +122,9 @@ const PUBLIC_JS_FILES = new Set([
     "oktatok.js",
     "booking.js",
     "foglalas.js",
-    "foglalasutan.js"
+    "foglalasutan.js",
+    "home.js",
+    "selectmenu.js"
 ]);
 
 // Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
@@ -1085,7 +1087,8 @@ app.get("/api/stats", (req, res) => {
     const sql = `
         SELECT
             (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL) AS tutor_count,
-            (SELECT COUNT(*) FROM bookings) AS booking_count,
+            -- csak a lezajlott (teljesített) órák számítanak
+            (SELECT COUNT(*) FROM bookings WHERE status_ = 'COMPLETED') AS booking_count,
             (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
     `;
 

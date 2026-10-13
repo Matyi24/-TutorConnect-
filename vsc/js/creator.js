@@ -696,6 +696,58 @@ function injectAccountStyles() {
         /* A lábléc linkje (GYIK) a lábléc színét örökölje, ne a böngésző kékjét */
         .footer a { color: inherit; }
 
+        /* ---------- sötét mód: navbar és lábléc ----------
+           Minden oldalon betöltődik a creator.js, ezért itt egy helyen
+           van, és a style.css, chat.css és substyle.css saját navbar-
+           másolatait is felülírja (nagyobb specifikusság). */
+
+        html[data-theme="dark"] .navbar {
+            background: #141a2e;
+            border-bottom: 1px solid #232b48;
+            box-shadow: 0 4px 18px rgba(0, 0, 0, .35);
+        }
+
+        html[data-theme="dark"] .nav-links li,
+        html[data-theme="dark"] .navbar .logo { color: #eef0f8; }
+
+        html[data-theme="dark"] .nav-links li::after { background-color: #8aa0ff; }
+
+        html[data-theme="dark"] .cta-buttons .login {
+            border-color: #3a4268;
+            color: #e8eaf4;
+        }
+        html[data-theme="dark"] .cta-buttons .login:hover { background: rgba(138, 160, 255, .14); }
+
+        html[data-theme="dark"] .cta-buttons .register {
+            background: #8aa0ff;
+            color: #0f1320;
+        }
+        html[data-theme="dark"] .cta-buttons .register:hover { background: #a5b5ff; }
+
+        html[data-theme="dark"] .user-chip:hover { background: rgba(138, 160, 255, .12); }
+
+        html[data-theme="dark"] .theme-toggle {
+            background: #1f2640;
+            border-color: #2f3860;
+            color: #cbd3ff;
+        }
+        html[data-theme="dark"] .theme-toggle:hover { background: #283054; }
+
+        html[data-theme="dark"] .footer {
+            background: #0b0f1c;
+            border-top: 1px solid #1d2440;
+        }
+        html[data-theme="dark"] .footer li { color: #a3a7c4; }
+        html[data-theme="dark"] .footer li:hover { color: #eef0f8; }
+
+        /* a hiányos profilra figyelmeztető sáv sötét módban */
+        html[data-theme="dark"] .tc-reminder {
+            background: #2b2410;
+            color: #f3d98b;
+            border-bottom-color: #4a3d14;
+        }
+        html[data-theme="dark"] .tc-reminder-close { color: #f3d98b; }
+
         /* Sáv a navbar alatt: hiányos oktatói profil */
         .tc-reminder {
             display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px;
@@ -757,6 +809,62 @@ function injectAccountStyles() {
                 padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid #e6e1fb;
             }
             .acc-subj-select { grid-column: 1 / -1; }
+        }
+
+        /* ---------- sötét mód: fiók-ablak ---------- */
+        html[data-theme="dark"] .acc-overlay { background: rgba(5, 8, 18, .65); }
+        html[data-theme="dark"] .acc-window {
+            background: #171c2e; color: #eef0f8;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .6); color-scheme: dark;
+        }
+        html[data-theme="dark"] .acc-close { background: #232a42; color: #aebcff; }
+        html[data-theme="dark"] .acc-close:hover { background: #2f3860; }
+        html[data-theme="dark"] .acc-label,
+        html[data-theme="dark"] .acc-section:first-child { color: #8aa0ff; }
+        html[data-theme="dark"] .acc-header h2,
+        html[data-theme="dark"] .acc-field label,
+        html[data-theme="dark"] .acc-subj-head { color: #eef0f8; }
+        html[data-theme="dark"] .acc-field input,
+        html[data-theme="dark"] .acc-field textarea,
+        html[data-theme="dark"] .acc-subj-select,
+        html[data-theme="dark"] .acc-subj-price,
+        html[data-theme="dark"] .acc-student-grid select {
+            background: #1d2338; border-color: #2f3860; color: #eef0f8;
+        }
+        html[data-theme="dark"] .acc-field input:focus,
+        html[data-theme="dark"] .acc-field textarea:focus,
+        html[data-theme="dark"] .acc-subj-select:focus,
+        html[data-theme="dark"] .acc-subj-price:focus {
+            border-color: #8aa0ff; box-shadow: 0 0 0 3px rgba(138, 160, 255, .18);
+        }
+        html[data-theme="dark"] .acc-col-password,
+        html[data-theme="dark"] .acc-subjects { background: #1d2338; border-color: #2a3150; }
+        html[data-theme="dark"] .acc-section { border-top-color: #2a3150; color: #a3a7c4; }
+        html[data-theme="dark"] .acc-hint,
+        html[data-theme="dark"] .acc-counter { color: #a3a7c4; }
+        html[data-theme="dark"] .acc-message.error { color: #ff8fab; }
+        html[data-theme="dark"] .acc-message.success { color: #5fd3a0; }
+        html[data-theme="dark"] .acc-cancel { background: #232a42; color: #aebcff; }
+        html[data-theme="dark"] .acc-save { background: #6c82f5; color: #fff; }
+        html[data-theme="dark"] .acc-save:hover { background: #8aa0ff; color: #0f1320; }
+        html[data-theme="dark"] .acc-actions .logout { background: rgba(255, 90, 130, .14); color: #ff8fab; }
+        html[data-theme="dark"] .acc-actions .logout:hover { background: rgba(255, 90, 130, .24); }
+        html[data-theme="dark"] .acc-subj-remove { background: rgba(255, 90, 130, .14); color: #ff8fab; }
+        html[data-theme="dark"] .acc-subj-remove:hover { background: rgba(255, 90, 130, .26); }
+        html[data-theme="dark"] .acc-add-row { border-color: #3f4a7a; color: #aebcff; }
+        html[data-theme="dark"] .acc-add-row:hover { background: #232a42; }
+        html[data-theme="dark"] .acc-danger { border-top-color: #2a3150; }
+        html[data-theme="dark"] .acc-danger-link { color: #ff8fab; }
+        html[data-theme="dark"] .acc-danger-box {
+            background: rgba(255, 90, 130, .1); border-color: rgba(255, 90, 130, .35); color: #ffc2d1;
+        }
+        html[data-theme="dark"] .acc-danger-box input {
+            background: #1d2338; border-color: rgba(255, 90, 130, .4); color: #eef0f8;
+        }
+        html[data-theme="dark"] .acc-danger-confirm { background: #e0456f; }
+        html[data-theme="dark"] .acc-danger-confirm:hover { background: #c93861; }
+        @media (max-width: 520px) {
+            html[data-theme="dark"] .acc-subj-row { border-bottom-color: #2a3150; }
         }
 
     `;

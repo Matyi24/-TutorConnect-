@@ -5,129 +5,130 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/herostyle.css">
-    <title>TutorConnect</title>
+    <link rel="stylesheet" href="/css/home.css">
+    <title>TutorConnect – Találd meg a hozzád illő korrepetálót</title>
 </head>
 
 <body>
-    <main class="container">
+<main class="home">
 
-        <!--nav-->
+    <!-- ============ HERO ============ -->
+    <section class="home-hero" aria-label="Bemutatkozás">
 
-        <section class="hero">
-            <div class="slide active">
-                <img src="/images/slide1.png" alt="">
-                <div class="hero-text">
-                    <h1>Tutor Connect</h1>
-                    <p>Keress magadnak egy szimpatikus tanárt vagy regisztrálj korrepetálóként!</p>
+        <!-- Háttérképek (a home.js váltja őket) -->
+        <div class="home-hero-slides" aria-hidden="true">
+            <div class="home-slide active" style="background-image: url('/images/slide1.png')"></div>
+            <div class="home-slide" style="background-image: url('/images/mainbg2.png')"></div>
+            <div class="home-slide" style="background-image: url('/images/slide3.jpg')"></div>
+        </div>
+
+        <!-- Sötétítő átmenet: a szöveg minden képen jól olvasható -->
+        <div class="home-hero-overlay"></div>
+
+        <div class="home-hero-inner">
+
+            <span class="home-eyebrow">TUTORCONNECT</span>
+
+            <div class="home-copy-stack">
+
+                <div class="home-copy active">
+                    <h1>Találd meg a hozzád illő korrepetálót.</h1>
+                    <p>Foglalj időpontot az oktatók szabad időpontjaiból, olvass valódi értékeléseket, és tanulj a saját tempódban.</p>
+                </div>
+
+                <div class="home-copy">
+                    <h2>Valódi értékelések.</h2>
+                    <p>Csak teljesített óra után lehet értékelni, így a vélemények hitelesek.</p>
+                </div>
+
+                <div class="home-copy">
+                    <h2>Az adataid nálad maradnak.</h2>
+                    <p>A fiókodat bármikor törölheted, a személyes adataid ilyenkor anonimizálódnak.</p>
                 </div>
 
             </div>
 
-            <div class="slide">
-                <img src="/images/mainbg2.png" alt="">
-                <div class="hero-text">
-                    <h1>Tanárok</h1>
-                    <p>Ellenőrzött oktatók</p>
-                </div>
+            <!-- Vendégnek ez az alap; a home.js a belépett felhasználóhoz igazítja -->
+            <div class="home-actions" id="homeActions">
+                <a class="home-btn primary" href="/oktatok">Oktatók böngészése</a>
+                <a class="home-btn ghost" href="/register?role=TUTOR">Korrepetálóként csatlakozom</a>
             </div>
 
-            <div class="slide">
-                <img src="/images/slide3.jpg" alt="">
-                <div class="hero-text">
-                    <h1>Adatkezelés</h1>
-                    <p>Biztonságos adat kezelés</p>
-                </div>
+            <div class="home-dots">
+                <button type="button" class="home-dot active" aria-label="1. dia" aria-current="true"></button>
+                <button type="button" class="home-dot" aria-label="2. dia" aria-current="false"></button>
+                <button type="button" class="home-dot" aria-label="3. dia" aria-current="false"></button>
             </div>
-        </section>
 
-<div id="hatter">
-
-        <h1 id="howto">Hogyan működik?</h1>
-
-        <div class="main-grid">
-
-    <div class="steps">
-        <div class="step-number">1</div>
-
-        <h1>Tantárgy és oktató kiválasztása</h1>
-
-        <p>
-            Válaszd ki azt a tantárgyat, amelyben segítségre van szükséged, majd böngéssz a tapasztalt felsőbb éves oktatók között. Tekintsd meg értékeléseiket, és találd meg a számodra legmegfelelőbb korrepetitort.
-        </p>
-
-        <a href="#" class="step-action">
-            Oktató keresése →
-        </a>
-    </div>
+        </div>
+    </section>
 
 
-    <div class="steps">
-        <div class="step-number">2</div>
-
-        <h1>Időpont lefoglalása</h1>
-
-        <p>
-            Nézd meg az oktató elérhető időpontjait, és foglald le a számodra legkényelmesebbet. A beépített naptár segítségével könnyedén megtervezheted a tanulást, és nem kell többé üzenetekben egyeztetnetek.
-        </p>
-
-        <a href="#" class="step-action">
-            Időpont foglalása →
-        </a>
-    </div>
-
-
-    <div class="steps">
-        <div class="step-number">3</div>
-
-        <h1>Tanulj és értékeld</h1>
-
-        <p>
-            A lefoglalt időpontban kezdődhet a személyre szabott korrepetálás. Kérdezz, gyakorolj és dolgozz együtt az oktatóval, majd a foglalkozás végén értékeld a tapasztalataidat.
-        </p>
-
-        <a href="#" class="step-action">
-            Tanulás kezdése →
-        </a>
-    </div>
-
-</div>
-
-<section class="features">
-    <a href="register">
-        <div class="feature-card" id="diak">Diákként regisztrálok.</div>
-    </a>
-    <a href="register?role=TUTOR">
-        <div class="feature-card" id="Korrepetalo">Korrepetáloként regisztrálok.</div>
-    </a>
-</section>
+    <!-- ============ SZÁMOK ============ -->
+    <section class="home-stats" aria-label="A TutorConnect számokban">
+        <div class="home-stat">
+            <strong id="statTutors">–</strong>
+            <span>aktív oktató</span>
+        </div>
+        <div class="home-stat">
+            <strong id="statBookings">–</strong>
+            <span>teljesített óra</span>
+        </div>
+        <div class="home-stat">
+            <strong id="statSatisfaction">–</strong>
+            <span>elégedettség</span>
+        </div>
+    </section>
 
 
-</div>
+    <!-- ============ HOGYAN MŰKÖDIK ============ -->
+    <section class="home-section" id="howto">
 
-        <!-- Statisztikák -->
-<section class="stats">
-    <div class="stat"><span id="statTutors">0</span>+ aktív oktató</div>
-    <div class="stat"><span id="statBookings">0</span>+ sikeres korrepetálás</div>
-    <div class="stat"><span id="statSatisfaction">0</span>% elégedettség</div>
-</section>
+        <span class="home-eyebrow dark">HOGYAN MŰKÖDIK?</span>
+        <h2 class="home-h2">Három lépés az első óráig</h2>
 
-        <!-- Footer -->
+        <div class="home-steps">
 
-    </main>
+            <article class="home-step tone-blue">
+                <span class="home-step-num">1</span>
+                <h3>Válassz oktatót</h3>
+                <p>Böngéssz tantárgy, ár és értékelés szerint, és nézd meg az oktatók profilját.</p>
+                <a href="/oktatok" class="home-step-link">Oktatók keresése →</a>
+            </article>
+
+            <article class="home-step tone-amber">
+                <span class="home-step-num">2</span>
+                <h3>Foglalj időpontot</h3>
+                <p>Válassz az oktató szabad időpontjai közül. Az oktató jóváhagyja, így nem kell üzenetekben egyeztetni.</p>
+                <a href="/oktatok" class="home-step-link">Időpont foglalása →</a>
+            </article>
+
+            <article class="home-step tone-green">
+                <span class="home-step-num">3</span>
+                <h3>Tanulj, majd értékelj</h3>
+                <p>Az óra után értékeld az oktatót, ezzel másoknak is segítesz választani.</p>
+                <a href="/foglalas" class="home-step-link">Foglalásaim →</a>
+            </article>
+
+        </div>
+    </section>
+
+
+    <!-- ============ CSATLAKOZÁS ============ -->
+    <!-- Vendégnek ez az alap; a home.js a belépett felhasználóhoz igazítja -->
+    <section class="home-cta" id="homeCta">
+        <h2>Készen állsz?</h2>
+        <p>Csatlakozz diákként vagy korrepetálóként, pár perc alatt kész a fiókod.</p>
+        <div class="home-cta-actions">
+            <a class="home-btn light" href="/register">Diákként regisztrálok</a>
+            <a class="home-btn outline" href="/register?role=TUTOR">Korrepetáloként regisztrálok</a>
+        </div>
+    </section>
+
+</main>
 </body>
-<script src="/js/creator.js"></script>
-<script src="/html/slide.js"></script>
 
-<script>
-    fetch("/api/stats")
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById("statTutors").textContent = data.tutors;
-            document.getElementById("statBookings").textContent = data.bookings;
-            document.getElementById("statSatisfaction").textContent = data.satisfaction;
-        })
-        .catch(err => console.error("Statisztikák betöltése sikertelen:", err));
-</script>
+<script src="/js/creator.js"></script>
+<script src="/js/home.js"></script>
 
 </html>
