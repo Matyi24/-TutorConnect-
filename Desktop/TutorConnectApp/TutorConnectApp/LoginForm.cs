@@ -82,8 +82,8 @@ namespace TutorConnectApp
             var area = ClientRectangle;
             if (area.Width < 2 || area.Height < 2) return;
 
-            Color c1 = Theme.Dark ? ColorTranslator.FromHtml("#0B0E1C") : ColorTranslator.FromHtml("#5C7CFA");
-            Color c2 = Theme.Dark ? ColorTranslator.FromHtml("#232C5E") : ColorTranslator.FromHtml("#3B5BDB");
+            Color c1 = Theme.Dark ? Theme.LoginDark1 : Theme.HeroLight1;
+            Color c2 = Theme.Dark ? Theme.LoginDark2 : Theme.MainBlueDark;
 
             var g = e.Graphics;
             using (var brush = new LinearGradientBrush(area, c1, c2, 45F))

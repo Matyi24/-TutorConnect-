@@ -365,7 +365,7 @@ namespace TutorConnectApp
 
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
-            using (var iconFont = new Font("Segoe MDL2 Assets", 13F))
+            var iconFont = Ui.IconFont(13F);
             using (var iconBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, focusT)))
                 g.DrawString("", iconFont, iconBrush, new Rectangle(14, 0, 34, Height), format);
 
@@ -376,7 +376,7 @@ namespace TutorConnectApp
                     using var hoverBrush = new SolidBrush(Theme.SoftHover);
                     g.FillEllipse(hoverBrush, ClearRect);
                 }
-                using var clearFont = new Font("Segoe MDL2 Assets", 9F);
+                var clearFont = Ui.IconFont(9F);
                 using var clearBrush = new SolidBrush(hoverClear ? Theme.Text : Theme.Muted);
                 g.DrawString("", clearFont, clearBrush, ClearRect, format);
             }
@@ -524,15 +524,15 @@ namespace TutorConnectApp
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
             int textWidth = Math.Max(Width - 18 - 46, 0);
 
-            using (var captionFont = Ui.MakeFont(8.5F))
+            var captionFont = Ui.MakeFont(8.5F);
             using (var captionBrush = new SolidBrush(Theme.Muted))
                 g.DrawString(caption, captionFont, captionBrush, new Rectangle(18, 9, textWidth, 16), format);
 
-            using (var valueFont = Ui.MakeFont(10.5F, FontStyle.Bold))
+            var valueFont = Ui.MakeFont(10.5F, FontStyle.Bold);
             using (var valueBrush = new SolidBrush(Theme.Text))
                 g.DrawString(SelectedText, valueFont, valueBrush, new Rectangle(18, 27, textWidth, 24), format);
 
-            using var chevronFont = new Font("Segoe MDL2 Assets", 9F);
+            var chevronFont = Ui.IconFont(9F);
             using var chevronBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, highlight));
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(IsOpen ? "" : "", chevronFont, chevronBrush, new Rectangle(Width - 40, 0, 30, Height), center);
@@ -629,7 +629,7 @@ namespace TutorConnectApp
                     LineAlignment = StringAlignment.Center,
                     Trimming = StringTrimming.EllipsisCharacter
                 };
-                using var checkFont = new Font("Segoe MDL2 Assets", 10F);
+                var checkFont = Ui.IconFont(10F);
 
                 for (int i = 0; i < items.Count; i++)
                 {
@@ -646,7 +646,7 @@ namespace TutorConnectApp
                         g.FillPath(rowBrush, path);
                     }
 
-                    using var font = Ui.MakeFont(10.5F, isSelected ? FontStyle.Bold : FontStyle.Regular);
+                    var font = Ui.MakeFont(10.5F, isSelected ? FontStyle.Bold : FontStyle.Regular);
                     using var textBrush = new SolidBrush(isSelected ? Theme.MainBlue : Theme.Text);
                     g.DrawString(items[i], font, textBrush, new Rectangle(row.X + 12, row.Y, row.Width - 40, row.Height), format);
 

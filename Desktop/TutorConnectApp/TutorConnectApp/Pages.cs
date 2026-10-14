@@ -114,8 +114,8 @@ namespace TutorConnectApp
 
         protected override async Task BuildAsync()
         {
-            var subjectsTask = ApiClient.GetAsync<List<SubjectDto>>("/api/subjects");
-            var tutorsTask = ApiClient.GetAsync<List<TutorDto>>("/api/tutors");
+            var subjectsTask = ApiClient.GetCachedAsync<List<SubjectDto>>("/api/subjects");
+            var tutorsTask = ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
             await Task.WhenAll(subjectsTask, tutorsTask);
             if (IsDisposed) return;
 
@@ -253,8 +253,8 @@ namespace TutorConnectApp
 
         protected override async Task BuildAsync()
         {
-            var tutorsTask = ApiClient.GetAsync<List<TutorDto>>("/api/tutors");
-            var subjectsTask = ApiClient.GetAsync<List<SubjectDto>>("/api/subjects");
+            var tutorsTask = ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+            var subjectsTask = ApiClient.GetCachedAsync<List<SubjectDto>>("/api/subjects");
             await Task.WhenAll(tutorsTask, subjectsTask);
             if (IsDisposed) return;
 

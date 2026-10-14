@@ -226,7 +226,7 @@ namespace TutorConnectApp
             g.Clear(Ui.EffectiveBack(Parent));
             g.SmoothingMode = SmoothingMode.AntiAlias;
 
-            Color off = Theme.Dark ? ColorTranslator.FromHtml("#3A4170") : ColorTranslator.FromHtml("#B8C0D8");
+            Color off = Theme.Dark ? Theme.SwitchOffDark : Theme.SwitchOffLight;
             using var track = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Height / 2);
             using (var brush = new SolidBrush(Anim.Lerp(off, Theme.MainBlue, position)))
                 g.FillPath(brush, track);
@@ -350,7 +350,7 @@ namespace TutorConnectApp
             var badge = new Rectangle(20, (Height - 46) / 2, 46, 46);
             using (var badgeBrush = new SolidBrush(Anim.Lerp(Theme.CardBg, accent, Theme.Dark ? 0.28 : 0.15)))
                 g.FillEllipse(badgeBrush, badge);
-            using (var iconFont = new Font("Segoe MDL2 Assets", 16F))
+            var iconFont = Ui.IconFont(16F);
             using (var iconBrush = new SolidBrush(accent))
             using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 g.DrawString(glyph, iconFont, iconBrush, badge, center);
@@ -359,9 +359,9 @@ namespace TutorConnectApp
             int textX = badge.Right + 16;
             int textWidth = Math.Max(Width - textX - 10, 0);
 
-            using var valueFont = Ui.MakeFont(22F, FontStyle.Bold);
+            var valueFont = Ui.MakeFont(22F, FontStyle.Bold);
             using var valueBrush = new SolidBrush(Theme.Text);
-            using var captionFont = Ui.MakeFont(9.5F);
+            var captionFont = Ui.MakeFont(9.5F);
             using var captionBrush = new SolidBrush(Theme.Muted);
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
 
@@ -402,8 +402,8 @@ namespace TutorConnectApp
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
             var rect = new Rectangle(0, 0, Width - 1, Height - 1);
-            Color c1 = Theme.Dark ? ColorTranslator.FromHtml("#3B5BDB") : ColorTranslator.FromHtml("#5C7CFA");
-            Color c2 = Theme.Dark ? ColorTranslator.FromHtml("#2B3A8C") : ColorTranslator.FromHtml("#3B5BDB");
+            Color c1 = Theme.Dark ? Theme.HeroDark1 : Theme.HeroLight1;
+            Color c2 = Theme.Dark ? Theme.HeroDark2 : Theme.MainBlueDark;
 
             using var path = Ui.RoundedPath(rect, 18);
             using (var brush = new LinearGradientBrush(rect, c1, c2, 20F))
@@ -418,8 +418,8 @@ namespace TutorConnectApp
             }
             g.ResetClip();
 
-            using var titleFont = Ui.MakeFont(21F, FontStyle.Bold);
-            using var subFont = Ui.MakeFont(10.5F);
+            var titleFont = Ui.MakeFont(21F, FontStyle.Bold);
+            var subFont = Ui.MakeFont(10.5F);
             using var white = new SolidBrush(Color.White);
             using var soft = new SolidBrush(Color.FromArgb(225, Color.White));
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
@@ -479,11 +479,11 @@ namespace TutorConnectApp
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
             int lit = hoverValue > 0 ? hoverValue : value;
-            using var font = new Font("Segoe UI Symbol", 26F);
+            var font = Ui.SymbolFont(26F);
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             for (int i = 1; i <= 5; i++)
             {
-                Color color = i <= lit ? ColorTranslator.FromHtml("#F59F00") : Theme.CardBorder;
+                Color color = i <= lit ? Theme.Star : Theme.CardBorder;
                 using var brush = new SolidBrush(color);
                 g.DrawString("★", font, brush, new Rectangle((i - 1) * StarSize, 0, StarSize, StarSize), format);
             }
@@ -497,6 +497,7 @@ namespace TutorConnectApp
     internal class CardPanel : FlowLayoutPanel
     {
         private double reveal = 1;
+        private GraphicsPath? outline;
 
         public CardPanel()
         {
@@ -526,17 +527,26 @@ namespace TutorConnectApp
             if (BackColor.A < 255 || Width < 4 || Height < 4) return;
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 14);
+            outline ??= Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 14);
             int alpha = (int)(255 * reveal);
             using (var fill = new SolidBrush(Color.FromArgb(alpha, BackColor)))
-                g.FillPath(fill, path);
+                g.FillPath(fill, outline);
             using (var border = new Pen(Color.FromArgb(alpha, Theme.CardBorder)))
-                g.DrawPath(border, path);
+                g.DrawPath(border, outline);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) outline?.Dispose();
+            base.Dispose(disposing);
         }
 
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
+
+            outline?.Dispose(); // a körvonal a következő rajzoláskor az új mérettel épül újra
+            outline = null;
 
             // a "wrap" jelölésű elemek a kártya belső szélességéhez igazodnak (hosszú szöveg és címkesorok tördelése)
             int inner = Math.Max(ClientSize.Width - Padding.Horizontal, 0);
@@ -692,9 +702,9 @@ namespace TutorConnectApp
                 g.FillPath(badgeBrush, badgePath);
 
             bool symbolFont = glyph[0] < '\uE000'; // a Segoe MDL2 ikonok a privát Unicode-tartományban vannak
-            using (var glyphFont = symbolFont
-                       ? new Font("Segoe UI Symbol", glyph.Length >= 2 ? 13F : 20F, FontStyle.Bold)
-                       : new Font("Segoe MDL2 Assets", 20F))
+            var glyphFont = symbolFont
+                ? Ui.SymbolFont(glyph.Length >= 2 ? 13F : 20F, FontStyle.Bold)
+                : Ui.IconFont(20F);
             using (var glyphBrush = new SolidBrush(Anim.Lerp(accent, Theme.White, hoverT)))
             using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 g.DrawString(glyph, glyphFont, glyphBrush, badge, center);
@@ -703,14 +713,14 @@ namespace TutorConnectApp
             int textWidth = Math.Max(Width - textX - 18, 0);
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
 
-            using (var nameFont = Ui.MakeFont(13.5F, FontStyle.Bold))
+            var nameFont = Ui.MakeFont(13.5F, FontStyle.Bold);
             using (var nameBrush = new SolidBrush(Theme.Text))
                 g.DrawString(name, nameFont, nameBrush, new Rectangle(textX, 22, textWidth, 28), format);
 
             // kategória színes ponttal
             using (var dotBrush = new SolidBrush(accent))
                 g.FillEllipse(dotBrush, textX, 59, 8, 8);
-            using (var categoryFont = Ui.MakeFont(9.5F))
+            var categoryFont = Ui.MakeFont(9.5F);
             using (var categoryBrush = new SolidBrush(Theme.Muted))
                 g.DrawString(category, categoryFont, categoryBrush, new Rectangle(textX + 14, 52, Math.Max(textWidth - 14, 0), 22), format);
 
@@ -720,7 +730,7 @@ namespace TutorConnectApp
 
             // alsó sor: oktatók száma, jobbra "Megnézem →"
             int arrowWidth = clickable ? 96 : 0;
-            using (var pillFont = Ui.MakeFont(8.5F, FontStyle.Bold))
+            var pillFont = Ui.MakeFont(8.5F, FontStyle.Bold);
             {
                 Color pillColor = hasTutors ? Theme.Success : Theme.Muted;
                 int pillWidth = Math.Min(TextRenderer.MeasureText(tutorText, pillFont).Width + 8, Math.Max(Width - 40 - arrowWidth, 0));
@@ -740,7 +750,7 @@ namespace TutorConnectApp
 
             if (clickable)
             {
-                using var moreFont = Ui.MakeFont(9.5F, FontStyle.Bold);
+                var moreFont = Ui.MakeFont(9.5F, FontStyle.Bold);
                 using var moreBrush = new SolidBrush(Anim.Lerp(Theme.Muted, accent, hoverT));
                 using var moreFormat = new StringFormat(StringFormatFlags.NoWrap)
                 {

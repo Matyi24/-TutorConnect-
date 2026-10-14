@@ -184,7 +184,7 @@ namespace TutorConnectApp
                 using (var fill = new SolidBrush(Theme.White))
                     g.FillEllipse(fill, circle);
 
-                using (var logoFont = new Font(Theme.FontFamily, 18F, FontStyle.Bold))
+                var logoFont = Ui.MakeFont(18F, FontStyle.Bold);
                 using (var logoBrush = new SolidBrush(Theme.MainBlueDark))
                 using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                     g.DrawString("T", logoFont, logoBrush, circle, center);
@@ -194,15 +194,13 @@ namespace TutorConnectApp
                     // A cím soha nem törik új sorba: ha nem fér el, a betűméret csökken.
                     var textArea = new Rectangle(80, 0, Math.Max(Width - 80 - 12, 0), Height);
                     float size = 15F;
-                    Font titleFont = new(Theme.FontFamily, size, FontStyle.Bold);
+                    var titleFont = Ui.MakeFont(size, FontStyle.Bold);
                     while (size > 9F && TextRenderer.MeasureText("TutorConnect", titleFont).Width > textArea.Width)
                     {
-                        titleFont.Dispose();
                         size -= 0.5F;
-                        titleFont = new Font(Theme.FontFamily, size, FontStyle.Bold);
+                        titleFont = Ui.MakeFont(size, FontStyle.Bold);
                     }
 
-                    using (titleFont)
                     using (var format = new StringFormat(StringFormatFlags.NoWrap)
                     {
                         LineAlignment = StringAlignment.Center,
@@ -274,12 +272,12 @@ namespace TutorConnectApp
                 int x = avatar.Right + 12;
                 int textWidth = Math.Max(Width - x - 12, 0);
                 using var nameFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter, LineAlignment = StringAlignment.Far };
-                using var nameFont = new Font(Theme.FontFamily, 10F, FontStyle.Bold);
+                var nameFont = Ui.MakeFont(10F, FontStyle.Bold);
                 using var nameBrush = new SolidBrush(Theme.White);
                 g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - 22, textWidth, 22), nameFormat);
 
                 using var roleFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
-                using var roleFont = new Font(Theme.FontFamily, 8.5F);
+                var roleFont = Ui.MakeFont(8.5F);
                 using var roleBrush = new SolidBrush(Color.FromArgb(200, Theme.White));
                 g.DrawString(role, roleFont, roleBrush, new Rectangle(x, Height / 2 + 1, textWidth, 20), roleFormat);
             }
@@ -375,9 +373,9 @@ namespace TutorConnectApp
                 {
                     // csak ikon (vagy az első betű, ha nincs ikon), középre igazítva
                     using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    using var glyphFont = icon.Length > 0
-                        ? new Font("Segoe MDL2 Assets", 14F)
-                        : new Font(Theme.FontFamily, 12F, FontStyle.Bold);
+                    var glyphFont = icon.Length > 0
+                        ? Ui.IconFont(14F)
+                        : Ui.MakeFont(12F, FontStyle.Bold);
                     string glyph = icon.Length > 0 ? icon : Text[..1];
                     g.DrawString(glyph, glyphFont, textBrush, new Rectangle(0, 0, Width, Height), centered);
                     return;
@@ -386,11 +384,11 @@ namespace TutorConnectApp
                 using var middle = new StringFormat { LineAlignment = StringAlignment.Center };
                 if (icon.Length > 0)
                 {
-                    using var iconFont = new Font("Segoe MDL2 Assets", 14F);
+                    var iconFont = Ui.IconFont(14F);
                     g.DrawString(icon, iconFont, textBrush, new Rectangle(18, 0, 34, Height), middle);
                 }
 
-                using var font = new Font(Theme.FontFamily, 11F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
+                var font = Ui.MakeFont(11F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
                 using var textFormat = new StringFormat(StringFormatFlags.NoWrap)
                 {
                     LineAlignment = StringAlignment.Center,

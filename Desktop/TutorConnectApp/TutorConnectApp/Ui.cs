@@ -14,7 +14,25 @@ namespace TutorConnectApp
         public static Color Warning => Theme.Warning;
         public static Color Danger => Theme.Danger;
 
-        public static Font MakeFont(float size, FontStyle style = FontStyle.Regular) => new(Theme.FontFamily, size, style);
+        // A betűtípusok drága GDI-erőforrások: egyszer jönnek létre, és megosztva használjuk őket
+        // (rajzoláskor nem szabad megsemmisíteni, ezért nincs `using` mellettük).
+        private static readonly Dictionary<(string Family, float Size, FontStyle Style), Font> FontCache = new();
+
+        private static Font Cached(string family, float size, FontStyle style)
+        {
+            var key = (family, size, style);
+            if (!FontCache.TryGetValue(key, out var font))
+                FontCache[key] = font = new Font(family, size, style);
+            return font;
+        }
+
+        public static Font MakeFont(float size, FontStyle style = FontStyle.Regular) => Cached(Theme.FontFamily, size, style);
+
+        /// <summary>Segoe MDL2 Assets ikonbetű.</summary>
+        public static Font IconFont(float size) => Cached("Segoe MDL2 Assets", size, FontStyle.Regular);
+
+        /// <summary>Segoe UI Symbol (csillag, nyilak, matematikai jelek).</summary>
+        public static Font SymbolFont(float size, FontStyle style = FontStyle.Regular) => Cached("Segoe UI Symbol", size, style);
 
         // ------------------------------------------------------------
         // Szövegek
@@ -173,7 +191,7 @@ namespace TutorConnectApp
             var icon = new Label
             {
                 Text = glyph,
-                Font = new Font("Segoe MDL2 Assets", 18F),
+                Font = IconFont(18F),
                 ForeColor = Theme.MainBlue,
                 AutoSize = true,
                 BackColor = Color.Transparent,
@@ -230,7 +248,7 @@ namespace TutorConnectApp
             using (var brush = new SolidBrush(fill))
                 g.FillEllipse(brush, bounds);
 
-            using var font = MakeFont(Math.Max(bounds.Width * 0.3F, 8F), FontStyle.Bold);
+            var font = MakeFont(MathF.Round(Math.Max(bounds.Width * 0.3F, 8F) * 2) / 2, FontStyle.Bold); // fél pontra kerekítve, hogy kevés változat jöjjön létre
             using var textBrush = new SolidBrush(text);
             using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             g.DrawString(initials, font, textBrush, bounds, format);

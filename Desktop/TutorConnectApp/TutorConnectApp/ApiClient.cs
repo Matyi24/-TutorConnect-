@@ -39,6 +39,10 @@ namespace TutorConnectApp
             NumberHandling = JsonNumberHandling.AllowReadingFromString
         };
 
+        private const int CacheLifetimeMs = 30_000;
+
+        private static readonly Dictionary<string, (long Time, string Body)> Cache = new();
+
         private const string TimeoutMessage = "A szerver nem válaszol (időtúllépés).";
 
         private static string UnreachableMessage => $"A szerver nem érhető el: {BaseUrl}";
@@ -108,6 +112,7 @@ namespace TutorConnectApp
                 // ha a szerver nem érhető el, a helyi állapotot akkor is töröljük
             }
             CurrentUser = null;
+            Cache.Clear();
         }
 
         // ------------------------------------------------------------
@@ -116,6 +121,21 @@ namespace TutorConnectApp
 
         public static async Task<T> GetAsync<T>(string path) =>
             Deserialize<T>(await SendAsync(HttpMethod.Get, path, null));
+
+        /// <summary>
+        /// GET rövid életű gyorsítótárral (tantárgyak, oktatók): oldalváltáskor nem kell újra letölteni.
+        /// Bármilyen módosító kérés (foglalás, értékelés...) és a kijelentkezés törli.
+        /// </summary>
+        public static async Task<T> GetCachedAsync<T>(string path)
+        {
+            long now = Environment.TickCount64;
+            if (!Cache.TryGetValue(path, out var hit) || now - hit.Time > CacheLifetimeMs)
+            {
+                hit = (now, await SendAsync(HttpMethod.Get, path, null));
+                Cache[path] = hit;
+            }
+            return Deserialize<T>(hit.Body);
+        }
 
         public static Task PostAsync(string path, object? payload = null) =>
             SendAsync(HttpMethod.Post, path, payload);
@@ -142,6 +162,9 @@ namespace TutorConnectApp
                     throw new ApiException("A munkamenet lejárt. Jelentkezz ki, majd be újra.");
                 if (!response.IsSuccessStatusCode)
                     throw new ApiException(ReadError(body, response.StatusCode));
+
+                if (method != HttpMethod.Get)
+                    Cache.Clear(); // az adatok változhattak (pl. új értékelés az oktatónál)
 
                 return body;
             }

@@ -33,6 +33,7 @@ namespace TutorConnectApp
         public static bool Enabled { get; private set; } = true;
 
         private static readonly List<Tween> Active = new();
+        private static readonly List<Tween> Snapshot = new(); // újrahasznosított másolat a bejáráshoz
         private static System.Windows.Forms.Timer? timer;
 
         public static void SetEnabled(bool enabled)
@@ -78,7 +79,10 @@ namespace TutorConnectApp
         {
             long now = Environment.TickCount64;
 
-            foreach (var tween in Active.ToArray())
+            Snapshot.Clear();
+            Snapshot.AddRange(Active);
+
+            foreach (var tween in Snapshot)
             {
                 if (tween.Cancelled)
                 {
