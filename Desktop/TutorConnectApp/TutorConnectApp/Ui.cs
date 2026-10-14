@@ -51,6 +51,18 @@ namespace TutorConnectApp
             return text.ToUpper(Hu);
         }
 
+        /// <summary>A tantárgy-kategóriák színe (kártyák, jelzések).</summary>
+        public static Color CategoryColor(string? category) => ColorTranslator.FromHtml((category ?? "").ToLowerInvariant() switch
+        {
+            "reál" => "#4C6EF5",
+            "humán" => "#F76707",
+            "nyelvek" => "#12B886",
+            "természettudomány" => "#40C057",
+            "művészet" => "#BE4BDB",
+            "gazdaság" => "#F59F00",
+            _ => "#868E96"
+        });
+
         public static string Money(decimal value) => value.ToString("N0", Hu) + " Ft";
 
         public static string FormatDay(DateTime value) => value.ToLocalTime().ToString("yyyy. MM. dd., dddd", Hu);

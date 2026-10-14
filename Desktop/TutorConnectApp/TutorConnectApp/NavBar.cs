@@ -19,9 +19,6 @@ namespace TutorConnectApp
 
         private bool collapsed;
         private bool initialized;
-        private bool tweening;
-        private int lastAvailable = 1000;
-        private Anim.Tween? widthTween;
 
         /// <summary>Menüpontra vagy műveletre kattintáskor fut le, a paraméter a kulcsa.</summary>
         public event EventHandler<string>? ItemClicked;
@@ -115,46 +112,20 @@ namespace TutorConnectApp
 
         /// <summary>
         /// Reszponzív méretezés: az ablak szélességétől függően változik a sáv szélessége,
-        /// keskeny ablaknál animáltan összecsukódik (csak ikonok).
+        /// keskeny ablaknál összecsukódik (csak ikonok látszanak).
         /// </summary>
         public void ApplyResponsive(int availableWidth)
         {
-            lastAvailable = availableWidth;
             bool wantCollapsed = availableWidth < 800;
-
-            if (!initialized)
+            if (!initialized || wantCollapsed != collapsed)
             {
                 initialized = true;
                 collapsed = wantCollapsed;
                 SetCollapsedMode(wantCollapsed);
-                Width = TargetWidth(availableWidth, wantCollapsed);
-                return;
             }
 
-            if (wantCollapsed != collapsed)
-            {
-                collapsed = wantCollapsed;
-                if (!wantCollapsed) SetCollapsedMode(false); // kinyitáskor a feliratok rögtön megjelennek
-
-                widthTween?.Cancel();
-                tweening = true;
-                int from = Width;
-                int target = TargetWidth(availableWidth, wantCollapsed);
-                widthTween = Anim.Run(240, t => Width = from + (int)((target - from) * t), () =>
-                {
-                    tweening = false;
-                    Width = TargetWidth(lastAvailable, collapsed);
-                    if (collapsed) SetCollapsedMode(true); // összecsukáskor a feliratok a végén tűnnek el
-                });
-            }
-            else if (!tweening)
-            {
-                Width = TargetWidth(availableWidth, wantCollapsed);
-            }
+            Width = collapsed ? 78 : Math.Clamp((int)(availableWidth * 0.2), 230, 290);
         }
-
-        private static int TargetWidth(int availableWidth, bool collapsedMode) =>
-            collapsedMode ? 78 : Math.Clamp((int)(availableWidth * 0.2), 230, 290);
 
         private void SetCollapsedMode(bool value)
         {
@@ -179,7 +150,6 @@ namespace TutorConnectApp
         {
             if (disposing)
             {
-                widthTween?.Cancel();
                 tips.Dispose();
             }
             base.Dispose(disposing);

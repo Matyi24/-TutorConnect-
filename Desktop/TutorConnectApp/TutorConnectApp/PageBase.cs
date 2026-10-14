@@ -1,18 +1,22 @@
 namespace TutorConnectApp
 {
     /// <summary>
-    /// Egy oldal alapja: fejléc (cím + alcím) és alatta görgethető tartalom.
+    /// Egy oldal alapja: fejléc (cím + alcím) és alatta sima görgetésű tartalom.
     /// Az utódok a BuildAsync-ben töltik fel a tartalmat (AddRow); a szélességet, a betöltésjelzőt,
     /// a hibakezelést és a sorok megjelenési animációját ez az osztály kezeli.
     /// </summary>
     internal abstract class PageBase : UserControl
     {
         protected readonly FlowLayoutPanel Body;
-        private bool fitting;
+        private readonly SmoothScrollPanel scroll;
+        private int lastFitWidth = -1;
         private int revealIndex;
 
         /// <summary>Az oldal navigációt kér (pl. a főoldali gomb az Oktatók oldalra visz). Paraméter: a menüpont kulcsa.</summary>
         public event Action<string>? NavigateRequested;
+
+        /// <summary>Az oldal kijelentkezést kér (a Profil oldal gombja).</summary>
+        public event Action? LogoutRequested;
 
         protected PageBase(string title, string subtitle)
         {
@@ -20,15 +24,9 @@ namespace TutorConnectApp
             BackColor = Theme.PageBg;
             DoubleBuffered = true;
 
-            Body = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoScroll = true,
-                Padding = new Padding(36, 4, 36, 28),
-                BackColor = Theme.PageBg
-            };
+            scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.PageBg };
+            Body = scroll.Content;
+            Body.Padding = new Padding(36, 4, 22, 28);
             Body.ClientSizeChanged += (_, _) => FitAll();
 
             var header = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Theme.PageBg };
@@ -39,11 +37,13 @@ namespace TutorConnectApp
             header.Controls.Add(titleLabel);
             header.Controls.Add(subtitleLabel);
 
-            Controls.Add(Body);   // a kitöltő (Fill) elem legyen elöl a sorrendben
+            Controls.Add(scroll);  // a kitöltő (Fill) elem legyen elöl a sorrendben
             Controls.Add(header);
         }
 
         protected void Navigate(string key) => NavigateRequested?.Invoke(key);
+
+        protected void RequestLogout() => LogoutRequested?.Invoke();
 
         /// <summary>Betölti az oldal tartalmát; hiba esetén hibakártyát mutat újrapróbálás gombbal.</summary>
         public async Task LoadAsync()
@@ -67,7 +67,10 @@ namespace TutorConnectApp
         /// <summary>Az adatok lekérése után hívd a ClearBody()-t, majd add hozzá a sorokat az AddRow-val.</summary>
         protected abstract Task BuildAsync();
 
-        /// <summary>Új sor a tartalomhoz. Az animate sorok sorban, lentről felcsúszva jelennek meg.</summary>
+        /// <summary>
+        /// Új sor a tartalomhoz. Az animate sorok egymás után "jelennek meg" (a kártyák háttere halványul be);
+        /// a már látható sorok helye közben nem változik, ezért nincs ugrálás.
+        /// </summary>
         protected void AddRow(Control control, bool animate = true)
         {
             FitWidth(control);
@@ -79,30 +82,18 @@ namespace TutorConnectApp
             }
 
             int index = revealIndex++;
-            Padding margin = control.Margin;
-            const int Offset = 28;
+            var card = control as CardPanel;
+            card?.SetReveal(0);
 
             control.Visible = false;
             Body.Controls.Add(control);
 
-            Anim.Delay(Math.Min(index, 8) * 55, () =>
+            Anim.Delay(Math.Min(index, 8) * 60, () =>
             {
                 if (control.IsDisposed) return;
-
-                control.Margin = new Padding(margin.Left, margin.Top + Offset, margin.Right, margin.Bottom);
                 control.Visible = true;
-
-                Anim.Run(360, t =>
-                {
-                    if (control.IsDisposed) return;
-                    control.Margin = new Padding(margin.Left, margin.Top + (int)(Offset * (1 - t)), margin.Right, margin.Bottom);
-                    if (control is CardPanel card) card.SetReveal(t);
-                }, () =>
-                {
-                    if (control.IsDisposed) return;
-                    control.Margin = margin;
-                    if (control is CardPanel card) card.SetReveal(1);
-                });
+                if (card != null)
+                    Anim.Run(320, t => card.SetReveal(t));
             });
         }
 
@@ -141,24 +132,22 @@ namespace TutorConnectApp
             AddRow(card);
         }
 
+        private int ContentWidth => Math.Max(Body.ClientSize.Width - Body.Padding.Horizontal, 120);
+
         private void FitAll()
         {
-            if (fitting) return;
-            fitting = true;
-            try
-            {
-                foreach (Control control in Body.Controls)
-                    FitWidth(control);
-            }
-            finally
-            {
-                fitting = false;
-            }
+            // a tartalom magasságának változása (új sor) nem érinti a szélességet
+            int width = ContentWidth;
+            if (width == lastFitWidth) return;
+            lastFitWidth = width;
+
+            foreach (Control control in Body.Controls)
+                FitWidth(control);
         }
 
         private void FitWidth(Control control)
         {
-            int width = Math.Max(Body.ClientSize.Width - Body.Padding.Horizontal, 120);
+            int width = ContentWidth;
             if (control.AutoSize)
             {
                 // automatikus magasság, rögzített szélesség

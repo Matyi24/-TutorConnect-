@@ -17,7 +17,6 @@ namespace TutorConnectApp
 
             MinimumSize = new Size(480, 360);
             Text = $"TutorConnect – {user.Name}";
-            Opacity = 0; // az első megjelenéskor beúszik
 
             BuildMenu(user);
 
@@ -34,7 +33,7 @@ namespace TutorConnectApp
 
         /// <summary>
         /// A menü szerepkör szerint épül fel, a weboldalhoz hasonlóan:
-        /// mindenki: Főoldal, Chat, Tantárgyak; diák: + Oktatók, Foglalás; oktató: + Foglalás.
+        /// mindenki: Főoldal, Chat, Tantárgyak, Profil, Beállítások; diák: + Oktatók, Foglalás; oktató: + Foglalás.
         /// Új menüpont: egy sor itt + egy oldal (PageBase utód).
         /// Ikonok: Segoe MDL2 Assets karakterek.
         /// </summary>
@@ -42,7 +41,7 @@ namespace TutorConnectApp
         {
             AddPage("home", "Főoldal", "", () => new HomePage(user));
             AddPage("chat", "Chat", "", () => new ChatPage());
-            AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage());
+            AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage(user));
 
             if (user.Role == "STUDENT")
                 AddPage("tutors", "Oktatók", "", () => new TutorsPage());
@@ -53,9 +52,8 @@ namespace TutorConnectApp
             AddPage("profile", "Profil", "", () => new ProfilePage());
             AddPage("settings", "Beállítások", "", () => new SettingsPage(user));
 
-            // műveletek: nem kijelölhető gombok
+            // művelet: nem kijelölhető gomb (a kijelentkezés a Profil oldalon van)
             navBar.AddAction("theme", "Sötét mód", "");
-            navBar.AddAction("logout", "Kijelentkezés", "");
         }
 
         private void AddPage(string key, string text, string icon, Func<PageBase> factory)
@@ -70,31 +68,18 @@ namespace TutorConnectApp
             WindowChrome.ApplyBlack(this); // fekete címsor és szegély
         }
 
-        protected override void OnShown(EventArgs e)
-        {
-            base.OnShown(e);
-            Anim.Run(350, t => Opacity = t);
-        }
-
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             Theme.Changed -= OnThemeChanged;
             base.OnFormClosed(e);
         }
 
-        private async void NavBar_ItemClicked(object? sender, string key)
+        private void NavBar_ItemClicked(object? sender, string key)
         {
-            switch (key)
+            if (key == "theme")
             {
-                case "logout":
-                    await ApiClient.LogoutAsync();
-                    LoggedOut = true;
-                    Close();
-                    return;
-
-                case "theme":
-                    Theme.SetDark(!Theme.Dark);
-                    return;
+                Theme.SetDark(!Theme.Dark);
+                return;
             }
 
             if (pages.TryGetValue(key, out var factory))
@@ -102,6 +87,13 @@ namespace TutorConnectApp
                 currentKey = key;
                 ShowPage(factory());
             }
+        }
+
+        private async Task LogoutAsync()
+        {
+            await ApiClient.LogoutAsync();
+            LoggedOut = true;
+            Close();
         }
 
         private void OnThemeChanged()
@@ -130,6 +122,7 @@ namespace TutorConnectApp
         private void ShowPage(PageBase page)
         {
             page.NavigateRequested += key => navBar.Select(key);
+            page.LogoutRequested += () => _ = LogoutAsync();
 
             contentPanel.SuspendLayout();
 

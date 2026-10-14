@@ -87,86 +87,254 @@ namespace TutorConnectApp
     }
 
     // ================================================================
-    // TANTÁRGYAK: kategóriák szerint csoportosítva
+    // TANTÁRGYAK: keresés, kategória-szűrés, kategória-színű kártyák oktatószámmal;
+    // diáknál a kártyára kattintva az adott tantárgy oktatói nyílnak meg
     // ================================================================
     internal class SubjectsPage : PageBase
     {
-        public SubjectsPage() : base("Tantárgyak", "Ezekben a témákban kereshetsz oktatót.") { }
+        private const string AllCategories = "Minden tárgy";
+
+        // a weboldal kategória-sorrendje; az adatbázisban lévő további kategóriák a végére kerülnek
+        private static readonly string[] KnownCategories =
+            { "Reál", "Humán", "Nyelvek", "Természettudomány", "Művészet", "Gazdaság", "Egyéb" };
+
+        private readonly bool studentView;
+        private readonly Dictionary<string, SelectableChip> categoryChips = new();
+        private List<SubjectDto> subjects = new();
+        private List<TutorDto> tutors = new();
+        private SearchBox search = null!;
+        private Label countLabel = null!;
+        private FlowLayoutPanel grid = null!;
+        private string selectedCategory = AllCategories;
+
+        public SubjectsPage(UserInfo user) : base("Tantárgyak", "Böngéssz a tantárgyak között, majd nézd meg, kik tanítják őket.")
+        {
+            studentView = user.Role == "STUDENT";
+        }
 
         protected override async Task BuildAsync()
         {
-            var subjects = await ApiClient.GetAsync<List<SubjectDto>>("/api/subjects");
+            var subjectsTask = ApiClient.GetAsync<List<SubjectDto>>("/api/subjects");
+            var tutorsTask = ApiClient.GetAsync<List<TutorDto>>("/api/tutors");
+            await Task.WhenAll(subjectsTask, tutorsTask);
             if (IsDisposed) return;
 
+            subjects = subjectsTask.Result;
+            tutors = tutorsTask.Result;
+            selectedCategory = AllCategories;
+            categoryChips.Clear();
+
             ClearBody();
-            if (subjects.Count == 0)
+
+            // eszköztár: keresés + kategória-szűrők egy kártyában
+            var toolbar = new CardPanel();
+            search = new SearchBox("Keresés tantárgy neve alapján...") { Tag = "fill" };
+            search.ValueChanged += (_, _) => RenderGrid();
+            toolbar.Controls.Add(search);
+
+            var filters = Ui.WrapRow();
+            var present = subjects.Select(s => s.Category).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+            var categories = new List<string> { AllCategories };
+            categories.AddRange(KnownCategories.Where(present.Contains));
+            categories.AddRange(present.Where(c => !KnownCategories.Contains(c)));
+
+            foreach (string category in categories)
             {
-                AddRow(Ui.MessageCard("Még nincs felvett tantárgy.", ""));
-                return;
+                string value = category;
+                int count = category == AllCategories ? subjects.Count : subjects.Count(s => s.Category == category);
+                var chip = new SelectableChip($"{category} ({count})");
+                chip.Click += (_, _) => SelectCategory(value);
+                categoryChips[category] = chip;
+                filters.Controls.Add(chip);
+            }
+            filters.Controls.Add(Ui.Btn("Szűrők törlése", Theme.CardBg, Theme.Muted, (_, _) => ClearFilters(), outline: true));
+            toolbar.Controls.Add(filters);
+            AddRow(toolbar);
+
+            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: new Padding(2, 0, 0, 12));
+            AddRow(countLabel);
+
+            grid = Ui.WrapRow();
+            AddRow(grid);
+
+            categoryChips[AllCategories].SetSelected(true);
+            RenderGrid();
+        }
+
+        private void SelectCategory(string category)
+        {
+            selectedCategory = category;
+            foreach (var (name, chip) in categoryChips)
+                chip.SetSelected(name == category);
+            RenderGrid();
+        }
+
+        private void ClearFilters()
+        {
+            search.SetValue(""); // a ValueChanged újrarajzolja a listát
+            SelectCategory(AllCategories);
+        }
+
+        private int TutorCountFor(string subjectName) =>
+            tutors.Count(t => (t.Subjects ?? "")
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(s => string.Equals(s, subjectName.Trim(), StringComparison.CurrentCultureIgnoreCase)));
+
+        private void RenderGrid()
+        {
+            string query = search.Value.Trim();
+            var shown = subjects
+                .Where(s => selectedCategory == AllCategories
+                            || string.Equals(s.Category, selectedCategory, StringComparison.CurrentCultureIgnoreCase))
+                .Where(s => query.Length == 0 || s.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .ToList();
+
+            countLabel.Text = shown.Count switch
+            {
+                0 => "Nincs találat",
+                1 => "1 tantárgy",
+                _ => $"{shown.Count} tantárgy"
+            };
+
+            grid.SuspendLayout();
+            Ui.Reset(grid);
+
+            if (shown.Count == 0)
+            {
+                grid.Controls.Add(Ui.MessageCard("Nem található a keresésnek és a szűrőknek megfelelő tantárgy.", "\uE721"));
+            }
+            else
+            {
+                foreach (var subject in shown)
+                {
+                    var card = new SubjectCard(subject, TutorCountFor(subject.Name), studentView);
+                    if (studentView)
+                        card.Click += (_, _) => OpenTutors(subject.Name);
+                    grid.Controls.Add(card);
+                }
             }
 
-            foreach (var group in subjects.GroupBy(s => s.Category).OrderBy(g => g.Key))
-            {
-                var card = new CardPanel();
-                var head = Ui.Row();
-                head.Controls.Add(Ui.Lbl(group.Key, 12.5F, Theme.Text, bold: true, margin: new Padding(0, 0, 10, 10)));
-                head.Controls.Add(Ui.Lbl($"{group.Count()} tantárgy", 9.5F, Theme.Muted, margin: new Padding(0, 3, 0, 10)));
-                card.Controls.Add(head);
+            grid.ResumeLayout(true);
+        }
 
-                var chips = Ui.WrapRow();
-                foreach (var subject in group.OrderBy(s => s.Name))
-                    chips.Controls.Add(Ui.Chip(subject.Name));
-                card.Controls.Add(chips);
-
-                AddRow(card);
-            }
+        private void OpenTutors(string subjectName)
+        {
+            TutorsPage.InitialSubject = subjectName;
+            Navigate("tutors");
         }
     }
 
     // ================================================================
-    // OKTATÓK (diák): keresés + időpontfoglalás
+    // OKTATÓK (diák): keresés, tantárgy / értékelés szűrő, rendezés + időpontfoglalás
     // ================================================================
     internal class TutorsPage : PageBase
     {
+        /// <summary>A Tantárgyak oldal ezzel nyitja meg az oktatókat egy adott tantárgyra szűrve.</summary>
+        public static string? InitialSubject;
+
+        private const string AllSubjects = "Összes tantárgy";
+
+        private static readonly (string Label, decimal Min)[] RatingOptions =
+        {
+            ("Bármilyen", 0m), ("4.0 felett", 4.0m), ("4.5 felett", 4.5m), ("4.8 felett", 4.8m)
+        };
+
+        private static readonly string[] SortOptions =
+            { "Alapértelmezett", "Legjobb értékelés", "Ár szerint növekvő", "Ár szerint csökkenő" };
+
         private List<TutorDto> tutors = new();
-        private TextBox search = null!;
+        private SearchBox search = null!;
+        private DropdownSelect subjectBox = null!;
+        private DropdownSelect ratingBox = null!;
+        private DropdownSelect sortBox = null!;
+        private Label countLabel = null!;
 
         public TutorsPage() : base("Oktatók", "Válaszd ki a hozzád illő oktatót, és foglalj időpontot.") { }
 
         protected override async Task BuildAsync()
         {
-            tutors = await ApiClient.GetAsync<List<TutorDto>>("/api/tutors");
+            var tutorsTask = ApiClient.GetAsync<List<TutorDto>>("/api/tutors");
+            var subjectsTask = ApiClient.GetAsync<List<SubjectDto>>("/api/subjects");
+            await Task.WhenAll(tutorsTask, subjectsTask);
             if (IsDisposed) return;
 
+            tutors = tutorsTask.Result;
+            var subjectNames = subjectsTask.Result
+                .Select(s => s.Name)
+                .Distinct()
+                .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            // a Tantárgyak oldalról érkezve az adott tantárgy már ki van választva
+            int initial = InitialSubject == null
+                ? 0
+                : subjectNames.FindIndex(n => string.Equals(n, InitialSubject, StringComparison.CurrentCultureIgnoreCase)) + 1;
+            InitialSubject = null;
+
             ClearBody();
-            search = new TextBox
-            {
-                PlaceholderText = "Keresés név vagy tantárgy alapján...",
-                Font = Ui.MakeFont(11.5F),
-                BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Theme.InputBg,
-                ForeColor = Theme.Text,
-                Margin = new Padding(0, 0, 0, 18)
-            };
-            search.TextChanged += (_, _) => RenderList(animate: false);
+
+            search = new SearchBox("Keresés oktató neve vagy tantárgy alapján...");
+            search.ValueChanged += (_, _) => RenderList(animate: false);
             AddRow(search);
+
+            subjectBox = new DropdownSelect("Tantárgy", new[] { AllSubjects }.Concat(subjectNames), initial);
+            ratingBox = new DropdownSelect("Értékelés", RatingOptions.Select(o => o.Label));
+            sortBox = new DropdownSelect("Rendezés", SortOptions);
+            foreach (var box in new[] { subjectBox, ratingBox, sortBox })
+                box.SelectionChanged += (_, _) => RenderList(animate: false);
+
+            var options = Ui.WrapRow();
+            options.Controls.Add(subjectBox);
+            options.Controls.Add(ratingBox);
+            options.Controls.Add(sortBox);
+            AddRow(options);
+
+            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: new Padding(2, 0, 0, 12));
+            AddRow(countLabel);
+
             RenderList(animate: true);
         }
 
+        private static bool HasSubject(TutorDto tutor, string subject) =>
+            (tutor.Subjects ?? "")
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Any(s => string.Equals(s, subject, StringComparison.CurrentCultureIgnoreCase));
+
         private void RenderList(bool animate)
         {
-            Body.SuspendLayout();
-            RemoveRowsAfter(search);
+            string query = search.Value.Trim();
+            string? subject = subjectBox.SelectedIndex > 0 ? subjectBox.SelectedText : null;
+            decimal minRating = RatingOptions[ratingBox.SelectedIndex].Min;
 
-            string query = search.Text.Trim();
-            var shown = tutors.Where(t =>
-                    query.Length == 0
+            IEnumerable<TutorDto> filtered = tutors.Where(t =>
+                (query.Length == 0
                     || t.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
                     || (t.Subjects ?? "").Contains(query, StringComparison.CurrentCultureIgnoreCase))
-                .ToList();
+                && (subject == null || HasSubject(t, subject))
+                && t.AverageRating >= minRating);
+
+            filtered = sortBox.SelectedIndex switch
+            {
+                1 => filtered.OrderByDescending(t => t.AverageRating).ThenByDescending(t => t.ReviewCount),
+                // az óradíj nélküli oktatók a végére kerülnek
+                2 => filtered.OrderBy(t => t.HourlyRate > 0 ? t.HourlyRate : decimal.MaxValue),
+                3 => filtered.OrderByDescending(t => t.HourlyRate),
+                _ => filtered
+            };
+            var shown = filtered.ToList();
+
+            countLabel.Text = shown.Count switch
+            {
+                0 => "Nincs találat",
+                1 => "1 oktató",
+                _ => $"{shown.Count} oktató"
+            };
+
+            Body.SuspendLayout();
+            RemoveRowsAfter(countLabel);
 
             if (shown.Count == 0)
-                AddRow(Ui.MessageCard("Nincs a keresésnek megfelelő oktató.", ""), animate);
+                AddRow(Ui.MessageCard("Nincs a szűrőknek megfelelő oktató.", "\uE721"), animate);
             else
                 foreach (var tutor in shown)
                     AddRow(BuildCard(tutor), animate);
@@ -601,6 +769,12 @@ namespace TutorConnectApp
                 }
                 AddRow(card);
             }
+
+            var session = new CardPanel();
+            session.Controls.Add(Ui.Lbl("Munkamenet", 12F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 6)));
+            session.Controls.Add(Ui.Lbl("Kijelentkezés után újra be kell jelentkezned az alkalmazás használatához.", 10F, Theme.Muted, wrap: true, margin: new Padding(0, 0, 0, 8)));
+            session.Controls.Add(Ui.Btn("Kijelentkezés", Theme.CardBg, Theme.Danger, (_, _) => RequestLogout(), outline: true));
+            AddRow(session);
 
             AddRow(Ui.Lbl("A profil szerkesztése egyelőre a weboldalon érhető el.", 9.5F, Theme.Muted));
         }

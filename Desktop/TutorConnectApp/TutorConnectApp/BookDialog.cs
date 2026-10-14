@@ -36,15 +36,10 @@ namespace TutorConnectApp
             header.Controls.Add(titleLabel);
             header.Controls.Add(subtitleLabel);
 
-            Body = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoScroll = true,
-                Padding = new Padding(24, 0, 12, 12),
-                BackColor = Theme.CardBg
-            };
+            // sima görgetésű tartalom; a Body a görgetett panel (a bejegyzések fix szélességűek)
+            var scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.CardBg };
+            Body = scroll.Content;
+            Body.Padding = new Padding(24, 0, 10, 12);
 
             var footer = new Panel { Dock = DockStyle.Bottom, Height = 92, BackColor = Theme.CardBg };
             footer.Paint += (_, e) =>
@@ -69,7 +64,7 @@ namespace TutorConnectApp
             footer.Controls.Add(footerLabel);
             footer.Controls.Add(ActionButton);
 
-            Controls.Add(Body);   // a kitöltő elem legyen elöl a sorrendben
+            Controls.Add(scroll); // a kitöltő elem legyen elöl a sorrendben
             Controls.Add(header);
             Controls.Add(footer);
         }
