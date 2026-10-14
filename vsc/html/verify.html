@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+
+    <title>E-mail megerősítése – TutorConnect</title>
+</head>
+
+<body>
+
+<main class="container">
+
+    <div class="ambient" aria-hidden="true"></div>
+
+    <h1 class="title">E-mail megerősítése</h1>
+
+    <p class="account_create" id="verifyIntro">Egy pillanat, ellenőrizzük a linket…</p>
+
+    <form class="status-card" id="statusCard" onsubmit="return false">
+        <div class="status-icon" id="statusIcon" aria-hidden="true">…</div>
+        <h2 id="statusTitle">Ellenőrzés…</h2>
+        <p id="statusText"></p>
+        <a class="signin-btn status-btn" id="statusBtn" href="/" hidden>Tovább</a>
+    </form>
+
+</main>
+
+<script src="/js/creator.js"></script>
+<script>
+    const token = new URLSearchParams(location.search).get('token') || '';
+
+    const icon = document.getElementById('statusIcon');
+    const title = document.getElementById('statusTitle');
+    const text = document.getElementById('statusText');
+    const btn = document.getElementById('statusBtn');
+    const intro = document.getElementById('verifyIntro');
+
+    function show(ok, heading, message, buttonText, href) {
+        intro.hidden = true;
+        icon.textContent = ok ? '✓' : '!';
+        icon.className = 'status-icon ' + (ok ? 'good' : 'bad');
+        title.textContent = heading;
+        text.textContent = message;
+        btn.textContent = buttonText;
+        btn.href = href;
+        btn.hidden = false;
+    }
+
+    (async function () {
+
+        try {
+
+            const response = await fetch('/api/verify-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                show(true, 'Az e-mail címed megerősítve', 'Köszönjük! Mostantól minden funkciót használhatsz.', 'Tovább a főoldalra', '/');
+            } else {
+                show(false, 'A link érvénytelen vagy lejárt', data.error || 'Jelentkezz be, és kérj új megerősítő levelet a megjelenő sávon.', 'Bejelentkezés', '/login');
+            }
+
+        } catch (error) {
+
+            show(false, 'Hiba történt', 'Nem sikerült elérni a szervert. Próbáld újra később.', 'Főoldal', '/');
+        }
+    })();
+</script>
+</body>
+</html>

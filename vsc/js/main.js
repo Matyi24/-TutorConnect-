@@ -53,7 +53,12 @@ app.use(express.json());
 //
 // ============================================================
 
+// A munkamenetek tárolója (memóriában). Külön változóban van, hogy a
+// jelszó-visszaállítás ki tudja léptetni egy felhasználó összes munkamenetét.
+const sessionStore = new session.MemoryStore();
+
 const sessionMiddleware = session({
+        store: sessionStore,
         // Secret used to sign the session cookie so it can't be forged.
         // In production set the SESSION_SECRET environment variable
         // and don't rely on the fallback value.
@@ -183,6 +188,9 @@ const db = mysql.createConnection({
     database: "zsamo"
 });
 
+// E-mail megerősítés és elfelejtett jelszó (lásd authflow.js)
+const authflow = require("./authflow").setup({ app, db, sessionStore });
+
 // ============================================================
 // BASIC PAGES
 // ============================================================
@@ -283,7 +291,7 @@ app.get("/foglalasutan", (req, res) => {
 //
 // ============================================================
 
-app.get("/api/me", (req, res) => {
+app.get("/api/me", async (req, res) => {
 
     // No user stored in the session => nobody is logged in
     // (no cookie, expired cookie, or the session was destroyed).
@@ -292,6 +300,17 @@ app.get("/api/me", (req, res) => {
         return res.json({
             loggedIn: false
         });
+    }
+
+
+    // Megerősítette-e már az e-mail címét? (A creator.js ebből tudja,
+    // kell-e a figyelmeztető sáv.)
+    let emailVerified = true;
+
+    try {
+        emailVerified = await authflow.isVerified(req.session.user.id);
+    } catch (error) {
+        console.error("❌ /api/me (emailVerified):", error);
     }
 
 
@@ -305,7 +324,8 @@ app.get("/api/me", (req, res) => {
             id: req.session.user.id,
             name: req.session.user.name,
             email: req.session.user.email,
-            role: req.session.user.role
+            role: req.session.user.role,
+            emailVerified
         }
     });
 });
@@ -521,6 +541,11 @@ app.post("/register", async (req, res) => {
                 "Inserted ID:",
                 result.insertId
             );
+
+
+            // Megerősítő levél (nem várjuk meg: a regisztráció nem függ tőle)
+            authflow.issueVerification(result.insertId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
 
 
             // ------------------------------------------------
@@ -874,6 +899,7 @@ db.connect(
         ensureUserEmailLength();
         ensureProfileSchema();
         ensureBookingSchema();
+        authflow.ensureSchema();
 
         console.log(
             "🖥️ Host: localhost"
@@ -2884,6 +2910,16 @@ app.put("/api/account", async (req, res) => {
         }
 
 
+        // Új e-mail cím: újra meg kell erősíteni
+        if (emailChanged) {
+
+            await authflow.markUnverified(userId);
+
+            authflow.issueVerification(userId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
+        }
+
+
         // Keep the session in sync so the navbar shows the new data
         req.session.user.name = name;
         req.session.user.email = email;
@@ -2895,7 +2931,8 @@ app.put("/api/account", async (req, res) => {
                 name: name,
                 email: email,
                 role: current.role
-            }
+            },
+            emailVerificationSent: emailChanged
         });
 
     } catch (err) {
@@ -3004,7 +3041,7 @@ app.get("/api/availability", async (req, res) => {
 
 app.post("/api/availability", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "TUTOR") {
         return res.status(403).json({ error: "Csak oktató adhat meg időpontot." });
@@ -3208,7 +3245,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
 
 app.post("/api/bookings", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "STUDENT") {
         return res.status(403).json({ error: "Csak diák foglalhat időpontot." });

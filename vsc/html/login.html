@@ -23,6 +23,8 @@
         <a href="/register">Regisztrálj.</a>
     </p>
 
+    <p id="loginNotice" class="form-ok notice-top" role="status" hidden></p>
+
     <form action="/login" method="POST">
 
         <div class="field">
@@ -58,6 +60,8 @@
                     </svg>
                 </button>
             </div>
+
+            <p class="forgot-row"><a href="/forgot-password">Elfelejtetted a jelszavad?</a></p>
         </div>
 
         <button type="submit" class="signin-btn">
@@ -68,7 +72,15 @@
 
 </main>
 
-<script src="/js/creator.js"></script>  
+<script src="/js/creator.js"></script>
+<script>
+  // Üzenet a jelszó-visszaállítás után
+  if (new URLSearchParams(location.search).get('reset') === '1') {
+    const notice = document.getElementById('loginNotice');
+    notice.textContent = 'A jelszavad megváltozott. Most már bejelentkezhetsz az új jelszóval.';
+    notice.hidden = false;
+  }
+</script>
 <script>
       document.querySelectorAll('.toggle-password').forEach(function (button) {
     button.addEventListener('click', function () {

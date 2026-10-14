@@ -1,0 +1,215 @@
+// ============================================================
+// E-MAIL KÜLDÉS
+// ============================================================
+//
+// Három küldési mód van, ebben a sorrendben (az első beállított nyer):
+//
+//  1) MAILTRAP API  (ajánlott)
+//       MAILTRAP_TOKEN   a Mailtrap "API token" (Sending > API)
+//       MAIL_FROM        a feladó, pl.  TutorConnect <hello@demomailtrap.co>
+//                        (alapértelmezett: a Mailtrap demó címe)
+//
+//  2) SMTP  (bármilyen levelezőszerver, pl. Gmail, Brevo)
+//       SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASS, MAIL_FROM
+//
+//  3) Semmi sincs beállítva: a levél NEM megy ki, a szerver a konzolra
+//     írja a tartalmát és a linket. Fejlesztéskor ez elég.
+//
+// Mindkét esetben:  APP_URL  az oldal címe a levelekben
+// (alapértelmezett: http://localhost:3000)
+//
+// FONTOS (Mailtrap demó domain): a "demomailtrap.co" feladóról csak a
+// Mailtrap-fiók saját e-mail címére lehet küldeni. Más címzetthez saját,
+// megerősített domain kell a Mailtrapben.
+//
+// A titkokat (token, jelszó) soha ne írd a kódba vagy a gitbe: a terminálban
+// állítsd be környezeti változóként.
+//
+// Élesben (NODE_ENV=production) beállítás nélkül hibát naplóz.
+
+const APP_URL = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
+
+const MAIL_FROM = process.env.MAIL_FROM || "TutorConnect <noreply@tutorconnect.local>";
+
+// "Név <cím@pelda.hu>" vagy csak "cím@pelda.hu"  ->  { name, email }
+function parseSender(value) {
+
+    const match = String(value).match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+
+    if (match) {
+        return { name: match[1].replace(/^"|"$/g, ""), email: match[2].trim() };
+    }
+
+    return { name: "TutorConnect", email: String(value).trim() };
+}
+
+const DEFAULT_MAILTRAP_FROM = "TutorConnect <hello@demomailtrap.co>";
+
+let mailtrapClient = null;
+let mailtrapTried = false;
+
+function getMailtrap() {
+
+    if (mailtrapTried) {
+        return mailtrapClient;
+    }
+
+    mailtrapTried = true;
+
+    if (!process.env.MAILTRAP_TOKEN) {
+        return null;
+    }
+
+    try {
+
+        const { MailtrapClient } = require("mailtrap");
+
+        mailtrapClient = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
+
+    } catch (error) {
+
+        console.error("❌ A mailtrap csomag nem tölthető be (npm install):", error.message);
+    }
+
+    return mailtrapClient;
+}
+
+let transporter = null;
+let transporterTried = false;
+
+function getTransporter() {
+
+    if (transporterTried) {
+        return transporter;
+    }
+
+    transporterTried = true;
+
+    if (!process.env.SMTP_HOST) {
+        return null;
+    }
+
+    try {
+
+        const nodemailer = require("nodemailer");
+
+        const port = Number(process.env.SMTP_PORT) || 587;
+
+        transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port,
+            secure: port === 465,
+            auth: process.env.SMTP_USER
+                ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS || "" }
+                : undefined
+        });
+
+    } catch (error) {
+
+        console.error("❌ A nodemailer nem tölthető be (npm install nodemailer):", error.message);
+    }
+
+    return transporter;
+}
+
+
+function escapeHtml(value) {
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+
+// Egységes, egyszerű levélsablon (gombbal és sima linkkel is)
+function layout({ title, intro, buttonText, url, outro }) {
+
+    const text =
+        `${title}\n\n${intro}\n\n${buttonText}: ${url}\n\n${outro}\n\n— TutorConnect`;
+
+    const html = `
+<div style="background:#f4f6ff;padding:32px 12px;font-family:Segoe UI,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:32px;border:1px solid #e3e6f5;">
+    <div style="font-size:13px;font-weight:700;letter-spacing:2px;color:#4c6ef5;">TUTORCONNECT</div>
+    <h1 style="margin:10px 0 14px;font-size:22px;color:#17172e;">${escapeHtml(title)}</h1>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.6;color:#3b3f5c;">${escapeHtml(intro)}</p>
+    <a href="${escapeHtml(url)}" style="display:inline-block;padding:13px 24px;background:#4c6ef5;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">${escapeHtml(buttonText)}</a>
+    <p style="margin:24px 0 6px;font-size:12px;color:#7b7d9d;">Ha a gomb nem működik, másold be ezt a címet a böngészőbe:</p>
+    <p style="margin:0 0 20px;font-size:12px;word-break:break-all;"><a href="${escapeHtml(url)}" style="color:#4c6ef5;">${escapeHtml(url)}</a></p>
+    <p style="margin:0;font-size:13px;line-height:1.5;color:#7b7d9d;">${escapeHtml(outro)}</p>
+  </div>
+</div>`;
+
+    return { text, html };
+}
+
+
+// Visszatérés: true, ha a levél kiment (vagy fejlesztői módban kiíródott)
+async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
+
+    const { text, html } = layout({ title, intro, buttonText, url, outro });
+
+    // 1) Mailtrap API
+    const mailtrap = getMailtrap();
+
+    if (mailtrap) {
+
+        try {
+
+            await mailtrap.send({
+                from: parseSender(process.env.MAIL_FROM || DEFAULT_MAILTRAP_FROM),
+                to: [{ email: to }],
+                subject,
+                text,
+                html,
+                category: "TutorConnect"
+            });
+
+            return true;
+
+        } catch (error) {
+
+            console.error("❌ Mailtrap küldési hiba:", error.message);
+
+            return false;
+        }
+    }
+
+    // 2) SMTP
+    const smtp = getTransporter();
+
+    // 3) nincs semmi beállítva
+    if (!smtp) {
+
+        if (process.env.NODE_ENV === "production") {
+            console.error("❌ E-mail nem küldhető: nincs beállítva az SMTP_HOST.");
+            return false;
+        }
+
+        console.log("\n📧 ==========  E-MAIL (fejlesztői mód, nem ment ki)  ==========");
+        console.log("Címzett:", to);
+        console.log("Tárgy:  ", subject);
+        console.log(`${buttonText}: ${url}`);
+        console.log("=============================================================\n");
+
+        return true;
+    }
+
+    try {
+
+        await smtp.sendMail({ from: MAIL_FROM, to, subject, text, html });
+
+        return true;
+
+    } catch (error) {
+
+        console.error("❌ E-mail küldési hiba:", error.message);
+
+        return false;
+    }
+}
+
+
+module.exports = { sendMail, APP_URL };

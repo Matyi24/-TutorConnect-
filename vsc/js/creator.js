@@ -419,6 +419,10 @@ async function createNavbar() {
     if (isLoggedIn) {
         setupAccountModal(user);
 
+        // Aki még nem erősítette meg az e-mail címét, azt figyelmeztetjük
+        // (a függvény akkor is figyel, ha a címet később módosítja)
+        setupVerifyReminder(user);
+
         // Az oktatónak szólunk, ha a profilja még hiányos
         if (user.role === "TUTOR") {
             setupProfileReminder();
@@ -882,6 +886,119 @@ function injectAccountStyles() {
 // látnak róla semmit. A navbar alatt egy sáv szól, amíg valamelyik
 // hiányzik. A gombja megnyitja a fiókablakot. A ×-szel az adott
 // böngészőmunkamenetre elrejthető. Mentés után újra ellenőrzi magát.
+
+// ============================================================
+// E-MAIL MEGERŐSÍTÉSE FIGYELMEZTETÉS
+// ============================================================
+//
+// Amíg a felhasználó nem kattintott a megerősítő levélben lévő linkre,
+// a navbar alatt egy sáv szól erről, és onnan új levelet is kérhet.
+// (Foglalni és időpontot kiírni csak megerősített címmel lehet.)
+// A sáv nem zárható be, mert nem kényelmi, hanem fontos információ.
+// Ha a fiókablakban megváltozik az e-mail cím, a sáv újra megjelenik.
+
+function setupVerifyReminder(user) {
+
+    let banner = null;
+
+    function removeBanner() {
+        if (banner) {
+            banner.remove();
+            banner = null;
+        }
+    }
+
+    function showBanner() {
+
+        if (banner) {
+            return;
+        }
+
+        const navbar = document.querySelector(".navbar");
+
+        if (!navbar) {
+            return;
+        }
+
+        banner = document.createElement("div");
+        banner.className = "tc-reminder tc-verify";
+        banner.setAttribute("role", "status");
+
+        banner.innerHTML = `
+            <span class="tc-reminder-text">Erősítsd meg az e-mail címed: a levelet ide küldtük: <strong></strong>. Amíg ez nem történik meg, nem tudsz időpontot foglalni vagy kiírni.</span>
+            <button type="button" class="tc-reminder-button">Levél újraküldése</button>
+        `;
+
+        banner.querySelector("strong").textContent = user.email;
+
+        const button = banner.querySelector(".tc-reminder-button");
+        const text = banner.querySelector(".tc-reminder-text");
+
+        button.addEventListener("click", async () => {
+
+            button.disabled = true;
+
+            try {
+
+                const response = await fetch("/api/resend-verification", {
+                    method: "POST",
+                    credentials: "include"
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    text.textContent = data.alreadyVerified
+                        ? "Az e-mail címed már meg van erősítve."
+                        : "Elküldtük az új levelet. Nézd meg a bejövő és a spam mappát is.";
+
+                    if (data.alreadyVerified) {
+                        button.remove();
+                    }
+
+                    return;
+                }
+
+                text.textContent = data.error || "Nem sikerült elküldeni a levelet.";
+
+            } catch (error) {
+
+                text.textContent = "Nem sikerült elküldeni a levelet. Próbáld újra később.";
+            }
+
+            button.disabled = false;
+        });
+
+        navbar.insertAdjacentElement("afterend", banner);
+    }
+
+    async function check() {
+
+        try {
+
+            const response = await fetch("/api/me", { credentials: "include" });
+            const data = await response.json();
+
+            if (data.loggedIn && data.user.emailVerified === false) {
+                user.email = data.user.email;
+                removeBanner();
+                showBanner();
+            } else {
+                removeBanner();
+            }
+
+        } catch (error) {
+            // a sáv marad, ahogy volt
+        }
+    }
+
+    document.addEventListener("tc:account-saved", check);
+
+    if (user.emailVerified === false) {
+        showBanner();
+    }
+}
+
 
 function setupProfileReminder() {
 
@@ -1724,7 +1841,13 @@ function setupAccountModal(user) {
             setHeader(data.user.name);
 
             clearPasswords();
-            showMessage("Sikeresen mentve.", "success");
+
+            showMessage(
+                data.emailVerificationSent
+                    ? "Mentve. Az új e-mail címedre megerősítő levelet küldtünk."
+                    : "Sikeresen mentve.",
+                "success"
+            );
 
             // A hiányos profilra figyelmeztető sáv ebből tudja, hogy újra kell nézni
             document.dispatchEvent(new CustomEvent("tc:account-saved"));

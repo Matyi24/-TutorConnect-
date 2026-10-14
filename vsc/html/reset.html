@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/login.css">
+
+    <title>Új jelszó – TutorConnect</title>
+</head>
+
+<body>
+
+<main class="container">
+
+    <div class="ambient" aria-hidden="true"></div>
+
+    <h1 class="title">Új jelszó</h1>
+
+    <p class="account_create" id="resetIntro">Add meg az új jelszavad.</p>
+
+    <form id="resetForm" novalidate hidden>
+
+        <div class="field">
+            <label for="password">Új jelszó</label>
+
+            <div class="password-wrap">
+                <input id="password" type="password" placeholder="Legalább 6 karakter, szám és speciális jel" autocomplete="new-password" required>
+
+                <button type="button" class="toggle-password" aria-label="Jelszó megjelenítése" aria-pressed="false">
+                    <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="password_confirm">Új jelszó megerősítése</label>
+
+            <div class="password-wrap">
+                <input id="password_confirm" type="password" placeholder="Ismételd meg az új jelszót" autocomplete="new-password" required>
+
+                <button type="button" class="toggle-password" aria-label="Jelszó megjelenítése" aria-pressed="false">
+                    <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="formError" class="form-error" role="alert"></div>
+
+        <button type="submit" class="signin-btn" id="submitBtn">Jelszó mentése</button>
+
+    </form>
+
+    <form id="invalidCard" class="status-card" hidden onsubmit="return false">
+        <div class="status-icon bad" aria-hidden="true">!</div>
+        <h2>A link érvénytelen vagy lejárt</h2>
+        <p>A jelszó-visszaállító linkek csak 1 óráig érvényesek, és egyszer használhatók.</p>
+        <a class="signin-btn status-btn" href="/forgot-password">Új link kérése</a>
+    </form>
+
+</main>
+
+<script src="/js/creator.js"></script>
+<script>
+    document.querySelectorAll('.toggle-password').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const input = button.parentElement.querySelector('input');
+            const show = input.type === 'password';
+
+            input.type = show ? 'text' : 'password';
+            button.classList.toggle('is-visible', show);
+            button.setAttribute('aria-pressed', String(show));
+            button.setAttribute('aria-label', show ? 'Jelszó elrejtése' : 'Jelszó megjelenítése');
+        });
+    });
+
+    const token = new URLSearchParams(location.search).get('token') || '';
+    const form = document.getElementById('resetForm');
+    const invalidCard = document.getElementById('invalidCard');
+    const intro = document.getElementById('resetIntro');
+    const errorBox = document.getElementById('formError');
+    const button = document.getElementById('submitBtn');
+
+    function showInvalid() {
+        form.hidden = true;
+        intro.hidden = true;
+        invalidCard.hidden = false;
+    }
+
+    // Először megnézzük, él-e még a link
+    fetch('/api/reset-password/check?token=' + encodeURIComponent(token))
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            if (data.valid) { form.hidden = false; } else { showInvalid(); }
+        })
+        .catch(showInvalid);
+
+    form.addEventListener('submit', async function (event) {
+
+        event.preventDefault();
+
+        errorBox.textContent = '';
+
+        const password = document.getElementById('password').value;
+        const confirm = document.getElementById('password_confirm').value;
+
+        if (!/^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$/.test(password)) {
+            errorBox.textContent = 'A jelszó legalább 6 karakter legyen, és tartalmazzon számot és speciális karaktert (!, $, stb.).';
+            return;
+        }
+
+        if (password !== confirm) {
+            errorBox.textContent = 'A két jelszó nem egyezik.';
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+
+            const response = await fetch('/api/reset-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token, password: password, password_confirm: confirm })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                location.href = '/login?reset=1';
+                return;
+            }
+
+            if (response.status === 400 && /link/i.test(data.error || '')) {
+                showInvalid();
+                return;
+            }
+
+            errorBox.textContent = data.error || 'Nem sikerült megváltoztatni a jelszót.';
+            button.disabled = false;
+
+        } catch (error) {
+
+            errorBox.textContent = 'Nem sikerült a kérés. Próbáld újra később.';
+            button.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
