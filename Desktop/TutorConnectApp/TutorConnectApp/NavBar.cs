@@ -1,11 +1,13 @@
-using System.ComponentModel;
 using System.Drawing.Drawing2D;
+using System.Drawing.Text;
 
 namespace TutorConnectApp
 {
     /// <summary>
-    /// Bal oldali navigációs sáv. Új menüpont: AddItem("kulcs", "Felirat", "").
+    /// Bal oldali navigációs sáv. Menüpont (kijelölhető oldal): AddItem("kulcs", "Felirat", "").
+    /// Művelet-gomb (nem kerül kijelölésre, pl. kijelentkezés): AddAction(...).
     /// Az ikon a Segoe MDL2 Assets betűkészlet egy karaktere (opcionális).
+    /// Keskeny ablaknál animáltan összecsukódik, és csak az ikonok látszanak.
     /// </summary>
     public class NavBar : UserControl
     {
@@ -13,26 +15,31 @@ namespace TutorConnectApp
         private readonly UserChip userChip;
         private readonly FlowLayoutPanel itemsPanel;
         private readonly Dictionary<string, NavButton> buttons = new();
+        private readonly ToolTip tips = new();
 
-        /// <summary>Menüpontra kattintáskor fut le, a paraméter a menüpont kulcsa.</summary>
+        private bool collapsed;
+        private bool initialized;
+        private bool tweening;
+        private int lastAvailable = 1000;
+        private Anim.Tween? widthTween;
+
+        /// <summary>Menüpontra vagy műveletre kattintáskor fut le, a paraméter a kulcsa.</summary>
         public event EventHandler<string>? ItemClicked;
-
-        public string? ActiveKey { get; private set; }
 
         public NavBar()
         {
             DoubleBuffered = true;
             Dock = DockStyle.Left;
             Width = 250; // az ApplyResponsive() később az ablakhoz igazítja
-            BackColor = Theme.MainBlueDark;
+            BackColor = Theme.NavBg;
 
             itemsPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                Padding = new Padding(12, 8, 12, 0),
-                BackColor = Theme.MainBlueDark
+                Padding = new Padding(12, 10, 12, 0),
+                BackColor = Theme.NavBg
             };
             itemsPanel.Resize += (_, _) => ResizeButtons();
 
@@ -54,36 +61,110 @@ namespace TutorConnectApp
 
         public void AddItem(string key, string text, string icon = "")
         {
-            var button = new NavButton(text, icon) { Margin = new Padding(0, 0, 0, 6) };
+            var button = AddButton(key, text, icon);
             button.Click += (_, _) => Select(key);
+        }
+
+        public void AddAction(string key, string text, string icon = "")
+        {
+            var button = AddButton(key, text, icon);
+            button.Click += (_, _) => ItemClicked?.Invoke(this, key);
+        }
+
+        private NavButton AddButton(string key, string text, string icon)
+        {
+            var button = new NavButton(text, icon) { Margin = new Padding(0, 0, 0, 6) };
+            button.SetCollapsed(collapsed);
             buttons[key] = button;
             itemsPanel.Controls.Add(button);
             ResizeButtons();
+            return button;
+        }
+
+        /// <summary>Egy gomb feliratának és ikonjának cseréje (pl. a téma-váltó gombnál).</summary>
+        public void SetItemContent(string key, string text, string icon)
+        {
+            if (buttons.TryGetValue(key, out var button))
+            {
+                button.SetContent(text, icon);
+                tips.SetToolTip(button, collapsed ? text : "");
+            }
         }
 
         public void Select(string key)
         {
             if (!buttons.ContainsKey(key)) return;
 
-            ActiveKey = key;
             foreach (var pair in buttons)
-                pair.Value.Active = pair.Key == key;
+                pair.Value.SetActive(pair.Key == key);
 
             ItemClicked?.Invoke(this, key);
         }
 
+        /// <summary>A téma váltásakor hívandó: újrafesti a sávot az új színekkel.</summary>
+        public void ApplyTheme()
+        {
+            BackColor = Theme.NavBg;
+            itemsPanel.BackColor = Theme.NavBg;
+            header.Invalidate();
+            userChip.Invalidate();
+            foreach (var button in buttons.Values)
+                button.Invalidate();
+            Invalidate();
+        }
+
         /// <summary>
-        /// Reszponzív méretezés: az ablak szélességétől függően a sáv szélessége változik,
-        /// keskeny ablaknál csak az ikonok látszanak (összecsukott mód).
+        /// Reszponzív méretezés: az ablak szélességétől függően változik a sáv szélessége,
+        /// keskeny ablaknál animáltan összecsukódik (csak ikonok).
         /// </summary>
         public void ApplyResponsive(int availableWidth)
         {
-            bool collapsed = availableWidth < 800;
-            Width = collapsed ? 76 : Math.Clamp((int)(availableWidth * 0.2), 220, 280);
-            header.Collapsed = collapsed;
-            userChip.SetCollapsed(collapsed);
+            lastAvailable = availableWidth;
+            bool wantCollapsed = availableWidth < 800;
+
+            if (!initialized)
+            {
+                initialized = true;
+                collapsed = wantCollapsed;
+                SetCollapsedMode(wantCollapsed);
+                Width = TargetWidth(availableWidth, wantCollapsed);
+                return;
+            }
+
+            if (wantCollapsed != collapsed)
+            {
+                collapsed = wantCollapsed;
+                if (!wantCollapsed) SetCollapsedMode(false); // kinyitáskor a feliratok rögtön megjelennek
+
+                widthTween?.Cancel();
+                tweening = true;
+                int from = Width;
+                int target = TargetWidth(availableWidth, wantCollapsed);
+                widthTween = Anim.Run(240, t => Width = from + (int)((target - from) * t), () =>
+                {
+                    tweening = false;
+                    Width = TargetWidth(lastAvailable, collapsed);
+                    if (collapsed) SetCollapsedMode(true); // összecsukáskor a feliratok a végén tűnnek el
+                });
+            }
+            else if (!tweening)
+            {
+                Width = TargetWidth(availableWidth, wantCollapsed);
+            }
+        }
+
+        private static int TargetWidth(int availableWidth, bool collapsedMode) =>
+            collapsedMode ? 78 : Math.Clamp((int)(availableWidth * 0.2), 230, 290);
+
+        private void SetCollapsedMode(bool value)
+        {
+            header.SetCollapsed(value);
+            userChip.SetCollapsed(value);
             foreach (var button in buttons.Values)
-                button.Collapsed = collapsed;
+            {
+                button.SetCollapsed(value);
+                tips.SetToolTip(button, value ? button.Text : "");
+            }
             ResizeButtons();
         }
 
@@ -94,35 +175,38 @@ namespace TutorConnectApp
                 button.Width = Math.Max(width, 0);
         }
 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                widthTween?.Cancel();
+                tips.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
         /// <summary>Logó (kör, benne T betű) és az alkalmazás neve.</summary>
         private class BrandHeader : Control
         {
             private bool collapsed;
 
-            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-            public bool Collapsed
-            {
-                get => collapsed;
-                set { collapsed = value; Invalidate(); }
-            }
-
             public BrandHeader()
             {
-                DoubleBuffered = true;
-                BackColor = Theme.MainBlueDark;
+                SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             }
 
-            protected override void OnResize(EventArgs e)
+            public void SetCollapsed(bool value)
             {
-                base.OnResize(e);
+                collapsed = value;
                 Invalidate();
             }
 
             protected override void OnPaint(PaintEventArgs e)
             {
                 var g = e.Graphics;
+                g.Clear(Theme.NavBg);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
                 // összecsukva a logó középen, egyébként balra
                 int circleX = collapsed ? (Width - 44) / 2 : 24;
@@ -130,15 +214,15 @@ namespace TutorConnectApp
                 using (var fill = new SolidBrush(Theme.White))
                     g.FillEllipse(fill, circle);
 
-                using var logoFont = new Font(Theme.FontFamily, 18F, FontStyle.Bold);
-                using var logoBrush = new SolidBrush(Theme.MainBlueDark);
-                var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString("T", logoFont, logoBrush, circle, center);
+                using (var logoFont = new Font(Theme.FontFamily, 18F, FontStyle.Bold))
+                using (var logoBrush = new SolidBrush(Theme.MainBlueDark))
+                using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                    g.DrawString("T", logoFont, logoBrush, circle, center);
 
                 if (!collapsed)
                 {
                     // A cím soha nem törik új sorba: ha nem fér el, a betűméret csökken.
-                    var textArea = new Rectangle(80, 0, Width - 80 - 12, Height);
+                    var textArea = new Rectangle(80, 0, Math.Max(Width - 80 - 12, 0), Height);
                     float size = 15F;
                     Font titleFont = new(Theme.FontFamily, size, FontStyle.Bold);
                     while (size > 9F && TextRenderer.MeasureText("TutorConnect", titleFont).Width > textArea.Width)
@@ -149,19 +233,17 @@ namespace TutorConnectApp
                     }
 
                     using (titleFont)
+                    using (var format = new StringFormat(StringFormatFlags.NoWrap)
                     {
-                        var format = new StringFormat(StringFormatFlags.NoWrap)
-                        {
-                            LineAlignment = StringAlignment.Center,
-                            Trimming = StringTrimming.EllipsisCharacter
-                        };
-                        using var titleBrush = new SolidBrush(Theme.White);
+                        LineAlignment = StringAlignment.Center,
+                        Trimming = StringTrimming.EllipsisCharacter
+                    })
+                    using (var titleBrush = new SolidBrush(Theme.White))
                         g.DrawString("TutorConnect", titleFont, titleBrush, textArea, format);
-                    }
                 }
 
                 // vékony elválasztó vonal a fejléc alatt
-                using var line = new Pen(Color.FromArgb(60, Theme.White));
+                using var line = new Pen(Color.FromArgb(55, Theme.White));
                 g.DrawLine(line, 16, Height - 1, Width - 16, Height - 1);
             }
         }
@@ -176,9 +258,8 @@ namespace TutorConnectApp
 
             public UserChip()
             {
-                DoubleBuffered = true;
+                SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
                 Cursor = Cursors.Hand;
-                BackColor = Theme.MainBlueDark;
             }
 
             public void SetUser(string userName, string roleName)
@@ -200,17 +281,18 @@ namespace TutorConnectApp
             protected override void OnPaint(PaintEventArgs e)
             {
                 var g = e.Graphics;
+                g.Clear(Theme.NavBg);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
                 if (hover)
                 {
                     using var path = Ui.RoundedPath(new Rectangle(10, 8, Width - 21, Height - 17), 12);
-                    using var hoverBrush = new SolidBrush(Color.FromArgb(90, Theme.MainBlue));
+                    using var hoverBrush = new SolidBrush(Color.FromArgb(110, Theme.NavActive));
                     g.FillPath(hoverBrush, path);
                 }
 
-                using (var line = new Pen(Color.FromArgb(60, Theme.White)))
+                using (var line = new Pen(Color.FromArgb(55, Theme.White)))
                     g.DrawLine(line, 16, 0, Width - 16, 0);
 
                 const int size = 40;
@@ -221,40 +303,27 @@ namespace TutorConnectApp
 
                 int x = avatar.Right + 12;
                 int textWidth = Math.Max(Width - x - 12, 0);
-                var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter, LineAlignment = StringAlignment.Far };
+                using var nameFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter, LineAlignment = StringAlignment.Far };
                 using var nameFont = new Font(Theme.FontFamily, 10F, FontStyle.Bold);
                 using var nameBrush = new SolidBrush(Theme.White);
-                g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - 22, textWidth, 22), format);
+                g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - 22, textWidth, 22), nameFormat);
 
-                var roleFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
+                using var roleFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
                 using var roleFont = new Font(Theme.FontFamily, 8.5F);
                 using var roleBrush = new SolidBrush(Color.FromArgb(200, Theme.White));
                 g.DrawString(role, roleFont, roleBrush, new Rectangle(x, Height / 2 + 1, textWidth, 20), roleFormat);
             }
         }
 
-        /// <summary>Lekerekített, ikonos menügomb hover és aktív állapottal.</summary>
+        /// <summary>Lekerekített, ikonos menügomb animált hover és aktív állapottal.</summary>
         private class NavButton : Control
         {
-            private readonly string icon;
-            private bool hover;
-            private bool active;
+            private string icon;
             private bool collapsed;
-
-            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-            public bool Active
-            {
-                get => active;
-                set { active = value; Invalidate(); }
-            }
-
-            /// <summary>Összecsukott módban csak az ikon látszik, középen.</summary>
-            [Browsable(false), DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-            public bool Collapsed
-            {
-                get => collapsed;
-                set { collapsed = value; Invalidate(); }
-            }
+            private double hoverT;
+            private double activeT;
+            private Anim.Tween? hoverTween;
+            private Anim.Tween? activeTween;
 
             public NavButton(string text, string icon)
             {
@@ -262,69 +331,112 @@ namespace TutorConnectApp
                 Text = text;
                 Height = 48;
                 Cursor = Cursors.Hand;
-                DoubleBuffered = true;
+                SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
                 SetStyle(ControlStyles.Selectable, false);
-                BackColor = Theme.MainBlueDark;
             }
 
-            protected override void OnMouseEnter(EventArgs e) { hover = true; Invalidate(); base.OnMouseEnter(e); }
-            protected override void OnMouseLeave(EventArgs e) { hover = false; Invalidate(); base.OnMouseLeave(e); }
+            public void SetCollapsed(bool value)
+            {
+                collapsed = value;
+                Invalidate();
+            }
+
+            public void SetContent(string text, string newIcon)
+            {
+                Text = text;
+                icon = newIcon;
+                Invalidate();
+            }
+
+            public void SetActive(bool value)
+            {
+                activeTween?.Cancel();
+                double from = activeT;
+                double to = value ? 1 : 0;
+                activeTween = Anim.Run(220, t =>
+                {
+                    activeT = from + (to - from) * t;
+                    Invalidate();
+                });
+            }
+
+            private void HoverTo(double to)
+            {
+                hoverTween?.Cancel();
+                double from = hoverT;
+                hoverTween = Anim.Run(140, t =>
+                {
+                    hoverT = from + (to - from) * t;
+                    Invalidate();
+                });
+            }
+
+            protected override void OnMouseEnter(EventArgs e) { HoverTo(1); base.OnMouseEnter(e); }
+            protected override void OnMouseLeave(EventArgs e) { HoverTo(0); base.OnMouseLeave(e); }
 
             protected override void OnPaint(PaintEventArgs e)
             {
                 var g = e.Graphics;
+                g.Clear(Theme.NavBg);
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
                 var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
-                if (active || hover)
+                double amount = Math.Max(activeT, hoverT * 0.55);
+                if (amount > 0.01)
                 {
-                    var color = active ? Theme.MainBlue : Color.FromArgb(90, Theme.MainBlue);
-                    using var path = RoundedRect(bounds, 12);
-                    using var brush = new SolidBrush(color);
+                    using var path = Ui.RoundedPath(bounds, 12);
+                    using var brush = new SolidBrush(Anim.Lerp(Theme.NavBg, Theme.NavActive, amount));
                     g.FillPath(brush, path);
                 }
 
-                var middle = new StringFormat { LineAlignment = StringAlignment.Center };
-                using var textBrush = new SolidBrush(Theme.White);
+                // az aktív gomb bal oldali jelzősávja nő be
+                if (activeT > 0.01)
+                {
+                    int barHeight = (int)(24 * activeT);
+                    using var bar = new SolidBrush(Theme.White);
+                    g.FillRectangle(bar, 0, (Height - barHeight) / 2, 4, barHeight);
+                }
+
+                Color textColor = Anim.Lerp(Color.FromArgb(215, 255, 255, 255), Color.White, Math.Max(activeT, hoverT));
+                using var textBrush = new SolidBrush(textColor);
 
                 if (collapsed)
                 {
                     // csak ikon (vagy az első betű, ha nincs ikon), középre igazítva
-                    var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                    using var iconFont = icon.Length > 0
+                    using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    using var glyphFont = icon.Length > 0
                         ? new Font("Segoe MDL2 Assets", 14F)
                         : new Font(Theme.FontFamily, 12F, FontStyle.Bold);
                     string glyph = icon.Length > 0 ? icon : Text[..1];
-                    g.DrawString(glyph, iconFont, textBrush, new Rectangle(0, 0, Width, Height), centered);
+                    g.DrawString(glyph, glyphFont, textBrush, new Rectangle(0, 0, Width, Height), centered);
                     return;
                 }
 
+                using var middle = new StringFormat { LineAlignment = StringAlignment.Center };
                 if (icon.Length > 0)
                 {
                     using var iconFont = new Font("Segoe MDL2 Assets", 14F);
-                    g.DrawString(icon, iconFont, textBrush, new Rectangle(16, 0, 32, Height), middle);
+                    g.DrawString(icon, iconFont, textBrush, new Rectangle(18, 0, 34, Height), middle);
                 }
 
-                using var font = new Font(Theme.FontFamily, 11F, active ? FontStyle.Bold : FontStyle.Regular);
-                var textFormat = new StringFormat(StringFormatFlags.NoWrap)
+                using var font = new Font(Theme.FontFamily, 11F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
+                using var textFormat = new StringFormat(StringFormatFlags.NoWrap)
                 {
                     LineAlignment = StringAlignment.Center,
                     Trimming = StringTrimming.EllipsisCharacter
                 };
-                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? 56 : 20, 0, Width - 60, Height), textFormat);
+                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? 58 : 20, 0, Math.Max(Width - 62, 0), Height), textFormat);
             }
 
-            private static GraphicsPath RoundedRect(Rectangle r, int radius)
+            protected override void Dispose(bool disposing)
             {
-                int d = radius * 2;
-                var path = new GraphicsPath();
-                path.AddArc(r.X, r.Y, d, d, 180, 90);
-                path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
-                path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-                path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
-                path.CloseFigure();
-                return path;
+                if (disposing)
+                {
+                    hoverTween?.Cancel();
+                    activeTween?.Cancel();
+                }
+                base.Dispose(disposing);
             }
         }
     }

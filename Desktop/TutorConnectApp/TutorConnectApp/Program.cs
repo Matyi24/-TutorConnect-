@@ -11,6 +11,7 @@ namespace TutorConnectApp
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
+            AppSettings.Load(); // mentett téma és animáció-beállítás
 
             // Belépés nélkül nem nyílik meg a főablak. Kijelentkezés után újra a belépő jön.
             while (true)

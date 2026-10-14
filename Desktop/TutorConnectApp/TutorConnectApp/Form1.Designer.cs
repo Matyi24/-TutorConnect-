@@ -40,7 +40,7 @@
             // 
             // contentPanel
             // 
-            contentPanel.BackColor = Theme.MainBlueLight;
+            contentPanel.BackColor = Theme.PageBg;
             contentPanel.Dock = DockStyle.Fill;
             contentPanel.Name = "contentPanel";
             //

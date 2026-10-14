@@ -107,4 +107,23 @@ namespace TutorConnectApp
         [JsonPropertyName("slots")] public List<SlotDto> Slots { get; set; } = new();
         [JsonPropertyName("subjects")] public List<SlotSubjectDto> Subjects { get; set; } = new();
     }
+
+    /// <summary>Az oktató saját időpontja (GET /api/availability).</summary>
+    internal class SlotItemDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("start_time")] public DateTime StartTime { get; set; }
+        [JsonPropertyName("end_time")] public DateTime EndTime { get; set; }
+
+        /// <summary>A MySQL tinyint(1) mezőt számként (0/1) adja vissza a szerver.</summary>
+        [JsonPropertyName("is_booked")] public int IsBookedValue { get; set; }
+
+        [JsonIgnore] public bool IsBooked => IsBookedValue != 0;
+    }
+
+    internal class AvailabilityResultDto
+    {
+        [JsonPropertyName("created")] public int Created { get; set; }
+        [JsonPropertyName("skipped")] public int Skipped { get; set; }
+    }
 }

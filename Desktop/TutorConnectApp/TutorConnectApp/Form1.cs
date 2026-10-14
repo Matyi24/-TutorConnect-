@@ -4,6 +4,7 @@ namespace TutorConnectApp
     {
         private readonly Dictionary<string, Func<PageBase>> pages = new();
         private PageBase? currentPage;
+        private string currentKey = "";
 
         /// <summary>Igaz, ha a felhasználó kijelentkezett (és nem simán bezárta az appot).</summary>
         public bool LoggedOut { get; private set; }
@@ -16,6 +17,7 @@ namespace TutorConnectApp
 
             MinimumSize = new Size(480, 360);
             Text = $"TutorConnect – {user.Name}";
+            Opacity = 0; // az első megjelenéskor beúszik
 
             BuildMenu(user);
 
@@ -23,6 +25,9 @@ namespace TutorConnectApp
             navBar.ItemClicked += NavBar_ItemClicked;
             ClientSizeChanged += (_, _) => navBar.ApplyResponsive(ClientSize.Width);
             navBar.ApplyResponsive(ClientSize.Width);
+
+            Theme.Changed += OnThemeChanged;
+            ApplyTheme();
 
             navBar.Select("home");
         }
@@ -48,7 +53,9 @@ namespace TutorConnectApp
             AddPage("profile", "Profil", "", () => new ProfilePage());
             AddPage("settings", "Beállítások", "", () => new SettingsPage(user));
 
-            navBar.AddItem("logout", "Kijelentkezés", "");
+            // műveletek: nem kijelölhető gombok
+            navBar.AddAction("theme", "Sötét mód", "");
+            navBar.AddAction("logout", "Kijelentkezés", "");
         }
 
         private void AddPage(string key, string text, string icon, Func<PageBase> factory)
@@ -63,22 +70,67 @@ namespace TutorConnectApp
             WindowChrome.ApplyBlack(this); // fekete címsor és szegély
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            Anim.Run(350, t => Opacity = t);
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            Theme.Changed -= OnThemeChanged;
+            base.OnFormClosed(e);
+        }
+
         private async void NavBar_ItemClicked(object? sender, string key)
         {
-            if (key == "logout")
+            switch (key)
             {
-                await ApiClient.LogoutAsync();
-                LoggedOut = true;
-                Close();
-                return;
+                case "logout":
+                    await ApiClient.LogoutAsync();
+                    LoggedOut = true;
+                    Close();
+                    return;
+
+                case "theme":
+                    Theme.SetDark(!Theme.Dark);
+                    return;
             }
 
             if (pages.TryGetValue(key, out var factory))
+            {
+                currentKey = key;
                 ShowPage(factory());
+            }
+        }
+
+        private void OnThemeChanged()
+        {
+            ApplyTheme();
+
+            // az oldal újraépül az új színekkel
+            if (pages.TryGetValue(currentKey, out var factory))
+                ShowPage(factory());
+        }
+
+        /// <summary>A főablak keretének színei a téma szerint (az oldalak maguktól újraépülnek).</summary>
+        private void ApplyTheme()
+        {
+            BackColor = Theme.PageBg;
+            contentPanel.BackColor = Theme.PageBg;
+            navBar.ApplyTheme();
+
+            // a téma-váltó gomb a következő állapotot mutatja
+            if (Theme.Dark)
+                navBar.SetItemContent("theme", "Világos mód", "");
+            else
+                navBar.SetItemContent("theme", "Sötét mód", "");
         }
 
         private void ShowPage(PageBase page)
         {
+            page.NavigateRequested += key => navBar.Select(key);
+
             contentPanel.SuspendLayout();
 
             var old = currentPage;
