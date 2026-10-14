@@ -2,23 +2,77 @@
 // E-MAIL KÜLDÉS
 // ============================================================
 //
-// Beállítás környezeti változókkal (mind opcionális fejlesztéskor):
+// Három küldési mód van, ebben a sorrendben (az első beállított nyer):
 //
-//   SMTP_HOST   a levelezőszerver (pl. smtp.gmail.com)
-//   SMTP_PORT   port (alapértelmezett: 587; 465 esetén titkosított)
-//   SMTP_USER   felhasználónév
-//   SMTP_PASS   jelszó (Gmailnél "alkalmazásjelszó")
-//   MAIL_FROM   a feladó, pl.  TutorConnect <noreply@pelda.hu>
-//   APP_URL     az oldal címe a levelekben (alapértelmezett: http://localhost:3000)
+//  1) MAILTRAP API  (ajánlott)
+//       MAILTRAP_TOKEN   a Mailtrap "API token" (Sending > API)
+//       MAIL_FROM        a feladó, pl.  TutorConnect <hello@demomailtrap.co>
+//                        (alapértelmezett: a Mailtrap demó címe)
 //
-// Ha az SMTP_HOST nincs megadva, a levél NEM megy ki: a szerver a
-// konzolra írja a teljes tartalmát (és így a megerősítő / jelszó-
-// visszaállító linket is). Fejlesztéskor ez elég, nem kell levelező
-// fiók. Élesben (NODE_ENV=production) SMTP nélkül hibát naplóz.
+//  2) SMTP  (bármilyen levelezőszerver, pl. Gmail, Brevo)
+//       SMTP_HOST, SMTP_PORT (587), SMTP_USER, SMTP_PASS, MAIL_FROM
+//
+//  3) Semmi sincs beállítva: a levél NEM megy ki, a szerver a konzolra
+//     írja a tartalmát és a linket. Fejlesztéskor ez elég.
+//
+// Mindkét esetben:  APP_URL  az oldal címe a levelekben
+// (alapértelmezett: http://localhost:3000)
+//
+// FONTOS (Mailtrap demó domain): a "demomailtrap.co" feladóról csak a
+// Mailtrap-fiók saját e-mail címére lehet küldeni. Más címzetthez saját,
+// megerősített domain kell a Mailtrapben.
+//
+// A titkokat (token, jelszó) soha ne írd a kódba vagy a gitbe: a terminálban
+// állítsd be környezeti változóként.
+//
+// Élesben (NODE_ENV=production) beállítás nélkül hibát naplóz.
 
 const APP_URL = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 const MAIL_FROM = process.env.MAIL_FROM || "TutorConnect <noreply@tutorconnect.local>";
+
+// "Név <cím@pelda.hu>" vagy csak "cím@pelda.hu"  ->  { name, email }
+function parseSender(value) {
+
+    const match = String(value).match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+
+    if (match) {
+        return { name: match[1].replace(/^"|"$/g, ""), email: match[2].trim() };
+    }
+
+    return { name: "TutorConnect", email: String(value).trim() };
+}
+
+const DEFAULT_MAILTRAP_FROM = "TutorConnect <hello@demomailtrap.co>";
+
+let mailtrapClient = null;
+let mailtrapTried = false;
+
+function getMailtrap() {
+
+    if (mailtrapTried) {
+        return mailtrapClient;
+    }
+
+    mailtrapTried = true;
+
+    if (!process.env.MAILTRAP_TOKEN) {
+        return null;
+    }
+
+    try {
+
+        const { MailtrapClient } = require("mailtrap");
+
+        mailtrapClient = new MailtrapClient({ token: process.env.MAILTRAP_TOKEN });
+
+    } catch (error) {
+
+        console.error("❌ A mailtrap csomag nem tölthető be (npm install):", error.message);
+    }
+
+    return mailtrapClient;
+}
 
 let transporter = null;
 let transporterTried = false;
@@ -97,8 +151,36 @@ async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
 
     const { text, html } = layout({ title, intro, buttonText, url, outro });
 
+    // 1) Mailtrap API
+    const mailtrap = getMailtrap();
+
+    if (mailtrap) {
+
+        try {
+
+            await mailtrap.send({
+                from: parseSender(process.env.MAIL_FROM || DEFAULT_MAILTRAP_FROM),
+                to: [{ email: to }],
+                subject,
+                text,
+                html,
+                category: "TutorConnect"
+            });
+
+            return true;
+
+        } catch (error) {
+
+            console.error("❌ Mailtrap küldési hiba:", error.message);
+
+            return false;
+        }
+    }
+
+    // 2) SMTP
     const smtp = getTransporter();
 
+    // 3) nincs semmi beállítva
     if (!smtp) {
 
         if (process.env.NODE_ENV === "production") {
