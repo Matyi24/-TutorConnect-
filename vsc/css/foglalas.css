@@ -803,3 +803,39 @@ html[data-theme="dark"] .avail-remove:hover {
 
     color: #ff8fb3;
 }
+
+
+/* következő óra: a kék-lila sáv helyett a kártyákhoz illő sötét felület */
+html[data-theme="dark"] .hub-next {
+    background:
+        radial-gradient(circle at 100% 0%, rgba(138, 160, 255, 0.16), transparent 55%),
+        #171c2e;
+    border: 1px solid #2f3860;
+    border-left: 4px solid #8aa0ff;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .hub-next-label {
+    color: #8aa0ff;
+    opacity: 1;
+}
+
+html[data-theme="dark"] .hub-next p {
+    color: #b9bfdc;
+    opacity: 1;
+}
+
+html[data-theme="dark"] .hub-next p strong {
+    color: #eef0f8;
+}
+
+html[data-theme="dark"] .hub-next-link {
+    background: #8aa0ff;
+    border-color: #8aa0ff;
+    color: #0f1320;
+}
+
+html[data-theme="dark"] .hub-next-link:hover {
+    background: #a8b8ff;
+}
