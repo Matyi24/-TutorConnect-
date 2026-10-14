@@ -6,10 +6,17 @@ namespace TutorConnectApp
         {
             InitializeComponent();
 
-            navBar.AddItem("profile", "Profil");
-            navBar.AddItem("settings", "Beállítások");
+            // Ikonok: Segoe MDL2 Assets karakterek (E77B = profil, E713 = beállítások)
+            navBar.AddItem("profile", "Profil", "");
+            navBar.AddItem("settings", "Beállítások", "");
             navBar.ItemClicked += NavBar_ItemClicked;
             navBar.Select("profile");
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            WindowChrome.ApplyBlack(this); // fekete címsor és szegély
         }
 
         private void NavBar_ItemClicked(object? sender, string key)

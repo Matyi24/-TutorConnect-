@@ -39,8 +39,9 @@
             navBar.BackColor = Color.FromArgb(59, 91, 219);
             navBar.Dock = DockStyle.Left;
             navBar.Location = new Point(0, 0);
+            navBar.Margin = new Padding(3, 4, 3, 4);
             navBar.Name = "navBar";
-            navBar.Size = new Size(220, 450);
+            navBar.Size = new Size(251, 600);
             navBar.TabIndex = 1;
             // 
             // contentPanel
@@ -48,10 +49,11 @@
             contentPanel.BackColor = Color.FromArgb(219, 228, 255);
             contentPanel.Controls.Add(pageTitleLabel);
             contentPanel.Dock = DockStyle.Fill;
-            contentPanel.Location = new Point(220, 0);
+            contentPanel.Location = new Point(251, 0);
+            contentPanel.Margin = new Padding(3, 4, 3, 4);
             contentPanel.Name = "contentPanel";
-            contentPanel.Padding = new Padding(32);
-            contentPanel.Size = new Size(580, 450);
+            contentPanel.Padding = new Padding(37, 43, 37, 43);
+            contentPanel.Size = new Size(663, 600);
             contentPanel.TabIndex = 0;
             // 
             // pageTitleLabel
@@ -60,19 +62,20 @@
             pageTitleLabel.Dock = DockStyle.Top;
             pageTitleLabel.Font = new Font("Segoe UI", 20F, FontStyle.Bold);
             pageTitleLabel.ForeColor = Color.FromArgb(33, 37, 41);
-            pageTitleLabel.Location = new Point(32, 32);
+            pageTitleLabel.Location = new Point(37, 43);
             pageTitleLabel.Name = "pageTitleLabel";
-            pageTitleLabel.Size = new Size(0, 37);
+            pageTitleLabel.Size = new Size(0, 46);
             pageTitleLabel.TabIndex = 0;
             // 
             // TutorMain
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.Control;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(914, 600);
             Controls.Add(contentPanel);
             Controls.Add(navBar);
+            Margin = new Padding(3, 4, 3, 4);
             Name = "TutorMain";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "TutorConnect";
