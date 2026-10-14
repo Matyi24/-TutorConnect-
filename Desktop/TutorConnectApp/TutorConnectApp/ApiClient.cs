@@ -24,7 +24,7 @@ namespace TutorConnectApp
         public static readonly string BaseUrl =
             (Environment.GetEnvironmentVariable("TUTORCONNECT_URL") ?? "http://localhost:3000").TrimEnd('/');
 
-        private static readonly HttpClient http = new(new HttpClientHandler
+        private static readonly HttpClient Http = new(new HttpClientHandler
         {
             CookieContainer = new CookieContainer(),
             AllowAutoRedirect = false // a szerver sikeres belépésnél /index-re irányít, ezt nem követjük
@@ -33,7 +33,21 @@ namespace TutorConnectApp
             Timeout = TimeSpan.FromSeconds(10)
         };
 
+        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+        {
+            // a MySQL a decimal értékeket (ár, átlag) szövegként adja vissza
+            NumberHandling = JsonNumberHandling.AllowReadingFromString
+        };
+
+        private const string TimeoutMessage = "A szerver nem válaszol (időtúllépés).";
+
+        private static string UnreachableMessage => $"A szerver nem érhető el: {BaseUrl}";
+
         public static UserInfo? CurrentUser { get; private set; }
+
+        // ------------------------------------------------------------
+        // Bejelentkezés / kijelentkezés
+        // ------------------------------------------------------------
 
         /// <summary>Bejelentkezés. Siker esetén (true, null), egyébként (false, hibaüzenet).</summary>
         public static async Task<(bool Ok, string? Error)> LoginAsync(string email, string password)
@@ -46,79 +60,82 @@ namespace TutorConnectApp
                     ["password"] = password
                 });
 
-                using var response = await http.PostAsync($"{BaseUrl}/login", form);
+                using var response = await Http.PostAsync($"{BaseUrl}/login", form);
 
-                if (response.StatusCode == HttpStatusCode.Redirect || response.StatusCode == HttpStatusCode.Found)
+                // siker: a szerver átirányít a főoldalra, a session süti ilyenkor már megvan
+                if (response.StatusCode == HttpStatusCode.Found)
                 {
-                    var user = await FetchMeAsync();
-                    if (user == null)
+                    var me = await GetAsync<MeResponse>("/api/me");
+                    if (!me.LoggedIn || me.User == null)
                         return (false, "A bejelentkezés nem sikerült, próbáld újra.");
 
-                    CurrentUser = user;
+                    CurrentUser = new UserInfo(me.User.Id, me.User.Name, me.User.Email, me.User.Role);
                     return (true, null);
                 }
 
                 string message = (await response.Content.ReadAsStringAsync()).Trim();
-                bool plainText = message.Length > 0 && message.Length < 200 && !message.StartsWith("<");
+                bool plainText = message.Length is > 0 and < 200 && !message.StartsWith('<');
 
-                if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.BadRequest)
+                if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.BadRequest)
                     return (false, plainText ? message : "Hibás e-mail vagy jelszó.");
 
-                // Minden más válasz szerver- vagy címhiba: kiírjuk a kódot, hogy kiderüljön az ok.
+                // minden más válasz szerver- vagy címhiba: kiírjuk a kódot, hogy kiderüljön az ok
                 return (false, $"Váratlan szerverválasz (HTTP {(int)response.StatusCode}) ezen a címen: {BaseUrl}" +
                                (plainText ? $"\n{message}" : ""));
             }
+            catch (ApiException ex)
+            {
+                return (false, ex.Message);
+            }
             catch (TaskCanceledException)
             {
-                return (false, "A szerver nem válaszol (időtúllépés).");
+                return (false, TimeoutMessage);
             }
             catch (HttpRequestException)
             {
-                return (false, $"A szerver nem érhető el: {BaseUrl}\nIndítsd el a szervert (npm run dev), és ellenőrizd, hogy fut a MySQL.");
-            }
-            catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
-            {
-                return (false, $"Hibás válasz érkezett a szervertől: {ex.Message}");
+                return (false, UnreachableMessage + "\nIndítsd el a szervert (npm run dev), és ellenőrizd, hogy fut a MySQL.");
             }
         }
 
-        // ------------------------------------------------------------
-        // Általános lekérdezések (a bejelentkezett session sütivel)
-        // ------------------------------------------------------------
-
-        private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+        public static async Task LogoutAsync()
         {
-            // a MySQL a decimal értékeket (ár, átlag) szövegként adja vissza
-            NumberHandling = JsonNumberHandling.AllowReadingFromString
-        };
-
-        public static async Task<T> GetAsync<T>(string path)
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, BaseUrl + path);
-            string body = await SendAsync(request);
             try
             {
-                return JsonSerializer.Deserialize<T>(body, JsonOptions) ?? throw new ApiException("Üres válasz érkezett a szervertől.");
+                using var response = await Http.PostAsync($"{BaseUrl}/logout", null);
             }
-            catch (JsonException ex)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                throw new ApiException("Hibás szerverválasz: " + ex.Message);
+                // ha a szerver nem érhető el, a helyi állapotot akkor is töröljük
             }
+            CurrentUser = null;
         }
 
-        public static async Task PostAsync(string path, object? payload = null)
+        // ------------------------------------------------------------
+        // Általános kérések (a bejelentkezett session sütivel)
+        // ------------------------------------------------------------
+
+        public static async Task<T> GetAsync<T>(string path) =>
+            Deserialize<T>(await SendAsync(HttpMethod.Get, path, null));
+
+        public static Task PostAsync(string path, object? payload = null) =>
+            SendAsync(HttpMethod.Post, path, payload);
+
+        /// <summary>POST, a válasz JSON-ját típusként visszaadja.</summary>
+        public static async Task<T> PostAsync<T>(string path, object? payload = null) =>
+            Deserialize<T>(await SendAsync(HttpMethod.Post, path, payload));
+
+        public static Task DeleteAsync(string path) =>
+            SendAsync(HttpMethod.Delete, path, null);
+
+        private static async Task<string> SendAsync(HttpMethod method, string path, object? payload)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, BaseUrl + path);
+            using var request = new HttpRequestMessage(method, BaseUrl + path);
             if (payload != null)
                 request.Content = JsonContent.Create(payload);
-            await SendAsync(request);
-        }
 
-        private static async Task<string> SendAsync(HttpRequestMessage request)
-        {
             try
             {
-                using var response = await http.SendAsync(request);
+                using var response = await Http.SendAsync(request);
                 string body = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -130,11 +147,24 @@ namespace TutorConnectApp
             }
             catch (TaskCanceledException)
             {
-                throw new ApiException("A szerver nem válaszol (időtúllépés).");
+                throw new ApiException(TimeoutMessage);
             }
             catch (HttpRequestException)
             {
-                throw new ApiException($"A szerver nem érhető el: {BaseUrl}");
+                throw new ApiException(UnreachableMessage);
+            }
+        }
+
+        private static T Deserialize<T>(string body)
+        {
+            try
+            {
+                return JsonSerializer.Deserialize<T>(body, JsonOptions)
+                       ?? throw new ApiException("Üres válasz érkezett a szervertől.");
+            }
+            catch (JsonException ex)
+            {
+                throw new ApiException("Hibás szerverválasz: " + ex.Message);
             }
         }
 
@@ -155,35 +185,19 @@ namespace TutorConnectApp
             return $"Szerverhiba (HTTP {(int)status}).";
         }
 
-        public static async Task LogoutAsync()
+        // a /api/me válasza
+        private sealed class MeResponse
         {
-            try
-            {
-                using var response = await http.PostAsync($"{BaseUrl}/logout", null);
-            }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-            {
-                // Ha a szerver nem érhető el, a helyi állapotot akkor is töröljük.
-            }
-            CurrentUser = null;
+            [JsonPropertyName("loggedIn")] public bool LoggedIn { get; set; }
+            [JsonPropertyName("user")] public MeUser? User { get; set; }
         }
 
-        private static async Task<UserInfo?> FetchMeAsync()
+        private sealed class MeUser
         {
-            using var response = await http.GetAsync($"{BaseUrl}/api/me");
-            if (!response.IsSuccessStatusCode) return null;
-
-            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            var root = doc.RootElement;
-
-            if (!root.TryGetProperty("loggedIn", out var loggedIn) || !loggedIn.GetBoolean()) return null;
-            var user = root.GetProperty("user");
-
-            return new UserInfo(
-                user.GetProperty("id").GetInt32(),
-                user.GetProperty("name").GetString() ?? "",
-                user.GetProperty("email").GetString() ?? "",
-                user.GetProperty("role").GetString() ?? "");
+            [JsonPropertyName("id")] public int Id { get; set; }
+            [JsonPropertyName("name")] public string Name { get; set; } = "";
+            [JsonPropertyName("email")] public string Email { get; set; } = "";
+            [JsonPropertyName("role")] public string Role { get; set; } = "";
         }
     }
 }
