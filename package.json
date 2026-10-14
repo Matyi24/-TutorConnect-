@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "node --watch vsc/js/main.js",
-   "test": "node --test \"test/*.test.js\""
-},
+    "dev": "node --watch vsc/js/main.js",
+    "test": "node --test \"test/*.test.js\""
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Matyi24/-TutorConnect-.git"
@@ -24,6 +24,7 @@
     "express-session": "^1.19.0",
     "multer": "^2.4.0",
     "mysql2": "^3.24.5",
+    "nodemailer": "^10.1.1",
     "ws": "^8.22.0"
   },
   "allowScripts": {

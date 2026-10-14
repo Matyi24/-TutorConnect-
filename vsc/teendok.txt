@@ -1,0 +1,50 @@
+TUTORCONNECT - HÁTRALÉVŐ TEENDŐK
+================================
+
+1) ROADMAP (a 6 pontos lista maradéka)
+--------------------------------------
+[ ] 4. Biztonsági javítások - még nyitott részek:
+      - Bejelentkezés próbálkozás-korlátozás (rate limit a /login és /register útvonalakon;
+        az authflow.js-ben már van egy kész "allow" függvény, amit újra lehet használni)
+      - Munkamenet (session) újragenerálás belépéskor (session fixation ellen)
+      - Biztonsági HTTP fejlécek (helmet)
+      - Titkos adatok .env fájlba: session secret, adatbázis jelszó
+      - /register: jelszó-erősség ellenőrzése a szerveren is (most csak a kliens ellenőriz)
+      - Session tár: most memóriában van, újraindításkor mindenki kilép (adatbázisos tár kellene)
+      - A régi chat-feltöltések még benne vannak a GitHub előzményeiben (döntés kell: előzmény tisztítása?)
+      - A node_modules mappa be van commitolva a repóba (.gitignore-ba kellene, és csak a package.json maradjon)
+[x] 5. Elfelejtett jelszó + e-mail megerősítés - KÉSZ. Élesítéshez még kell:
+      - SMTP beállítás (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, APP_URL);
+        addig a levél a szerver konzoljára íródik
+      - "A jelszavad megváltozott" értesítő levél jelszóváltás után (még nincs)
+[ ] 6. Admin felület (felhasználók, értékelések, foglalások kezelése, jelentések)
+
+2) KISEBB, MÁR ISMERT HIÁNYOSSÁGOK
+----------------------------------
+[ ] Chat fejléc: a "Online" felirat fixen be van égetve (valódi állapot vagy törlés)
+[ ] A foglalás nem küld chat-üzenetet / értesítést (pl. oktatónak értesítő jelvény)
+[ ] A navbar/footer CSS 3 fájlban duplikálva van (style.css, chat.css, substyle.css) -> közös navbar.css
+[ ] A creator.js-t többen szerkesztjük, a merge már egyszer elvitte a sötét mód szabályokat
+    -> a sötét szabályokat külön fájlba érdemes tenni
+[ ] A fiók-ablak legördülői (tantárgy, szint, évfolyam) még böngészős listák (TCSelect.enhance kell hozzájuk)
+
+3) CHAT SZÉPÍTÉSI ÖTLETEK (nincs eldöntve)
+------------------------------------------
+[ ] Kapott buborékok kontrasztja
+[ ] Időpont a buborékban, üzenetek csoportosítása
+[ ] Avatarok
+[ ] "Időpont foglalása" gomb a chat fejlécében
+[ ] Olvasási visszajelzés (látta)
+[ ] Görgetés az aljára gomb
+[ ] Szövegmező automatikus nyúlása, emoji
+[ ] Foglalási kártyák a chatben
+
+KÉSZ (referenciaként)
+---------------------
+[x] Saját profil szerkesztése (diák: szint, évfolyam, tantárgyak; fiók törlése anonimizálással)
+[x] Foglalási rendszer (szabad időpontok, jóváhagyás, lemondás, automatikus teljesítés)
+[x] Értékelés írása (egyszeri, nem szerkeszthető)
+[x] Legsúlyosabb biztonsági javítások (feltöltések védelme, /js fehérlista, e-mail elrejtése vendégnek stb.)
+[x] Főoldal újratervezés, sötét mód minden oldalon
+[x] Oktatók és tantárgyak oldal újratervezése, egyedi legördülők, chat képnézegető
+[x] Elfelejtett jelszó és e-mail megerősítés

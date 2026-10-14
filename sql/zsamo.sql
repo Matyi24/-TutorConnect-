@@ -215,7 +215,8 @@ CREATE TABLE `users` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `school_level` varchar(30) DEFAULT NULL,
   `grade` varchar(30) DEFAULT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `email_verified_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`) VALUES
@@ -336,6 +337,28 @@ CREATE TABLE `student_subjects` (
   `subject_id` int(11) NOT NULL,
   PRIMARY KEY (`student_id`,`subject_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+--
+-- Table structure for table `auth_tokens`
+-- (e-mail megerősítés és jelszó-visszaállítás: csak a token lenyomata van itt)
+--
+
+CREATE TABLE `auth_tokens` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `type` varchar(10) NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_token_hash` (`token_hash`),
+  KEY `idx_user_type` (`user_id`,`type`),
+  CONSTRAINT `fk_auth_tokens_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- A mintafelhasználók megerősítettnek számítanak
+UPDATE `users` SET `email_verified_at` = NOW(), `created_at` = `created_at` WHERE `email_verified_at` IS NULL;
 
 COMMIT;
 
