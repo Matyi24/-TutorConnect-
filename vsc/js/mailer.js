@@ -212,4 +212,15 @@ async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
 }
 
 
+// Induláskor kiírjuk, melyik mód aktív (hibakereséshez: ebből látszik, hogy
+// a szerver megkapta-e a környezeti változókat)
+if (process.env.MAILTRAP_TOKEN) {
+    console.log("📧 E-mail küldés: Mailtrap API");
+} else if (process.env.SMTP_HOST) {
+    console.log(`📧 E-mail küldés: SMTP (${process.env.SMTP_HOST}:${process.env.SMTP_PORT || 587}, felhasználó: ${process.env.SMTP_USER || "nincs"})`);
+} else {
+    console.log("📧 E-mail küldés: NINCS beállítva, a levelek csak a konzolra íródnak");
+}
+
+
 module.exports = { sendMail, APP_URL };
