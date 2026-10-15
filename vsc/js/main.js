@@ -203,6 +203,11 @@ app.get("/", (req, res) => {
     );
 });
 
+app.get("/felhasz_feltetelek", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/felhasz_feltetelek.html")
+    );
+});
 
 app.get("/index", (req, res) => {
     console.log("🌐 GET /index");

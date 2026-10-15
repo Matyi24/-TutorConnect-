@@ -1,0 +1,104 @@
+/* ==================================================
+   FELHASZNÁLÁSI FELTÉTELEK
+================================================== */
+
+.terms {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+}
+
+.terms-card {
+    background: #ffffff;
+    color: #17172E;
+    border-radius: 16px;
+    padding: 40px;
+    box-shadow: 0 4px 24px rgba(76, 110, 245, 0.12);
+    line-height: 1.7;
+}
+
+.terms-eyebrow {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #4C6EF5;
+    margin-bottom: 8px;
+}
+
+.terms-card h1 {
+    font-size: 2rem;
+    margin-bottom: 4px;
+}
+
+.terms-date {
+    color: #6c7080;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.terms-lead {
+    margin-bottom: 20px;
+}
+
+.terms-card h2 {
+    font-size: 1.2rem;
+    margin: 32px 0 10px;
+}
+
+.terms-card p {
+    margin-bottom: 12px;
+}
+
+.terms-card ul {
+    margin: 0 0 12px 22px;
+}
+
+.terms-card li {
+    margin-bottom: 6px;
+}
+
+.terms-card a {
+    color: #3B5BDB;
+}
+
+.terms-warning {
+    background: #FFF4E0;
+    border-left: 4px solid #F59F00;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 20px 0 8px;
+}
+
+.terms-warning ul {
+    margin-top: 8px;
+    margin-bottom: 0;
+}
+
+/* Sötét mód */
+
+html[data-theme="dark"] .terms-card {
+    background: #1b1d33;
+    color: #e4e6f5;
+    box-shadow: none;
+}
+
+html[data-theme="dark"] .terms-card a {
+    color: #91a7ff;
+}
+
+html[data-theme="dark"] .terms-date {
+    color: #a3a7c4;
+}
+
+html[data-theme="dark"] .terms-warning {
+    background: #3a2f17;
+    border-left-color: #F59F00;
+}
+
+@media (max-width: 600px) {
+    .terms-card {
+        padding: 24px 18px;
+    }
+}
