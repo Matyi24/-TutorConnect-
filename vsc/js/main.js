@@ -203,6 +203,20 @@ app.get("/", (req, res) => {
     );
 });
 
+app.get("/adatvedelem", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/adatvedelem.html")
+    );
+});
+
+
+app.get("/felhasz_feltetelek", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/felhasz_feltetelek.html")
+    );
+});
+
+
 app.get("/felhasz_feltetelek", (req, res) => {
     res.sendFile(
         path.join(__dirname, "../html/felhasz_feltetelek.html")

@@ -1,7 +1,3 @@
-/* ==================================================
-   FELHASZNÁLÁSI FELTÉTELEK
-================================================== */
-
 .terms {
     width: 100%;
     max-width: 860px;
@@ -41,7 +37,6 @@
 .terms-lead {
     margin-bottom: 20px;
 }
-
 .terms-card h2 {
     font-size: 1.2rem;
     margin: 32px 0 10px;
@@ -76,7 +71,42 @@
     margin-bottom: 0;
 }
 
+.terms-card mark {
+    background: #FFE066;
+    color: #17172E;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.terms-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0 16px;
+    font-size: 0.92rem;
+}
+
+.terms-table th,
+.terms-table td {
+    border: 1px solid #DDE1F0;
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.terms-table th {
+    background: #F1F3F5;
+}
+
 /* Sötét mód */
+
+html[data-theme="dark"] .terms-table th,
+html[data-theme="dark"] .terms-table td {
+    border-color: #34375a;
+}
+
+html[data-theme="dark"] .terms-table th {
+    background: #25284a;
+}
 
 html[data-theme="dark"] .terms-card {
     background: #1b1d33;
