@@ -146,8 +146,30 @@ function layout({ title, intro, buttonText, url, outro }) {
 }
 
 
-// Visszatérés: true, ha a levél kiment (vagy fejlesztői módban kiíródott)
-async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
+// A levél tartalmát (és a benne lévő linket) a konzolra is kiírjuk. Így
+// fejlesztéskor akkor is megvan a link, ha a tényleges küldés nem sikerül
+// vagy nincs is beállítva. Élesben (NODE_ENV=production) ez kikapcsol,
+// mert a link egy belépésre jogosító titok.
+function logMail({ to, subject, buttonText, url }, status) {
+
+    if (process.env.NODE_ENV === "production") {
+        return;
+    }
+
+    console.log("\n📧 ==========  E-MAIL  ==========");
+    console.log("Címzett:", to);
+    console.log("Tárgy:  ", subject);
+    console.log(`${buttonText}: ${url}`);
+    console.log("Állapot:", status);
+    console.log("================================\n");
+}
+
+
+// Visszatérés: true, ha a levél kiment, vagy (küldés nélküli fejlesztői
+// módban) legalább a konzolra kiíródott a link.
+async function sendMail(mail) {
+
+    const { to, subject, title, intro, buttonText, url, outro } = mail;
 
     const { text, html } = layout({ title, intro, buttonText, url, outro });
 
@@ -167,11 +189,15 @@ async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
                 category: "TutorConnect"
             });
 
+            logMail(mail, "elküldve (Mailtrap API)");
+
             return true;
 
         } catch (error) {
 
             console.error("❌ Mailtrap küldési hiba:", error.message);
+
+            logMail(mail, "NEM ment ki: " + error.message);
 
             return false;
         }
@@ -184,15 +210,11 @@ async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
     if (!smtp) {
 
         if (process.env.NODE_ENV === "production") {
-            console.error("❌ E-mail nem küldhető: nincs beállítva az SMTP_HOST.");
+            console.error("❌ E-mail nem küldhető: nincs beállítva sem MAILTRAP_TOKEN, sem SMTP_HOST.");
             return false;
         }
 
-        console.log("\n📧 ==========  E-MAIL (fejlesztői mód, nem ment ki)  ==========");
-        console.log("Címzett:", to);
-        console.log("Tárgy:  ", subject);
-        console.log(`${buttonText}: ${url}`);
-        console.log("=============================================================\n");
+        logMail(mail, "nincs küldés beállítva, csak a konzolra íródott");
 
         return true;
     }
@@ -201,11 +223,15 @@ async function sendMail({ to, subject, title, intro, buttonText, url, outro }) {
 
         await smtp.sendMail({ from: MAIL_FROM, to, subject, text, html });
 
+        logMail(mail, "elküldve (SMTP)");
+
         return true;
 
     } catch (error) {
 
         console.error("❌ E-mail küldési hiba:", error.message);
+
+        logMail(mail, "NEM ment ki: " + error.message);
 
         return false;
     }
