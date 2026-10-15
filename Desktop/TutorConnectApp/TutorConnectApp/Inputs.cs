@@ -10,7 +10,7 @@ namespace TutorConnectApp
     /// </summary>
     internal class SmoothScrollPanel : Panel, IMessageFilter
     {
-        private const int Gutter = 14;
+        private static int Gutter => Ui.S(14);
         private const int WmMouseWheel = 0x020A;
 
         /// <summary>A görgetett tartalom: függőlegesen egymás alá rendezett elemek, automatikus magassággal.</summary>
@@ -141,7 +141,7 @@ namespace TutorConnectApp
                 return false;
 
             int delta = (short)(((long)m.WParam >> 16) & 0xFFFF);
-            ScrollBy(-delta / 120.0 * 110);
+            ScrollBy(-delta / 120.0 * Ui.S(110));
             return true;
         }
 
@@ -154,10 +154,11 @@ namespace TutorConnectApp
             double max = MaxOffset;
             if (max <= 0) return Rectangle.Empty;
 
-            int track = Height - 8;
-            int thumbHeight = Math.Max(40, (int)(track * (double)Height / Content.Height));
-            int y = 4 + (int)((track - thumbHeight) * (current / max));
-            return new Rectangle(Width - 10, y, 6, thumbHeight);
+            int inset = Ui.S(4);
+            int track = Height - inset * 2;
+            int thumbHeight = Math.Max(Ui.S(40), (int)(track * (double)Height / Content.Height));
+            int y = inset + (int)((track - thumbHeight) * (current / max));
+            return new Rectangle(Width - Ui.S(10), y, Ui.S(6), thumbHeight);
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -168,7 +169,7 @@ namespace TutorConnectApp
             if (thumb.IsEmpty) return;
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            using var path = Ui.RoundedPath(thumb, 3);
+            using var path = Ui.RoundedPath(thumb, Ui.S(3));
             using var brush = new SolidBrush(Color.FromArgb(dragging || hoverThumb ? 180 : 95, Theme.Muted));
             e.Graphics.FillPath(brush, path);
         }
@@ -179,10 +180,10 @@ namespace TutorConnectApp
 
             if (dragging)
             {
-                double free = (Height - 8) - ThumbRect().Height;
+                double free = (Height - Ui.S(8)) - ThumbRect().Height;
                 if (free > 0)
                 {
-                    double ratio = (e.Y - dragOffset - 4) / free;
+                    double ratio = (e.Y - dragOffset - Ui.S(4)) / free;
                     target = current = Math.Clamp(ratio, 0, 1) * MaxOffset;
                     ApplyOffset();
                 }
@@ -261,8 +262,8 @@ namespace TutorConnectApp
 
         public SearchBox(string placeholder)
         {
-            Height = 50;
-            Margin = new Padding(0, 0, 0, 16);
+            Height = Ui.S(50);
+            Margin = Ui.Pad(0, 0, 0, 16);
             Cursor = Cursors.IBeam;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
@@ -289,15 +290,15 @@ namespace TutorConnectApp
 
         public void SetValue(string text) => input.Text = text;
 
-        private Rectangle ClearRect => new(Width - 44, (Height - 30) / 2, 30, 30);
+        private Rectangle ClearRect => new(Width - Ui.S(44), (Height - Ui.S(30)) / 2, Ui.S(30), Ui.S(30));
 
         private void LayoutInput()
         {
             // a konstruktor közben már érkezhet méretváltozás, amikor az input még nem létezik
             if (input is null) return;
 
-            input.Left = 52;
-            input.Width = Math.Max(Width - 52 - 50, 20);
+            input.Left = Ui.S(52);
+            input.Width = Math.Max(Width - Ui.S(52) - Ui.S(50), 20);
             input.Top = (Height - input.Height) / 2;
         }
 
@@ -367,7 +368,7 @@ namespace TutorConnectApp
 
             var iconFont = Ui.IconFont(13F);
             using (var iconBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, focusT)))
-                g.DrawString("", iconFont, iconBrush, new Rectangle(14, 0, 34, Height), format);
+                g.DrawString("", iconFont, iconBrush, new Rectangle(Ui.S(14), 0, Ui.S(34), Height), format);
 
             if (input.TextLength > 0)
             {
@@ -413,8 +414,8 @@ namespace TutorConnectApp
             items = options.ToList();
             selectedIndex = Math.Clamp(selected, 0, Math.Max(items.Count - 1, 0));
 
-            Size = new Size(250, 58);
-            Margin = new Padding(0, 0, 14, 14);
+            Size = Ui.Sz(250, 58);
+            Margin = Ui.Pad(0, 0, 14, 14);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
@@ -494,7 +495,7 @@ namespace TutorConnectApp
             };
 
             AnyOpen = true;
-            popup.Show(this, new Point(0, Height + 4));
+            popup.Show(this, new Point(0, Height + Ui.S(4)));
             Invalidate();
         }
 
@@ -513,7 +514,7 @@ namespace TutorConnectApp
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
             double highlight = IsOpen ? 1 : hoverT;
-            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 16))
+            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(16)))
             {
                 using var fill = new SolidBrush(Theme.InputBg);
                 using var border = new Pen(Anim.Lerp(Theme.CardBorder, Theme.MainBlue, highlight), 1F + (float)highlight);
@@ -522,20 +523,20 @@ namespace TutorConnectApp
             }
 
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
-            int textWidth = Math.Max(Width - 18 - 46, 0);
+            int textWidth = Math.Max(Width - Ui.S(18) - Ui.S(46), 0);
 
             var captionFont = Ui.MakeFont(8.5F);
             using (var captionBrush = new SolidBrush(Theme.Muted))
-                g.DrawString(caption, captionFont, captionBrush, new Rectangle(18, 9, textWidth, 16), format);
+                g.DrawString(caption, captionFont, captionBrush, new Rectangle(Ui.S(18), Ui.S(9), textWidth, Ui.S(16)), format);
 
             var valueFont = Ui.MakeFont(10.5F, FontStyle.Bold);
             using (var valueBrush = new SolidBrush(Theme.Text))
-                g.DrawString(SelectedText, valueFont, valueBrush, new Rectangle(18, 27, textWidth, 24), format);
+                g.DrawString(SelectedText, valueFont, valueBrush, new Rectangle(Ui.S(18), Ui.S(27), textWidth, Ui.S(24)), format);
 
             var chevronFont = Ui.IconFont(9F);
             using var chevronBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, highlight));
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(IsOpen ? "" : "", chevronFont, chevronBrush, new Rectangle(Width - 40, 0, 30, Height), center);
+            g.DrawString(IsOpen ? "" : "", chevronFont, chevronBrush, new Rectangle(Width - Ui.S(40), 0, Ui.S(30), Height), center);
         }
 
         protected override void Dispose(bool disposing)
@@ -551,9 +552,9 @@ namespace TutorConnectApp
         /// <summary>A legördülő lista: lekerekített sorok, kiemelés, kijelölt elem pipával; sok elemnél görgethető.</summary>
         private sealed class DropdownList : Control
         {
-            private const int RowHeight = 40;
             private const int MaxRows = 8;
-            private const int Pad = 6;
+            private static int RowHeight => Ui.S(40);
+            private static int Pad => Ui.S(6);
 
             private readonly List<string> items;
             private readonly int selected;
@@ -636,24 +637,24 @@ namespace TutorConnectApp
                     int y = Pad + i * RowHeight - offset;
                     if (y + RowHeight < 0 || y > Height) continue;
 
-                    var row = new Rectangle(6, y + 2, Width - 13, RowHeight - 4);
+                    var row = new Rectangle(Ui.S(6), y + Ui.S(2), Width - Ui.S(13), RowHeight - Ui.S(4));
                     bool isSelected = i == selected;
 
                     if (i == hover || isSelected)
                     {
-                        using var path = Ui.RoundedPath(row, 10);
+                        using var path = Ui.RoundedPath(row, Ui.S(10));
                         using var rowBrush = new SolidBrush(i == hover ? Theme.ChipBg : Theme.SoftHover);
                         g.FillPath(rowBrush, path);
                     }
 
                     var font = Ui.MakeFont(10.5F, isSelected ? FontStyle.Bold : FontStyle.Regular);
                     using var textBrush = new SolidBrush(isSelected ? Theme.MainBlue : Theme.Text);
-                    g.DrawString(items[i], font, textBrush, new Rectangle(row.X + 12, row.Y, row.Width - 40, row.Height), format);
+                    g.DrawString(items[i], font, textBrush, new Rectangle(row.X + Ui.S(12), row.Y, row.Width - Ui.S(40), row.Height), format);
 
                     if (isSelected)
                     {
                         using var checkBrush = new SolidBrush(Theme.MainBlue);
-                        g.DrawString("", checkFont, checkBrush, new Rectangle(row.Right - 30, row.Y, 24, row.Height), format);
+                        g.DrawString("", checkFont, checkBrush, new Rectangle(row.Right - Ui.S(30), row.Y, Ui.S(24), row.Height), format);
                     }
                 }
                 g.ResetClip();

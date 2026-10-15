@@ -4,6 +4,9 @@ namespace TutorConnectApp
     {
         private readonly Dictionary<string, Func<PageBase>> pages = new();
         private PageBase? currentPage;
+
+        /// <summary>A bejelentkezett felhasználó aktuális adatai (a profil mentése után változhatnak).</summary>
+        private static UserInfo Me => ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
         private string currentKey = "";
 
         /// <summary>Igaz, ha a felhasználó kijelentkezett (és nem simán bezárta az appot).</summary>
@@ -15,7 +18,7 @@ namespace TutorConnectApp
 
             var user = ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
 
-            MinimumSize = new Size(480, 360);
+            MinimumSize = Ui.Sz(480, 360);
             Text = $"TutorConnect – {user.Name}";
 
             BuildMenu(user);
@@ -26,6 +29,7 @@ namespace TutorConnectApp
             navBar.ApplyResponsive(ClientSize.Width);
 
             Theme.Changed += OnThemeChanged;
+            ApiClient.CurrentUserChanged += OnUserChanged;
             ApplyTheme();
 
             navBar.Select("home");
@@ -39,18 +43,18 @@ namespace TutorConnectApp
         /// </summary>
         private void BuildMenu(UserInfo user)
         {
-            AddPage("home", "Főoldal", "", () => new HomePage(user));
+            AddPage("home", "Főoldal", "", () => new HomePage(Me));
             AddPage("chat", "Chat", "", () => new ChatPage());
-            AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage(user));
+            AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage(Me));
 
             if (user.Role == "STUDENT")
                 AddPage("tutors", "Oktatók", "", () => new TutorsPage());
 
             if (user.Role == "STUDENT" || user.Role == "TUTOR")
-                AddPage("bookings", "Foglalás", "", () => new BookingsPage(user));
+                AddPage("bookings", "Foglalás", "", () => new BookingsPage(Me));
 
             AddPage("profile", "Profil", "", () => new ProfilePage());
-            AddPage("settings", "Beállítások", "", () => new SettingsPage(user));
+            AddPage("settings", "Beállítások", "", () => new SettingsPage(Me));
 
             // művelet: nem kijelölhető gomb (a kijelentkezés a Profil oldalon van)
             navBar.AddAction("theme", "Sötét mód", "");
@@ -62,6 +66,22 @@ namespace TutorConnectApp
             navBar.AddItem(key, text, icon);
         }
 
+        /// <summary>
+        /// Másik DPI-jű monitorra húzáskor a méretek az új nagyításhoz igazodnak, és az oldal újraépül.
+        /// </summary>
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+
+            Ui.SetDpi(e.DeviceDpiNew);
+            MinimumSize = Ui.Sz(480, 360);
+            navBar.ApplyScale();
+            navBar.ApplyResponsive(ClientSize.Width);
+
+            if (pages.TryGetValue(currentKey, out var factory))
+                ShowPage(factory());
+        }
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
@@ -71,6 +91,7 @@ namespace TutorConnectApp
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             Theme.Changed -= OnThemeChanged;
+            ApiClient.CurrentUserChanged -= OnUserChanged;
             base.OnFormClosed(e);
         }
 
@@ -94,6 +115,13 @@ namespace TutorConnectApp
             await ApiClient.LogoutAsync();
             LoggedOut = true;
             Close();
+        }
+
+        private void OnUserChanged()
+        {
+            // a navbár felhasználói blokkja és az ablak címe az új névvel
+            navBar.SetUser(Me.Name, Me.Role);
+            Text = $"TutorConnect – {Me.Name}";
         }
 
         private void OnThemeChanged()

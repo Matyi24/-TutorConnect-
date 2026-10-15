@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace TutorConnectApp
 {
@@ -8,7 +9,8 @@ namespace TutorConnectApp
     /// </summary>
     internal abstract class DialogBase : Form
     {
-        protected const int ContentWidth = 488;
+        /// <summary>A tartalom (pirulák, beviteli mezők) szélessége; a képernyő nagyításával együtt nő.</summary>
+        protected static int ContentWidth => Ui.S(488);
 
         protected readonly FlowLayoutPanel Body;
         protected readonly HoverButton ActionButton;
@@ -28,38 +30,44 @@ namespace TutorConnectApp
             Font = Ui.MakeFont(10F);
             Opacity = 0; // az OnShown-ban úszik be
 
-            var header = new Panel { Dock = DockStyle.Top, Height = 88, BackColor = Theme.CardBg };
-            var titleLabel = Ui.Lbl(title, 17F, Theme.Text, bold: true);
-            titleLabel.Location = new Point(24, 16);
-            var subtitleLabel = Ui.Lbl(subtitle, 10.5F, Theme.Muted);
-            subtitleLabel.Location = new Point(26, 52);
-            header.Controls.Add(titleLabel);
-            header.Controls.Add(subtitleLabel);
+            // a fejléc magassága a szövegből jön, így semmilyen nagyításnál nem fedi egymást a cím és az alcím
+            var header = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Theme.CardBg,
+                Padding = Ui.Pad(24, 16, 24, 8)
+            };
+            header.Controls.Add(Ui.Lbl(title, 17F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 4)));
+            header.Controls.Add(Ui.Lbl(subtitle, 10.5F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 0)));
 
             // sima görgetésű tartalom; a Body a görgetett panel (a bejegyzések fix szélességűek)
             var scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.CardBg };
             Body = scroll.Content;
-            Body.Padding = new Padding(24, 0, 10, 12);
+            Body.Padding = Ui.Pad(24, 0, 10, 12);
 
-            var footer = new Panel { Dock = DockStyle.Bottom, Height = 92, BackColor = Theme.CardBg };
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = Ui.S(92), BackColor = Theme.CardBg };
             footer.Paint += (_, e) =>
             {
                 using var pen = new Pen(Theme.CardBorder);
                 e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
             };
 
-            const int buttonWidth = 190;
+            int buttonWidth = Ui.S(190);
             footerLabel = new Label
             {
-                Bounds = new Rectangle(24, 12, clientSize.Width - 24 - buttonWidth - 36, 68),
+                Bounds = new Rectangle(Ui.S(24), Ui.S(12), clientSize.Width - Ui.S(24) - buttonWidth - Ui.S(36), Ui.S(68)),
                 ForeColor = Theme.Muted,
                 BackColor = Theme.CardBg
             };
 
             ActionButton = Ui.PrimaryBtn(actionText, async (_, _) => await OnActionAsync());
             ActionButton.AutoSize = false;
-            ActionButton.Bounds = new Rectangle(clientSize.Width - 24 - buttonWidth, 24, buttonWidth, 46);
-            ActionButton.Margin = new Padding(0);
+            ActionButton.Bounds = new Rectangle(clientSize.Width - Ui.S(24) - buttonWidth, Ui.S(24), buttonWidth, Ui.S(46));
+            ActionButton.Margin = Ui.Pad(0);
 
             footer.Controls.Add(footerLabel);
             footer.Controls.Add(ActionButton);
@@ -73,11 +81,11 @@ namespace TutorConnectApp
         protected abstract Task OnActionAsync();
 
         protected void Section(string text) =>
-            Body.Controls.Add(Ui.Lbl(text, 11F, Theme.Text, bold: true, margin: new Padding(0, 14, 0, 8)));
+            Body.Controls.Add(Ui.Lbl(text, 11F, Theme.Text, bold: true, margin: Ui.Pad(0, 14, 0, 8)));
 
         protected void AddBody(Control control)
         {
-            control.Margin = new Padding(0, 0, 0, 8);
+            control.Margin = Ui.Pad(0, 0, 0, 8);
             Body.Controls.Add(control);
         }
 
@@ -96,13 +104,25 @@ namespace TutorConnectApp
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
             MaximumSize = new Size(ContentWidth, 0),
             BackColor = Color.Transparent,
-            Margin = new Padding(0, 0, 0, 6)
+            Margin = Ui.Pad(0, 0, 0, 6)
+        };
+
+        protected static TextBox NewInput(string text, int maxLength, bool password = false) => new()
+        {
+            Width = ContentWidth,
+            MaxLength = maxLength,
+            Text = text,
+            UseSystemPasswordChar = password,
+            BorderStyle = BorderStyle.FixedSingle,
+            BackColor = Theme.InputBg,
+            ForeColor = Theme.Text,
+            Font = Ui.MakeFont(10.5F)
         };
 
         protected static TextBox NewTextBox(int height, int maxLength) => new()
         {
             Width = ContentWidth,
-            Height = height,
+            Height = Ui.S(height),
             Multiline = true,
             MaxLength = maxLength,
             ScrollBars = ScrollBars.Vertical,
@@ -114,13 +134,13 @@ namespace TutorConnectApp
 
         protected static ComboBox NewCombo(int width) => new()
         {
-            Width = width,
+            Width = Ui.S(width),
             DropDownStyle = ComboBoxStyle.DropDownList,
             FlatStyle = FlatStyle.Flat,
             BackColor = Theme.InputBg,
             ForeColor = Theme.Text,
             Font = Ui.MakeFont(10.5F),
-            Margin = new Padding(0, 0, 16, 0)
+            Margin = Ui.Pad(0, 0, 16, 0)
         };
 
         protected override void OnHandleCreated(EventArgs e)
@@ -149,7 +169,7 @@ namespace TutorConnectApp
         private SlotDto? selectedSlot;
 
         public BookDialog(TutorDto tutor)
-            : base("Időpontfoglalás", SubtitleFor(tutor), "Foglalás elküldése", new Size(560, 700))
+            : base("Időpontfoglalás", SubtitleFor(tutor), "Foglalás elküldése", Ui.Sz(560, 700))
         {
             this.tutor = tutor;
 
@@ -216,7 +236,7 @@ namespace TutorConnectApp
 
                 foreach (var day in data.Slots.OrderBy(s => s.StartTime).GroupBy(s => s.StartTime.ToLocalTime().Date))
                 {
-                    slotsHost.Controls.Add(Ui.Lbl(Ui.FormatDay(day.First().StartTime), 10F, Theme.Muted, bold: true, margin: new Padding(0, 6, 0, 6)));
+                    slotsHost.Controls.Add(Ui.Lbl(Ui.FormatDay(day.First().StartTime), 10F, Theme.Muted, bold: true, margin: Ui.Pad(0, 6, 0, 6)));
 
                     var flow = NewWrap();
                     foreach (var slot in day)
@@ -305,7 +325,7 @@ namespace TutorConnectApp
         private readonly TextBox commentBox;
 
         public ReviewDialog(BookingDto booking)
-            : base("Óra értékelése", $"{booking.SubjectName ?? "Óra"}  ·  {booking.OtherName ?? "oktató"}", "Értékelés mentése", new Size(540, 500))
+            : base("Óra értékelése", $"{booking.SubjectName ?? "Óra"}  ·  {booking.OtherName ?? "oktató"}", "Értékelés mentése", Ui.Sz(540, 500))
         {
             this.booking = booking;
 
@@ -364,7 +384,7 @@ namespace TutorConnectApp
         public string ResultMessage { get; private set; } = "";
 
         public AvailabilityDialog()
-            : base("Új időpont megadása", "Add meg, mikor tudsz tanítani. A diákok ezek közül foglalhatnak.", "Mentés", new Size(560, 700))
+            : base("Új időpont megadása", "Add meg, mikor tudsz tanítani. A diákok ezek közül foglalhatnak.", "Mentés", Ui.Sz(560, 700))
         {
             Section("1   Melyik napon?");
             var days = NewWrap();
@@ -380,7 +400,7 @@ namespace TutorConnectApp
 
             Section("2   Kezdés és időtartam");
             var timing = Ui.Row();
-            timing.Margin = new Padding(0, 0, 0, 8);
+            timing.Margin = Ui.Pad(0, 0, 0, 8);
             timeBox = NewCombo(150);
             for (int minutes = 6 * 60; minutes <= 22 * 60; minutes += 30)
                 timeBox.Items.Add($"{minutes / 60:00}:{minutes % 60:00}");
@@ -391,9 +411,9 @@ namespace TutorConnectApp
                 durationBox.Items.Add($"{duration} perc");
             durationBox.SelectedIndex = 2; // 60 perc
 
-            timing.Controls.Add(Ui.Lbl("Kezdés", 10F, Theme.Muted, margin: new Padding(0, 6, 8, 0)));
+            timing.Controls.Add(Ui.Lbl("Kezdés", 10F, Theme.Muted, margin: Ui.Pad(0, 6, 8, 0)));
             timing.Controls.Add(timeBox);
-            timing.Controls.Add(Ui.Lbl("Időtartam", 10F, Theme.Muted, margin: new Padding(0, 6, 8, 0)));
+            timing.Controls.Add(Ui.Lbl("Időtartam", 10F, Theme.Muted, margin: Ui.Pad(0, 6, 8, 0)));
             timing.Controls.Add(durationBox);
             AddBody(timing);
 
@@ -404,13 +424,13 @@ namespace TutorConnectApp
                 Minimum = 1,
                 Maximum = 12,
                 Value = 1,
-                Width = 80,
+                Width = Ui.S(80),
                 BackColor = Theme.InputBg,
                 ForeColor = Theme.Text,
                 Font = Ui.MakeFont(10.5F),
-                Margin = new Padding(0, 0, 12, 0)
+                Margin = Ui.Pad(0, 0, 12, 0)
             };
-            repeatHint = Ui.Lbl("Egyszeri időpont", 10F, Theme.Muted, margin: new Padding(0, 6, 0, 0));
+            repeatHint = Ui.Lbl("Egyszeri időpont", 10F, Theme.Muted, margin: Ui.Pad(0, 6, 0, 0));
             repeatBox.ValueChanged += (_, _) => UpdateRepeatHint();
             repeat.Controls.Add(repeatBox);
             repeat.Controls.Add(repeatHint);
@@ -467,4 +487,242 @@ namespace TutorConnectApp
             }
         }
     }
+
+    /// <summary>
+    /// A saját fiók szerkesztése a weboldal mintájára: név, e-mail, jelszó; oktatónak bemutatkozás és
+    /// tantárgyak óradíjjal; diáknak iskolatípus, évfolyam és tanulni kívánt tantárgyak.
+    /// </summary>
+    internal sealed class EditProfileDialog : DialogBase
+    {
+        private const int MaxSubjects = 10;
+
+        private static readonly string[] SchoolLevels =
+            { "", "Általános iskola", "Középiskola", "Egyetem / főiskola", "Felnőtt / egyéb" };
+
+        private static readonly Regex EmailPattern = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+        private static readonly Regex StrongPassword = new(@"^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$");
+
+        private readonly AccountDto account;
+        private readonly bool isTutor;
+        private readonly bool isStudent;
+        private readonly TextBox nameBox;
+        private readonly TextBox emailBox;
+        private readonly TextBox? bioBox;
+        private readonly TextBox? gradeBox;
+        private readonly DropdownSelect? levelBox;
+        private readonly TextBox newPasswordBox;
+        private readonly TextBox currentPasswordBox;
+        private readonly FlowLayoutPanel? rateHost;
+        private readonly List<(SelectableChip Chip, SubjectDto Subject)> subjectChips = new();
+        private readonly Dictionary<int, decimal> rates = new();
+
+        public EditProfileDialog(AccountDto account, List<SubjectDto> subjects)
+            : base("Adatok szerkesztése", "Módosítsd a profilodat, majd mentsd el.", "Mentés", Ui.Sz(560, 760))
+        {
+            this.account = account;
+            isTutor = account.Role == "TUTOR";
+            isStudent = account.Role == "STUDENT";
+
+            Section("Alapadatok");
+            AddCaption("Név");
+            nameBox = NewInput(account.Name, 60);
+            AddBody(nameBox);
+            AddCaption("E-mail");
+            emailBox = NewInput(account.Email, 100);
+            AddBody(emailBox);
+
+            if (isTutor)
+            {
+                Section("Bemutatkozás");
+                bioBox = NewTextBox(110, 1000);
+                bioBox.Text = account.Bio;
+                AddBody(bioBox);
+
+                Section("Tantárgyak és óradíjak");
+                AddCaption($"Legfeljebb {MaxSubjects} tantárgyat választhatsz. A kijelölt tantárgyakhoz adhatod meg az óradíjat.");
+                foreach (var subject in account.Subjects ?? new List<AccountSubjectDto>())
+                    rates[subject.SubjectId] = subject.HourlyRate;
+
+                var selectedIds = rates.Keys.ToHashSet();
+                AddSubjectChips(subjects, selectedIds);
+
+                rateHost = new FlowLayoutPanel
+                {
+                    FlowDirection = FlowDirection.TopDown,
+                    WrapContents = false,
+                    AutoSize = true,
+                    AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                    BackColor = Color.Transparent
+                };
+                AddBody(rateHost);
+                RebuildRates();
+            }
+
+            if (isStudent)
+            {
+                Section("Tanulmányaid");
+                levelBox = new DropdownSelect("Iskolatípus", SchoolLevels.Select(l => l.Length == 0 ? "Nincs megadva" : l),
+                    Math.Max(Array.IndexOf(SchoolLevels, account.SchoolLevel ?? ""), 0));
+                AddBody(levelBox);
+                AddCaption("Osztály / évfolyam");
+                gradeBox = NewInput(account.Grade ?? "", 30);
+                AddBody(gradeBox);
+
+                Section("Ebben kérnél segítséget");
+                AddCaption($"Legfeljebb {MaxSubjects} tantárgyat választhatsz.");
+                AddSubjectChips(subjects, (account.LearningSubjects ?? new List<NamedDto>()).Select(l => l.SubjectId).ToHashSet());
+            }
+
+            Section("Jelszó");
+            AddCaption("Új jelszó (nem kötelező). Legalább 6 karakter, legyen benne szám és speciális karakter.");
+            newPasswordBox = NewInput("", 100, password: true);
+            AddBody(newPasswordBox);
+            AddCaption("Jelenlegi jelszó. Az e-mail cím vagy a jelszó módosításához szükséges.");
+            currentPasswordBox = NewInput("", 100, password: true);
+            AddBody(currentPasswordBox);
+
+            SetFooter("A módosításokat a Mentés gombbal véglegesítheted.");
+        }
+
+        private void AddCaption(string text)
+        {
+            var label = Ui.Lbl(text, 9.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 6));
+            label.MaximumSize = new Size(ContentWidth, 0);
+            Body.Controls.Add(label);
+        }
+
+        /// <summary>Többválasztós tantárgy-pirulák (oktatónál a tanított, diáknál a tanulni kívánt tantárgyak).</summary>
+        private void AddSubjectChips(List<SubjectDto> subjects, HashSet<int> selectedIds)
+        {
+            var flow = NewWrap();
+            foreach (var subject in subjects.OrderBy(s => s.Name, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var chip = new SelectableChip(subject.Name);
+                chip.SetSelected(selectedIds.Contains(subject.Id));
+                chip.Click += (_, _) => ToggleSubject(chip, subject);
+                flow.Controls.Add(chip);
+                subjectChips.Add((chip, subject));
+            }
+            AddBody(flow);
+        }
+
+        private void ToggleSubject(SelectableChip chip, SubjectDto subject)
+        {
+            if (!chip.IsSelected && subjectChips.Count(c => c.Chip.IsSelected) >= MaxSubjects)
+            {
+                SetFooter($"Legfeljebb {MaxSubjects} tantárgyat választhatsz.", error: true);
+                return;
+            }
+
+            chip.SetSelected(!chip.IsSelected);
+            SetFooter("A módosításokat a Mentés gombbal véglegesítheted.");
+            if (isTutor) RebuildRates();
+        }
+
+        /// <summary>Oktatónál minden kijelölt tantárgyhoz egy óradíj-mező tartozik.</summary>
+        private void RebuildRates()
+        {
+            if (rateHost == null) return;
+            Ui.Reset(rateHost);
+
+            foreach (var (chip, subject) in subjectChips)
+            {
+                if (!chip.IsSelected) continue;
+
+                var row = Ui.Row();
+                var name = Ui.Lbl(subject.Name, 10.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 6, 12, 0));
+                name.AutoSize = false;
+                name.Size = Ui.Sz(220, 28);
+
+                decimal value = rates.TryGetValue(subject.Id, out var known) ? known : 3000;
+                rates[subject.Id] = value;
+
+                var input = new NumericUpDown
+                {
+                    Minimum = 0,
+                    Maximum = 100000,
+                    Increment = 500,
+                    ThousandsSeparator = true,
+                    Value = Math.Clamp(value, 0, 100000),
+                    Width = Ui.S(120),
+                    BackColor = Theme.InputBg,
+                    ForeColor = Theme.Text,
+                    Font = Ui.MakeFont(10.5F),
+                    Margin = Ui.Pad(0, 0, 10, 0)
+                };
+                int id = subject.Id;
+                input.ValueChanged += (_, _) => rates[id] = input.Value;
+
+                row.Controls.Add(name);
+                row.Controls.Add(input);
+                row.Controls.Add(Ui.Lbl("Ft / óra", 10F, Theme.Muted, margin: Ui.Pad(0, 6, 0, 0)));
+                rateHost.Controls.Add(row);
+            }
+        }
+
+        protected override async Task OnActionAsync()
+        {
+            string name = nameBox.Text.Trim();
+            string email = emailBox.Text.Trim();
+            string newPassword = newPasswordBox.Text;
+            string currentPassword = currentPasswordBox.Text;
+
+            // ugyanazok a szabályok, mint a szerveren (így azonnal kiderül a hiba)
+            if (name.Length < 2 || name.Length > 60)
+            { Fail("A név 2 és 60 karakter között legyen."); return; }
+            if (!EmailPattern.IsMatch(email) || email.Length > 100)
+            { Fail("Adj meg egy érvényes e-mail címet."); return; }
+            if (newPassword.Length > 0 && !StrongPassword.IsMatch(newPassword))
+            { Fail("Az új jelszó legalább 6 karakter legyen, és tartalmazzon számot és speciális karaktert."); return; }
+
+            bool emailChanged = !string.Equals(email, account.Email, StringComparison.OrdinalIgnoreCase);
+            if ((emailChanged || newPassword.Length > 0) && currentPassword.Length == 0)
+            { Fail("E-mail vagy jelszó módosításához add meg a jelenlegi jelszavad."); return; }
+
+            var payload = new Dictionary<string, object?>
+            {
+                ["name"] = name,
+                ["email"] = email,
+                ["currentPassword"] = currentPassword,
+                ["newPassword"] = newPassword
+            };
+
+            if (isTutor)
+            {
+                payload["bio"] = bioBox?.Text.Trim() ?? "";
+                payload["subjects"] = subjectChips
+                    .Where(c => c.Chip.IsSelected)
+                    .Select(c => new Dictionary<string, object?>
+                    {
+                        ["subject_id"] = c.Subject.Id,
+                        ["hourly_rate"] = (int)(rates.TryGetValue(c.Subject.Id, out var rate) ? rate : 0)
+                    })
+                    .ToList();
+            }
+
+            if (isStudent)
+            {
+                payload["school_level"] = SchoolLevels[Math.Max(levelBox?.SelectedIndex ?? 0, 0)];
+                payload["grade"] = gradeBox?.Text.Trim() ?? "";
+                payload["learning_subjects"] = subjectChips.Where(c => c.Chip.IsSelected).Select(c => c.Subject.Id).ToList();
+            }
+
+            ActionButton.Enabled = false;
+            try
+            {
+                await ApiClient.SaveAccountAsync(payload);
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+            catch (ApiException ex)
+            {
+                if (IsDisposed) return;
+                SetFooter(ex.Message, error: true);
+                ActionButton.Enabled = true;
+            }
+        }
+
+        private void Fail(string message) => SetFooter(message, error: true);
+    }
 }
+

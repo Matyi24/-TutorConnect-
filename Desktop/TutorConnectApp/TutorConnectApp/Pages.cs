@@ -77,11 +77,11 @@ namespace TutorConnectApp
         {
             var card = new CardPanel();
             var head = Ui.Row();
-            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12F, Theme.Text, bold: true, margin: new Padding(0, 2, 12, 0)));
+            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 12, 0)));
             head.Controls.Add(Ui.Chip("Visszaigazolva", Ui.Success));
             card.Controls.Add(head);
             card.Controls.Add(Ui.Lbl((b.AsStudent ? "Oktató: " : "Diák: ") + (b.OtherName ?? "ismeretlen"), 10.5F, Theme.Text));
-            card.Controls.Add(Ui.Lbl(Ui.FormatRange(b.StartTime, b.EndTime), 10F, Theme.Muted, margin: new Padding(0)));
+            card.Controls.Add(Ui.Lbl(Ui.FormatRange(b.StartTime, b.EndTime), 10F, Theme.Muted, margin: Ui.Pad(0)));
             return card;
         }
     }
@@ -151,7 +151,7 @@ namespace TutorConnectApp
             toolbar.Controls.Add(filters);
             AddRow(toolbar);
 
-            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: new Padding(2, 0, 0, 12));
+            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12));
             AddRow(countLabel);
 
             grid = Ui.WrapRow();
@@ -289,7 +289,7 @@ namespace TutorConnectApp
             options.Controls.Add(sortBox);
             AddRow(options);
 
-            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: new Padding(2, 0, 0, 12));
+            countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12));
             AddRow(countLabel);
 
             RenderList(animate: true);
@@ -348,11 +348,11 @@ namespace TutorConnectApp
 
             var head = Ui.Row();
             head.Controls.Add(new AvatarCircle(tutor.FullName, 50));
-            head.Controls.Add(Ui.Lbl(tutor.FullName, 13.5F, Theme.Text, bold: true, margin: new Padding(0, 13, 14, 0)));
+            head.Controls.Add(Ui.Lbl(tutor.FullName, 13.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 13, 14, 0)));
             if (tutor.ReviewCount > 0)
             {
                 var rating = Ui.Chip($"★ {tutor.AverageRating.ToString("0.0", Ui.Hu)}  ({tutor.ReviewCount})", Theme.Warning);
-                rating.Margin = new Padding(0, 12, 0, 0);
+                rating.Margin = Ui.Pad(0, 12, 0, 0);
                 head.Controls.Add(rating);
             }
             card.Controls.Add(head);
@@ -363,7 +363,7 @@ namespace TutorConnectApp
             card.Controls.Add(chips);
 
             if (!string.IsNullOrWhiteSpace(tutor.Bio))
-                card.Controls.Add(Ui.Lbl(tutor.Bio!, 10F, Theme.Muted, wrap: true, margin: new Padding(0, 4, 0, 4)));
+                card.Controls.Add(Ui.Lbl(tutor.Bio!, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 4, 0, 4)));
 
             card.Controls.Add(Ui.PrimaryBtn("Időpont foglalása", (_, _) => OpenBooking(tutor)));
             return card;
@@ -452,7 +452,7 @@ namespace TutorConnectApp
             if (user.Role == "STUDENT")
             {
                 var top = Ui.Row();
-                top.Margin = new Padding(0, 0, 0, 12);
+                top.Margin = Ui.Pad(0, 0, 0, 12);
                 top.Controls.Add(Ui.PrimaryBtn("+  Új foglalás", (_, _) => Navigate("tutors")));
                 AddRow(top);
             }
@@ -549,7 +549,7 @@ namespace TutorConnectApp
             var card = new CardPanel();
 
             var head = Ui.Row();
-            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12.5F, Theme.Text, bold: true, margin: new Padding(0, 2, 12, 0)));
+            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 12, 0)));
             head.Controls.Add(StatusChip(b.Status));
             card.Controls.Add(head);
 
@@ -635,7 +635,7 @@ namespace TutorConnectApp
             RemoveRowsAfter(tabRow);
 
             var top = Ui.Row();
-            top.Margin = new Padding(0, 0, 0, 12);
+            top.Margin = Ui.Pad(0, 0, 0, 12);
             top.Controls.Add(Ui.PrimaryBtn("+  Új időpont", async (_, _) => await AddSlotAsync()));
             AddRow(top);
 
@@ -648,19 +648,19 @@ namespace TutorConnectApp
                 foreach (var day in slots.OrderBy(s => s.StartTime).GroupBy(s => s.StartTime.ToLocalTime().Date))
                 {
                     var card = new CardPanel();
-                    card.Controls.Add(Ui.Lbl(Ui.FormatDay(day.First().StartTime), 11.5F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 8)));
+                    card.Controls.Add(Ui.Lbl(Ui.FormatDay(day.First().StartTime), 11.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
 
                     foreach (var slot in day)
                     {
                         var row = Ui.Row();
-                        row.Controls.Add(Ui.Lbl(Ui.FormatTimeRange(slot.StartTime, slot.EndTime), 10.5F, Theme.Text, margin: new Padding(0, 9, 16, 0)));
+                        row.Controls.Add(Ui.Lbl(Ui.FormatTimeRange(slot.StartTime, slot.EndTime), 10.5F, Theme.Text, margin: Ui.Pad(0, 9, 16, 0)));
                         row.Controls.Add(slot.IsBooked
                             ? Ui.Chip("Lefoglalva", Ui.Warning)
                             : Ui.Chip("Szabad", Ui.Success));
                         if (!slot.IsBooked)
                         {
                             var delete = Ui.Btn("Törlés", Theme.CardBg, Ui.Danger, async (_, _) => await DeleteSlotAsync(slot), outline: true);
-                            delete.Margin = new Padding(8, 0, 0, 0);
+                            delete.Margin = Ui.Pad(8, 0, 0, 0);
                             row.Controls.Add(delete);
                         }
                         card.Controls.Add(row);
@@ -720,28 +720,29 @@ namespace TutorConnectApp
 
             var names = Ui.Row();
             names.FlowDirection = FlowDirection.TopDown;
-            names.Controls.Add(Ui.Lbl(account.Name, 17F, Theme.Text, bold: true, margin: new Padding(0, 6, 0, 2)));
-            names.Controls.Add(Ui.Lbl(account.Email, 10.5F, Theme.Muted, margin: new Padding(0, 0, 0, 8)));
+            names.Controls.Add(Ui.Lbl(account.Name, 17F, Theme.Text, bold: true, margin: Ui.Pad(0, 6, 0, 2)));
+            names.Controls.Add(Ui.Lbl(account.Email, 10.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 8)));
             names.Controls.Add(Ui.Chip(Ui.RoleName(account.Role), Theme.MainBlue));
             top.Controls.Add(names);
             head.Controls.Add(top);
+            head.Controls.Add(Ui.PrimaryBtn("Adatok szerkesztése", async (_, _) => await EditAsync(account)));
             AddRow(head);
 
             if (!string.IsNullOrWhiteSpace(account.Bio))
             {
                 var about = new CardPanel();
-                about.Controls.Add(Ui.Lbl("Bemutatkozás", 12F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 8)));
-                about.Controls.Add(Ui.Lbl(account.Bio, 10.5F, Theme.Muted, wrap: true, margin: new Padding(0)));
+                about.Controls.Add(Ui.Lbl("Bemutatkozás", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
+                about.Controls.Add(Ui.Lbl(account.Bio, 10.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0)));
                 AddRow(about);
             }
 
             if (account.Role == "TUTOR")
             {
                 var card = new CardPanel();
-                card.Controls.Add(Ui.Lbl("Tantárgyaid és óradíjaid", 12F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 10)));
+                card.Controls.Add(Ui.Lbl("Tantárgyaid és óradíjaid", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
                 if (account.Subjects == null || account.Subjects.Count == 0)
                 {
-                    card.Controls.Add(Ui.Lbl("Még nem adtál meg tantárgyat. A weboldalon a fiókod szerkesztésénél pótolhatod.", 10F, Theme.Muted, wrap: true, margin: new Padding(0)));
+                    card.Controls.Add(Ui.Lbl("Még nem adtál meg tantárgyat. A weboldalon a fiókod szerkesztésénél pótolhatod.", 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0)));
                 }
                 else
                 {
@@ -756,12 +757,12 @@ namespace TutorConnectApp
             if (account.Role == "STUDENT")
             {
                 var card = new CardPanel();
-                card.Controls.Add(Ui.Lbl("Tanulmányaid", 12F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 10)));
+                card.Controls.Add(Ui.Lbl("Tanulmányaid", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
                 card.Controls.Add(Ui.KeyValue("Iskolatípus", string.IsNullOrWhiteSpace(account.SchoolLevel) ? "–" : account.SchoolLevel!));
                 card.Controls.Add(Ui.KeyValue("Évfolyam", string.IsNullOrWhiteSpace(account.Grade) ? "–" : account.Grade!));
                 if (account.LearningSubjects is { Count: > 0 })
                 {
-                    card.Controls.Add(Ui.Lbl("Ebben kérnél segítséget", 10F, Theme.Muted, margin: new Padding(0, 10, 0, 6)));
+                    card.Controls.Add(Ui.Lbl("Ebben kérnél segítséget", 10F, Theme.Muted, margin: Ui.Pad(0, 10, 0, 6)));
                     var chips = Ui.WrapRow();
                     foreach (var subject in account.LearningSubjects)
                         chips.Controls.Add(Ui.Chip(subject.Name));
@@ -771,12 +772,29 @@ namespace TutorConnectApp
             }
 
             var session = new CardPanel();
-            session.Controls.Add(Ui.Lbl("Munkamenet", 12F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 6)));
-            session.Controls.Add(Ui.Lbl("Kijelentkezés után újra be kell jelentkezned az alkalmazás használatához.", 10F, Theme.Muted, wrap: true, margin: new Padding(0, 0, 0, 8)));
+            session.Controls.Add(Ui.Lbl("Munkamenet", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 6)));
+            session.Controls.Add(Ui.Lbl("Kijelentkezés után újra be kell jelentkezned az alkalmazás használatához.", 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 0, 0, 8)));
             session.Controls.Add(Ui.Btn("Kijelentkezés", Theme.CardBg, Theme.Danger, (_, _) => RequestLogout(), outline: true));
             AddRow(session);
 
-            AddRow(Ui.Lbl("A profil szerkesztése egyelőre a weboldalon érhető el.", 9.5F, Theme.Muted));
+        }
+
+        /// <summary>Megnyitja a szerkesztő ablakot; mentés után az oldal újratölt az új adatokkal.</summary>
+        private async Task EditAsync(AccountDto account)
+        {
+            try
+            {
+                var subjects = await ApiClient.GetCachedAsync<List<SubjectDto>>("/api/subjects");
+                if (IsDisposed) return;
+
+                using var dialog = new EditProfileDialog(account, subjects);
+                if (dialog.ShowDialog(FindForm()) == DialogResult.OK && !IsDisposed)
+                    await LoadAsync();
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült megnyitni a szerkesztést", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
     }
 
@@ -797,7 +815,7 @@ namespace TutorConnectApp
             ClearBody();
 
             var look = new CardPanel();
-            look.Controls.Add(Ui.Lbl("Megjelenés", 12.5F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 8)));
+            look.Controls.Add(Ui.Lbl("Megjelenés", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
             look.Controls.Add(SwitchRow("Sötét mód", "Kíméletesebb a szemnek, különösen este.", Theme.Dark,
                 // az oldal újraépül, ezért a váltást a kattintás kezelése után hajtjuk végre
                 on => BeginInvoke(new Action(() => Theme.SetDark(on)))));
@@ -806,16 +824,16 @@ namespace TutorConnectApp
             AddRow(look);
 
             var account = new CardPanel();
-            account.Controls.Add(Ui.Lbl("Fiók", 12.5F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 10)));
+            account.Controls.Add(Ui.Lbl("Fiók", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
             account.Controls.Add(Ui.KeyValue("Név", user.Name));
             account.Controls.Add(Ui.KeyValue("E-mail", user.Email));
             account.Controls.Add(Ui.KeyValue("Szerepkör", Ui.RoleName(user.Role)));
             AddRow(account);
 
             var app = new CardPanel();
-            app.Controls.Add(Ui.Lbl("Alkalmazás", 12.5F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 10)));
+            app.Controls.Add(Ui.Lbl("Alkalmazás", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
             app.Controls.Add(Ui.KeyValue("Szerver", ApiClient.BaseUrl));
-            app.Controls.Add(Ui.Lbl("A szerver címét a TUTORCONNECT_URL környezeti változóval lehet módosítani.", 9.5F, Theme.Muted, wrap: true, margin: new Padding(0, 6, 0, 0)));
+            app.Controls.Add(Ui.Lbl("A szerver címét a TUTORCONNECT_URL környezeti változóval lehet módosítani.", 9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 6, 0, 0)));
             AddRow(app);
 
             return Task.CompletedTask;
@@ -828,13 +846,13 @@ namespace TutorConnectApp
             {
                 ColumnCount = 2,
                 RowCount = 1,
-                Height = 62,
+                Height = Ui.S(62),
                 BackColor = Color.Transparent,
-                Margin = new Padding(0, 0, 0, 4),
+                Margin = Ui.Pad(0, 0, 0, 4),
                 Tag = "fill" // a CardPanel a teljes belső szélességre húzza
             };
             table.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70));
+            table.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Ui.S(70)));
             table.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             var text = new FlowLayoutPanel
@@ -845,12 +863,12 @@ namespace TutorConnectApp
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 BackColor = Color.Transparent,
                 Anchor = AnchorStyles.Left,
-                Margin = new Padding(0)
+                Margin = Ui.Pad(0)
             };
-            text.Controls.Add(Ui.Lbl(title, 11F, Theme.Text, bold: true, margin: new Padding(0, 0, 0, 2)));
-            text.Controls.Add(Ui.Lbl(description, 9.5F, Theme.Muted, margin: new Padding(0)));
+            text.Controls.Add(Ui.Lbl(title, 11F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 2)));
+            text.Controls.Add(Ui.Lbl(description, 9.5F, Theme.Muted, margin: Ui.Pad(0)));
 
-            var toggle = new ToggleSwitch(initial) { Anchor = AnchorStyles.Right, Margin = new Padding(0) };
+            var toggle = new ToggleSwitch(initial) { Anchor = AnchorStyles.Right, Margin = Ui.Pad(0) };
             toggle.Toggled += (_, _) => onChanged(toggle.IsOn);
 
             table.Controls.Add(text, 0, 0);

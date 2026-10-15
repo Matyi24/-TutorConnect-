@@ -21,8 +21,8 @@ namespace TutorConnectApp
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             Font = Ui.MakeFont(9.5F, FontStyle.Bold);
-            Padding = new Padding(14, 5, 14, 5);
-            Margin = new Padding(0, 6, 8, 0);
+            Padding = Ui.Pad(14, 5, 14, 5);
+            Margin = Ui.Pad(0, 6, 8, 0);
             Cursor = Cursors.Hand;
             ForeColor = Theme.White;
             Apply(normal);
@@ -102,8 +102,8 @@ namespace TutorConnectApp
         {
             Text = text;
             Font = Ui.MakeFont(10F, FontStyle.Bold);
-            Height = 38;
-            Margin = new Padding(0, 0, 10, 10);
+            Height = Ui.S(38);
+            Margin = Ui.Pad(0, 0, 10, 10);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
@@ -134,7 +134,7 @@ namespace TutorConnectApp
             });
         }
 
-        private void UpdateWidth() => Width = TextRenderer.MeasureText(Text, Font).Width + 36;
+        private void UpdateWidth() => Width = TextRenderer.MeasureText(Text, Font).Width + Ui.S(36);
 
         private void AnimateHover(double to)
         {
@@ -164,7 +164,7 @@ namespace TutorConnectApp
             using var path = Ui.RoundedPath(rect, Height / 2);
             using (var brush = new SolidBrush(fill))
                 g.FillPath(brush, path);
-            using (var pen = new Pen(border, 1.5F))
+            using (var pen = new Pen(border, Ui.S(1.5F)))
                 g.DrawPath(pen, path);
 
             TextRenderer.DrawText(g, Text, Font, rect, text,
@@ -195,7 +195,7 @@ namespace TutorConnectApp
         {
             on = initial;
             position = initial ? 1 : 0;
-            Size = new Size(52, 28);
+            Size = Ui.Sz(52, 28);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
             SetStyle(ControlStyles.Selectable, false);
@@ -231,10 +231,11 @@ namespace TutorConnectApp
             using (var brush = new SolidBrush(Anim.Lerp(off, Theme.MainBlue, position)))
                 g.FillPath(brush, track);
 
-            int d = Height - 8;
-            int x = 4 + (int)((Width - d - 8) * position);
+            int margin = Ui.S(4);
+            int d = Height - margin * 2;
+            int x = margin + (int)((Width - d - margin * 2) * position);
             using var knob = new SolidBrush(Theme.White);
-            g.FillEllipse(knob, x, 4, d, d);
+            g.FillEllipse(knob, x, margin, d, d);
         }
 
         protected override void Dispose(bool disposing)
@@ -252,8 +253,8 @@ namespace TutorConnectApp
 
         public Spinner()
         {
-            Size = new Size(26, 26);
-            Margin = new Padding(0);
+            Size = Ui.Sz(26, 26);
+            Margin = Ui.Pad(0);
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
             timer.Tick += (_, _) =>
@@ -279,11 +280,12 @@ namespace TutorConnectApp
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var rect = new Rectangle(3, 3, Width - 7, Height - 7);
+            int inset = Ui.S(3);
+            var rect = new Rectangle(inset, inset, Width - inset * 2 - 1, Height - inset * 2 - 1);
 
-            using (var track = new Pen(Theme.CardBorder, 3F))
+            using (var track = new Pen(Theme.CardBorder, Ui.S(3F)))
                 g.DrawEllipse(track, rect);
-            using var arc = new Pen(Theme.MainBlue, 3F) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            using var arc = new Pen(Theme.MainBlue, Ui.S(3F)) { StartCap = LineCap.Round, EndCap = LineCap.Round };
             g.DrawArc(arc, rect, angle, 100);
         }
 
@@ -302,6 +304,10 @@ namespace TutorConnectApp
         private readonly string caption;
         private readonly string glyph;
         private readonly Color accent;
+        private readonly Font valueFont;
+        private readonly Font captionFont;
+        private readonly int valueHeight;
+        private readonly int captionHeight;
         private double progress;
         private bool started;
 
@@ -312,8 +318,15 @@ namespace TutorConnectApp
             this.caption = caption;
             this.glyph = glyph;
             this.accent = accent;
-            Size = new Size(232, 104);
-            Margin = new Padding(0, 0, 16, 16);
+            valueFont = Ui.MakeFont(22F, FontStyle.Bold);
+            captionFont = Ui.MakeFont(9.5F);
+            valueHeight = Ui.LineHeight(valueFont);
+            captionHeight = Ui.LineHeight(captionFont);
+
+            // a csempe magassága a betűk magasságából jön, így semmilyen nagyításnál nem vágódik le a szöveg
+            int height = Math.Max(Ui.S(96), Ui.S(18) * 2 + valueHeight + captionHeight);
+            Size = new Size(Ui.S(232), height);
+            Margin = Ui.Pad(0, 0, 16, 16);
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         }
 
@@ -338,7 +351,7 @@ namespace TutorConnectApp
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 14))
+            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(14)))
             {
                 using var fill = new SolidBrush(Theme.CardBg);
                 using var border = new Pen(Theme.CardBorder);
@@ -347,7 +360,8 @@ namespace TutorConnectApp
             }
 
             // ikon körben
-            var badge = new Rectangle(20, (Height - 46) / 2, 46, 46);
+            int badgeSize = Ui.S(46);
+            var badge = new Rectangle(Ui.S(20), (Height - badgeSize) / 2, badgeSize, badgeSize);
             using (var badgeBrush = new SolidBrush(Anim.Lerp(Theme.CardBg, accent, Theme.Dark ? 0.28 : 0.15)))
                 g.FillEllipse(badgeBrush, badge);
             var iconFont = Ui.IconFont(16F);
@@ -356,17 +370,17 @@ namespace TutorConnectApp
                 g.DrawString(glyph, iconFont, iconBrush, badge, center);
 
             int shown = (int)Math.Round(target * progress);
-            int textX = badge.Right + 16;
-            int textWidth = Math.Max(Width - textX - 10, 0);
+            int textX = badge.Right + Ui.S(16);
+            int textWidth = Math.Max(Width - textX - Ui.S(10), 0);
 
-            var valueFont = Ui.MakeFont(22F, FontStyle.Bold);
             using var valueBrush = new SolidBrush(Theme.Text);
-            var captionFont = Ui.MakeFont(9.5F);
             using var captionBrush = new SolidBrush(Theme.Muted);
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
 
-            g.DrawString(shown + suffix, valueFont, valueBrush, new Rectangle(textX, 18, textWidth, 40), format);
-            g.DrawString(caption, captionFont, captionBrush, new Rectangle(textX, 60, textWidth, 24), format);
+            // a két sor együtt függőlegesen középre kerül
+            int top = (Height - valueHeight - captionHeight) / 2;
+            g.DrawString(shown + suffix, valueFont, valueBrush, new Rectangle(textX, top, textWidth, valueHeight + 2), format);
+            g.DrawString(caption, captionFont, captionBrush, new Rectangle(textX, top + valueHeight, textWidth, captionHeight + 2), format);
         }
     }
 
@@ -375,21 +389,39 @@ namespace TutorConnectApp
     {
         private readonly string title;
         private readonly string subtitle;
+        private readonly Font titleFont = Ui.MakeFont(21F, FontStyle.Bold);
+        private readonly Font subFont = Ui.MakeFont(10.5F);
+        private readonly int padX = Ui.S(28);
+        private readonly int titleY;
+        private readonly int subtitleY;
+        private readonly int titleHeight;
+        private readonly int subtitleHeight;
 
         public HeroBanner(string title, string subtitle, string? buttonText, Action? onButton)
         {
             this.title = title;
             this.subtitle = subtitle;
-            Height = 150;
-            Margin = new Padding(0, 0, 0, 20);
+            Margin = Ui.Pad(0, 0, 0, 20);
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+
+            // a sáv magassága a betűk magasságából számolódik, így semmilyen nagyításnál nem fedi egymást a tartalom
+            int padY = Ui.S(24);
+            titleHeight = Ui.LineHeight(titleFont);
+            subtitleHeight = Ui.LineHeight(subFont);
+            titleY = padY;
+            subtitleY = titleY + titleHeight + Ui.S(4);
+            int bottom = subtitleY + subtitleHeight;
 
             if (buttonText != null)
             {
                 var button = Ui.Btn(buttonText, Theme.White, Theme.MainBlueDark, (_, _) => onButton?.Invoke());
-                button.Location = new Point(28, 100);
+                int buttonY = bottom + Ui.S(16);
+                button.Location = new Point(padX, buttonY);
                 Controls.Add(button);
+                bottom = buttonY + button.GetPreferredSize(Size.Empty).Height;
             }
+
+            Height = bottom + padY;
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -405,7 +437,7 @@ namespace TutorConnectApp
             Color c1 = Theme.Dark ? Theme.HeroDark1 : Theme.HeroLight1;
             Color c2 = Theme.Dark ? Theme.HeroDark2 : Theme.MainBlueDark;
 
-            using var path = Ui.RoundedPath(rect, 18);
+            using var path = Ui.RoundedPath(rect, Ui.S(18));
             using (var brush = new LinearGradientBrush(rect, c1, c2, 20F))
                 g.FillPath(brush, path);
 
@@ -413,27 +445,25 @@ namespace TutorConnectApp
             g.SetClip(path);
             using (var circle = new SolidBrush(Color.FromArgb(34, Color.White)))
             {
-                g.FillEllipse(circle, Width - 190, -60, 260, 260);
-                g.FillEllipse(circle, Width - 90, 70, 150, 150);
+                g.FillEllipse(circle, Width - Ui.S(190), -Ui.S(60), Ui.S(260), Ui.S(260));
+                g.FillEllipse(circle, Width - Ui.S(90), Ui.S(70), Ui.S(150), Ui.S(150));
             }
             g.ResetClip();
 
-            var titleFont = Ui.MakeFont(21F, FontStyle.Bold);
-            var subFont = Ui.MakeFont(10.5F);
             using var white = new SolidBrush(Color.White);
             using var soft = new SolidBrush(Color.FromArgb(225, Color.White));
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
 
-            int textWidth = Math.Max(Width - 56, 0);
-            g.DrawString(title, titleFont, white, new Rectangle(28, 24, textWidth, 40), format);
-            g.DrawString(subtitle, subFont, soft, new Rectangle(28, 66, textWidth, 28), format);
+            int textWidth = Math.Max(Width - padX * 2, 0);
+            g.DrawString(title, titleFont, white, new Rectangle(padX, titleY, textWidth, titleHeight + 2), format);
+            g.DrawString(subtitle, subFont, soft, new Rectangle(padX, subtitleY, textWidth, subtitleHeight + 2), format);
         }
     }
 
     /// <summary>Ötcsillagos értékelő.</summary>
     internal class StarRating : Control
     {
-        private const int StarSize = 46;
+        private static int StarSize => Ui.S(46);
         private int value;
         private int hoverValue;
 
@@ -506,8 +536,8 @@ namespace TutorConnectApp
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             BackColor = Theme.CardBg;
-            Padding = new Padding(22, 18, 22, 18);
-            Margin = new Padding(0, 0, 0, 16);
+            Padding = Ui.Pad(22, 18, 22, 18);
+            Margin = Ui.Pad(0, 0, 0, 16);
             DoubleBuffered = true;
             ResizeRedraw = true;
         }
@@ -527,7 +557,7 @@ namespace TutorConnectApp
             if (BackColor.A < 255 || Width < 4 || Height < 4) return;
 
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            outline ??= Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 14);
+            outline ??= Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(14));
             int alpha = (int)(255 * reveal);
             using (var fill = new SolidBrush(Color.FromArgb(alpha, BackColor)))
                 g.FillPath(fill, outline);
@@ -584,7 +614,7 @@ namespace TutorConnectApp
 
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 18);
+            using var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(18));
             using var fill = new SolidBrush(Theme.CardBg);
             using var border = new Pen(Theme.CardBorder);
             g.FillPath(fill, path);
@@ -623,8 +653,8 @@ namespace TutorConnectApp
             };
             this.clickable = clickable;
 
-            Size = new Size(330, 134);
-            Margin = new Padding(0, 0, 18, 18);
+            Size = Ui.Sz(330, 134);
+            Margin = Ui.Pad(0, 0, 18, 18);
             Cursor = clickable ? Cursors.Hand : Cursors.Default;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
@@ -686,7 +716,7 @@ namespace TutorConnectApp
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), 18))
+            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(18)))
             {
                 using var fill = new SolidBrush(Theme.CardBg);
                 using var border = new Pen(Anim.Lerp(Theme.CardBorder, accent, hoverT), 1F + (float)hoverT);
@@ -695,9 +725,9 @@ namespace TutorConnectApp
             }
 
             // kategória-színű szimbólum-négyzet
-            var badge = new Rectangle(20, 20, 56, 56);
+            var badge = Ui.Rc(20, 20, 56, 56);
             Color tint = Anim.Lerp(Theme.CardBg, accent, Theme.Dark ? 0.30 : 0.15);
-            using (var badgePath = Ui.RoundedPath(badge, 16))
+            using (var badgePath = Ui.RoundedPath(badge, Ui.S(16)))
             using (var badgeBrush = new SolidBrush(Anim.Lerp(tint, accent, hoverT)))
                 g.FillPath(badgeBrush, badgePath);
 
@@ -709,33 +739,33 @@ namespace TutorConnectApp
             using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 g.DrawString(glyph, glyphFont, glyphBrush, badge, center);
 
-            int textX = badge.Right + 16;
-            int textWidth = Math.Max(Width - textX - 18, 0);
+            int textX = badge.Right + Ui.S(16);
+            int textWidth = Math.Max(Width - textX - Ui.S(18), 0);
             using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
 
             var nameFont = Ui.MakeFont(13.5F, FontStyle.Bold);
             using (var nameBrush = new SolidBrush(Theme.Text))
-                g.DrawString(name, nameFont, nameBrush, new Rectangle(textX, 22, textWidth, 28), format);
+                g.DrawString(name, nameFont, nameBrush, new Rectangle(textX, Ui.S(22), textWidth, Ui.S(28)), format);
 
             // kategória színes ponttal
             using (var dotBrush = new SolidBrush(accent))
-                g.FillEllipse(dotBrush, textX, 59, 8, 8);
+                g.FillEllipse(dotBrush, textX, Ui.S(59), Ui.S(8), Ui.S(8));
             var categoryFont = Ui.MakeFont(9.5F);
             using (var categoryBrush = new SolidBrush(Theme.Muted))
-                g.DrawString(category, categoryFont, categoryBrush, new Rectangle(textX + 14, 52, Math.Max(textWidth - 14, 0), 22), format);
+                g.DrawString(category, categoryFont, categoryBrush, new Rectangle(textX + Ui.S(14), Ui.S(52), Math.Max(textWidth - Ui.S(14), 0), Ui.S(22)), format);
 
             // elválasztó
             using (var line = new Pen(Color.FromArgb(120, Theme.CardBorder)))
-                g.DrawLine(line, 20, 90, Width - 20, 90);
+                g.DrawLine(line, Ui.S(20), Ui.S(90), Width - Ui.S(20), Ui.S(90));
 
             // alsó sor: oktatók száma, jobbra "Megnézem →"
-            int arrowWidth = clickable ? 96 : 0;
+            int arrowWidth = clickable ? Ui.S(96) : 0;
             var pillFont = Ui.MakeFont(8.5F, FontStyle.Bold);
             {
                 Color pillColor = hasTutors ? Theme.Success : Theme.Muted;
-                int pillWidth = Math.Min(TextRenderer.MeasureText(tutorText, pillFont).Width + 8, Math.Max(Width - 40 - arrowWidth, 0));
-                var pill = new Rectangle(20, 100, pillWidth, 24);
-                using var pillPath = Ui.RoundedPath(pill, 12);
+                int pillWidth = Math.Min(TextRenderer.MeasureText(tutorText, pillFont).Width + Ui.S(8), Math.Max(Width - Ui.S(40) - arrowWidth, 0));
+                var pill = new Rectangle(Ui.S(20), Ui.S(100), pillWidth, Ui.S(24));
+                using var pillPath = Ui.RoundedPath(pill, Ui.S(12));
                 using var pillBrush = new SolidBrush(Anim.Lerp(Theme.CardBg, pillColor, Theme.Dark ? 0.28 : 0.15));
                 using var pillText = new SolidBrush(pillColor);
                 using var pillFormat = new StringFormat(StringFormatFlags.NoWrap)
@@ -757,7 +787,7 @@ namespace TutorConnectApp
                     Alignment = StringAlignment.Far,
                     LineAlignment = StringAlignment.Center
                 };
-                g.DrawString("Megnézem  →", moreFont, moreBrush, new Rectangle(Width - 20 - 110 + (int)(6 * hoverT), 100, 110, 24), moreFormat);
+                g.DrawString("Megnézem  →", moreFont, moreBrush, new Rectangle(Width - Ui.S(20) - Ui.S(110) + (int)(Ui.S(6) * hoverT), Ui.S(100), Ui.S(110), Ui.S(24)), moreFormat);
             }
         }
 
@@ -776,8 +806,8 @@ namespace TutorConnectApp
         public AvatarCircle(string name, int size)
         {
             initials = Ui.Initials(name);
-            Size = new Size(size, size);
-            Margin = new Padding(0, 0, 14, 0);
+            Size = new Size(Ui.S(size), Ui.S(size));
+            Margin = Ui.Pad(0, 0, 14, 0);
             SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer, true);
             BackColor = Color.Transparent;
         }

@@ -49,6 +49,9 @@ namespace TutorConnectApp
 
         public static UserInfo? CurrentUser { get; private set; }
 
+        /// <summary>Akkor fut le, ha a bejelentkezett felhasználó adatai megváltoztak (pl. profil mentése után).</summary>
+        public static event Action? CurrentUserChanged;
+
         // ------------------------------------------------------------
         // Bejelentkezés / kijelentkezés
         // ------------------------------------------------------------
@@ -143,6 +146,20 @@ namespace TutorConnectApp
         /// <summary>POST, a válasz JSON-ját típusként visszaadja.</summary>
         public static async Task<T> PostAsync<T>(string path, object? payload = null) =>
             Deserialize<T>(await SendAsync(HttpMethod.Post, path, payload));
+
+        /// <summary>
+        /// A saját fiók adatainak mentése (név, e-mail, jelszó, tantárgyak...). Siker után a bejelentkezett
+        /// felhasználó adatai is frissülnek, és a CurrentUserChanged esemény lefut.
+        /// </summary>
+        public static async Task SaveAccountAsync(object payload)
+        {
+            var result = Deserialize<AccountUpdateDto>(await SendAsync(HttpMethod.Put, "/api/account", payload));
+            if (result.User is { } user)
+            {
+                CurrentUser = new UserInfo(user.Id, user.Name, user.Email, user.Role);
+                CurrentUserChanged?.Invoke();
+            }
+        }
 
         public static Task DeleteAsync(string path) =>
             SendAsync(HttpMethod.Delete, path, null);

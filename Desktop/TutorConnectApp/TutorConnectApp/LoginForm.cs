@@ -14,32 +14,34 @@ namespace TutorConnectApp
         private readonly TextBox passwordBox;
         private readonly HoverButton loginButton;
         private readonly Label errorLabel;
-        private int slideOffset = 36;
+        private int slideOffset = Ui.S(36);
 
         public LoginForm()
         {
             Text = "TutorConnect – Bejelentkezés";
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(620, 700);
-            MinimumSize = new Size(480, 640);
+            // a kezdő méret ne nőjön túl a képernyőn nagy nagyításnál sem
+            var workArea = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            ClientSize = new Size(Math.Min(Ui.S(620), workArea.Width - Ui.S(40)), Math.Min(Ui.S(700), workArea.Height - Ui.S(80)));
+            MinimumSize = Ui.Sz(480, 640);
             Font = Ui.MakeFont(10F);
             DoubleBuffered = true;
             ResizeRedraw = true;
             Opacity = 0; // az OnShown-ban úszik be
 
-            card = new SurfacePanel { Size = new Size(400, 500) };
+            card = new SurfacePanel { Size = Ui.Sz(400, 500) };
 
-            var logo = new AvatarCircle("Tutor Connect", 68) { Location = new Point((400 - 68) / 2, 32) };
+            var logo = new AvatarCircle("Tutor Connect", 68) { Location = Ui.Pt((400 - 68) / 2, 32) };
 
             var title = Ui.Lbl("TutorConnect", 21F, Theme.Text, bold: true);
             title.AutoSize = false;
             title.TextAlign = ContentAlignment.MiddleCenter;
-            title.Bounds = new Rectangle(0, 110, 400, 40);
+            title.Bounds = Ui.Rc(0, 110, 400, 40);
 
             var subtitle = Ui.Lbl("Jelentkezz be a folytatáshoz", 10.5F, Theme.Muted);
             subtitle.AutoSize = false;
             subtitle.TextAlign = ContentAlignment.MiddleCenter;
-            subtitle.Bounds = new Rectangle(0, 150, 400, 26);
+            subtitle.Bounds = Ui.Rc(0, 150, 400, 26);
 
             var emailLabel = MakeLabel("E-mail", 192);
             emailBox = MakeTextBox(216);
@@ -50,19 +52,19 @@ namespace TutorConnectApp
 
             errorLabel = Ui.Lbl("", 9.5F, Theme.Danger);
             errorLabel.AutoSize = false;
-            errorLabel.Bounds = new Rectangle(32, 338, 336, 44);
+            errorLabel.Bounds = Ui.Rc(32, 338, 336, 44);
             errorLabel.Visible = false;
 
             loginButton = Ui.PrimaryBtn("Bejelentkezés", async (_, _) => await TryLoginAsync());
             loginButton.AutoSize = false;
             loginButton.Font = Ui.MakeFont(11F, FontStyle.Bold);
-            loginButton.Bounds = new Rectangle(32, 392, 336, 50);
-            loginButton.Margin = new Padding(0);
+            loginButton.Bounds = Ui.Rc(32, 392, 336, 50);
+            loginButton.Margin = Ui.Pad(0);
 
             var hint = Ui.Lbl($"Szerver: {ApiClient.BaseUrl}", 8.5F, Theme.Muted);
             hint.AutoSize = false;
             hint.TextAlign = ContentAlignment.MiddleCenter;
-            hint.Bounds = new Rectangle(0, 458, 400, 24);
+            hint.Bounds = Ui.Rc(0, 458, 400, 24);
 
             card.Controls.AddRange(new Control[] { logo, title, subtitle, emailLabel, emailBox, passwordLabel, passwordBox, errorLabel, loginButton, hint });
             Controls.Add(card);
@@ -108,7 +110,7 @@ namespace TutorConnectApp
             Anim.Run(450, t =>
             {
                 Opacity = t;
-                slideOffset = (int)(36 * (1 - t));
+                slideOffset = (int)(Ui.S(36) * (1 - t));
                 CenterCard();
             });
             emailBox.Focus();
@@ -118,13 +120,13 @@ namespace TutorConnectApp
         {
             var label = Ui.Lbl(text, 10F, Theme.Muted);
             label.AutoSize = false;
-            label.Bounds = new Rectangle(32, y, 336, 22);
+            label.Bounds = Ui.Rc(32, y, 336, 22);
             return label;
         }
 
         private static TextBox MakeTextBox(int y) => new()
         {
-            Bounds = new Rectangle(32, y, 336, 36),
+            Bounds = Ui.Rc(32, y, 336, 36),
             Font = Ui.MakeFont(11.5F),
             BorderStyle = BorderStyle.FixedSingle,
             BackColor = Theme.InputBg,

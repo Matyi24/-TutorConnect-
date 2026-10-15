@@ -27,7 +27,7 @@ namespace TutorConnectApp
         {
             DoubleBuffered = true;
             Dock = DockStyle.Left;
-            Width = 250; // az ApplyResponsive() később az ablakhoz igazítja
+            Width = Ui.S(290); // az ApplyResponsive() később az ablakhoz igazítja
             BackColor = Theme.NavBg;
 
             itemsPanel = new FlowLayoutPanel
@@ -35,14 +35,14 @@ namespace TutorConnectApp
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                Padding = new Padding(12, 10, 12, 0),
+                Padding = Ui.Pad(14, 14, 14, 0),
                 BackColor = Theme.NavBg
             };
             itemsPanel.Resize += (_, _) => ResizeButtons();
 
-            header = new BrandHeader { Dock = DockStyle.Top, Height = 96 };
+            header = new BrandHeader { Dock = DockStyle.Top, Height = Ui.S(112) };
 
-            userChip = new UserChip { Dock = DockStyle.Bottom, Height = 76 };
+            userChip = new UserChip { Dock = DockStyle.Bottom, Height = Ui.S(92) };
             userChip.Click += (_, _) => Select("profile"); // a felhasználóra kattintva a profil nyílik meg
 
             Controls.Add(itemsPanel); // a kitöltő (Fill) elem legyen elöl a sorrendben
@@ -70,7 +70,7 @@ namespace TutorConnectApp
 
         private NavButton AddButton(string key, string text, string icon)
         {
-            var button = new NavButton(text, icon) { Margin = new Padding(0, 0, 0, 6) };
+            var button = new NavButton(text, icon) { Margin = Ui.Pad(0, 0, 0, 8) };
             button.SetCollapsed(collapsed);
             buttons[key] = button;
             itemsPanel.Controls.Add(button);
@@ -124,7 +124,23 @@ namespace TutorConnectApp
                 SetCollapsedMode(wantCollapsed);
             }
 
-            Width = collapsed ? 78 : Math.Clamp((int)(availableWidth * 0.2), 230, 290);
+            Width = collapsed ? Ui.S(92) : Math.Clamp((int)(availableWidth * 0.22), Ui.S(270), Ui.S(340));
+        }
+
+        /// <summary>Másik DPI-jű monitorra húzáskor: a rögzített méretek újraszámolása.</summary>
+        public void ApplyScale()
+        {
+            header.Height = Ui.S(112);
+            userChip.Height = Ui.S(92);
+            itemsPanel.Padding = Ui.Pad(14, 14, 14, 0);
+            foreach (var button in buttons.Values)
+            {
+                button.Height = Ui.S(58);
+                button.Margin = Ui.Pad(0, 0, 0, 8);
+            }
+            ResizeButtons();
+            header.Invalidate();
+            userChip.Invalidate();
         }
 
         private void SetCollapsedMode(bool value)
@@ -179,12 +195,13 @@ namespace TutorConnectApp
                 g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
                 // összecsukva a logó középen, egyébként balra
-                int circleX = collapsed ? (Width - 44) / 2 : 24;
-                var circle = new Rectangle(circleX, (Height - 44) / 2, 44, 44);
+                int circleSize = Ui.S(52);
+                int circleX = collapsed ? (Width - circleSize) / 2 : Ui.S(26);
+                var circle = new Rectangle(circleX, (Height - circleSize) / 2, circleSize, circleSize);
                 using (var fill = new SolidBrush(Theme.White))
                     g.FillEllipse(fill, circle);
 
-                var logoFont = Ui.MakeFont(18F, FontStyle.Bold);
+                var logoFont = Ui.MakeFont(21F, FontStyle.Bold);
                 using (var logoBrush = new SolidBrush(Theme.MainBlueDark))
                 using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                     g.DrawString("T", logoFont, logoBrush, circle, center);
@@ -192,8 +209,8 @@ namespace TutorConnectApp
                 if (!collapsed)
                 {
                     // A cím soha nem törik új sorba: ha nem fér el, a betűméret csökken.
-                    var textArea = new Rectangle(80, 0, Math.Max(Width - 80 - 12, 0), Height);
-                    float size = 15F;
+                    var textArea = new Rectangle(Ui.S(92), 0, Math.Max(Width - Ui.S(92) - Ui.S(14), 0), Height);
+                    float size = 17F;
                     var titleFont = Ui.MakeFont(size, FontStyle.Bold);
                     while (size > 9F && TextRenderer.MeasureText("TutorConnect", titleFont).Width > textArea.Width)
                     {
@@ -212,7 +229,7 @@ namespace TutorConnectApp
 
                 // vékony elválasztó vonal a fejléc alatt
                 using var line = new Pen(Color.FromArgb(55, Theme.White));
-                g.DrawLine(line, 16, Height - 1, Width - 16, Height - 1);
+                g.DrawLine(line, Ui.S(16), Height - 1, Width - Ui.S(16), Height - 1);
             }
         }
 
@@ -255,31 +272,31 @@ namespace TutorConnectApp
 
                 if (hover)
                 {
-                    using var path = Ui.RoundedPath(new Rectangle(10, 8, Width - 21, Height - 17), 12);
+                    using var path = Ui.RoundedPath(new Rectangle(Ui.S(10), Ui.S(8), Width - Ui.S(21), Height - Ui.S(17)), Ui.S(12));
                     using var hoverBrush = new SolidBrush(Color.FromArgb(110, Theme.NavActive));
                     g.FillPath(hoverBrush, path);
                 }
 
                 using (var line = new Pen(Color.FromArgb(55, Theme.White)))
-                    g.DrawLine(line, 16, 0, Width - 16, 0);
+                    g.DrawLine(line, Ui.S(16), 0, Width - Ui.S(16), 0);
 
-                const int size = 40;
-                var avatar = new Rectangle(collapsed ? (Width - size) / 2 : 22, (Height - size) / 2, size, size);
+                int size = Ui.S(48);
+                var avatar = new Rectangle(collapsed ? (Width - size) / 2 : Ui.S(24), (Height - size) / 2, size, size);
                 Ui.DrawAvatar(g, avatar, Ui.Initials(name), Theme.White, Theme.MainBlueDark);
 
                 if (collapsed) return;
 
-                int x = avatar.Right + 12;
-                int textWidth = Math.Max(Width - x - 12, 0);
+                int x = avatar.Right + Ui.S(12);
+                int textWidth = Math.Max(Width - x - Ui.S(12), 0);
                 using var nameFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter, LineAlignment = StringAlignment.Far };
-                var nameFont = Ui.MakeFont(10F, FontStyle.Bold);
+                var nameFont = Ui.MakeFont(11.5F, FontStyle.Bold);
                 using var nameBrush = new SolidBrush(Theme.White);
-                g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - 22, textWidth, 22), nameFormat);
+                g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - Ui.S(26), textWidth, Ui.S(26)), nameFormat);
 
                 using var roleFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
-                var roleFont = Ui.MakeFont(8.5F);
+                var roleFont = Ui.MakeFont(9.5F);
                 using var roleBrush = new SolidBrush(Color.FromArgb(200, Theme.White));
-                g.DrawString(role, roleFont, roleBrush, new Rectangle(x, Height / 2 + 1, textWidth, 20), roleFormat);
+                g.DrawString(role, roleFont, roleBrush, new Rectangle(x, Height / 2 + Ui.S(1), textWidth, Ui.S(22)), roleFormat);
             }
         }
 
@@ -297,7 +314,7 @@ namespace TutorConnectApp
             {
                 this.icon = icon;
                 Text = text;
-                Height = 48;
+                Height = Ui.S(58);
                 Cursor = Cursors.Hand;
                 SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
                 SetStyle(ControlStyles.Selectable, false);
@@ -353,17 +370,21 @@ namespace TutorConnectApp
                 double amount = Math.Max(activeT, hoverT * 0.55);
                 if (amount > 0.01)
                 {
-                    using var path = Ui.RoundedPath(bounds, 12);
+                    using var path = Ui.RoundedPath(bounds, Ui.S(14));
                     using var brush = new SolidBrush(Anim.Lerp(Theme.NavBg, Theme.NavActive, amount));
                     g.FillPath(brush, path);
                 }
 
-                // az aktív gomb bal oldali jelzősávja nő be
+                // az aktív gomb bal oldali jelzősávja: a kijelölt elem teljes magasságán végigmegy,
+                // követi a lekerekített sarkokat, és középről nőtt ki
                 if (activeT > 0.01)
                 {
-                    int barHeight = (int)(24 * activeT);
+                    int barHeight = (int)(Height * activeT);
+                    using var shape = Ui.RoundedPath(bounds, Ui.S(14));
                     using var bar = new SolidBrush(Theme.White);
-                    g.FillRectangle(bar, 0, (Height - barHeight) / 2, 4, barHeight);
+                    g.SetClip(shape);
+                    g.FillRectangle(bar, 0, (Height - barHeight) / 2, Ui.S(6), barHeight);
+                    g.ResetClip();
                 }
 
                 Color textColor = Anim.Lerp(Color.FromArgb(215, 255, 255, 255), Color.White, Math.Max(activeT, hoverT));
@@ -374,8 +395,8 @@ namespace TutorConnectApp
                     // csak ikon (vagy az első betű, ha nincs ikon), középre igazítva
                     using var centered = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                     var glyphFont = icon.Length > 0
-                        ? Ui.IconFont(14F)
-                        : Ui.MakeFont(12F, FontStyle.Bold);
+                        ? Ui.IconFont(17F)
+                        : Ui.MakeFont(14F, FontStyle.Bold);
                     string glyph = icon.Length > 0 ? icon : Text[..1];
                     g.DrawString(glyph, glyphFont, textBrush, new Rectangle(0, 0, Width, Height), centered);
                     return;
@@ -384,17 +405,17 @@ namespace TutorConnectApp
                 using var middle = new StringFormat { LineAlignment = StringAlignment.Center };
                 if (icon.Length > 0)
                 {
-                    var iconFont = Ui.IconFont(14F);
-                    g.DrawString(icon, iconFont, textBrush, new Rectangle(18, 0, 34, Height), middle);
+                    var iconFont = Ui.IconFont(17F);
+                    g.DrawString(icon, iconFont, textBrush, new Rectangle(Ui.S(22), 0, Ui.S(40), Height), middle);
                 }
 
-                var font = Ui.MakeFont(11F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
+                var font = Ui.MakeFont(12.5F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
                 using var textFormat = new StringFormat(StringFormatFlags.NoWrap)
                 {
                     LineAlignment = StringAlignment.Center,
                     Trimming = StringTrimming.EllipsisCharacter
                 };
-                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? 58 : 20, 0, Math.Max(Width - 62, 0), Height), textFormat);
+                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? Ui.S(70) : Ui.S(24), 0, Math.Max(Width - Ui.S(76), 0), Height), textFormat);
             }
 
             protected override void Dispose(bool disposing)

@@ -12,6 +12,7 @@ namespace TutorConnectApp
             // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
             AppSettings.Load(); // mentett téma és animáció-beállítás
+            Ui.InitDpi();       // a képernyő nagyítása szerinti méretezéshez
 
             // Belépés nélkül nem nyílik meg a főablak. Kijelentkezés után újra a belépő jön.
             while (true)

@@ -26,16 +26,22 @@ namespace TutorConnectApp
 
             scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.PageBg };
             Body = scroll.Content;
-            Body.Padding = new Padding(36, 4, 22, 28);
+            Body.Padding = Ui.Pad(36, 4, 22, 28);
             Body.ClientSizeChanged += (_, _) => FitAll();
 
-            var header = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Theme.PageBg };
-            var titleLabel = Ui.Lbl(title, 23F, Theme.Text, bold: true);
-            titleLabel.Location = new Point(33, 20);
-            var subtitleLabel = Ui.Lbl(subtitle, 10.5F, Theme.Muted);
-            subtitleLabel.Location = new Point(37, 62);
-            header.Controls.Add(titleLabel);
-            header.Controls.Add(subtitleLabel);
+            // a fejléc magassága a szöveg magasságából jön (nem rögzített), így semmilyen nagyításnál nem fedi egymást a cím és az alcím
+            var header = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Theme.PageBg,
+                Padding = Ui.Pad(33, 18, 0, 12)
+            };
+            header.Controls.Add(Ui.Lbl(title, 23F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 2)));
+            header.Controls.Add(Ui.Lbl(subtitle, 10.5F, Theme.Muted, margin: Ui.Pad(4, 0, 0, 0)));
 
             Controls.Add(scroll);  // a kitöltő (Fill) elem legyen elöl a sorrendben
             Controls.Add(header);

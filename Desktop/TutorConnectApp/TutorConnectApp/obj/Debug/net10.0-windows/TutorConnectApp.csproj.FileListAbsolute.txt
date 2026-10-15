@@ -55,3 +55,22 @@ C:\TC\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-w
 C:\TC\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.genruntimeconfig.cache
 C:\TC\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\ref\TutorConnectApp.dll
 C:\TC\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorCon.E156D163.Up2Date
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\bin\Debug\net10.0-windows\TutorConnectApp.exe
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\bin\Debug\net10.0-windows\TutorConnectApp.deps.json
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\bin\Debug\net10.0-windows\TutorConnectApp.runtimeconfig.json
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\bin\Debug\net10.0-windows\TutorConnectApp.dll
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\bin\Debug\net10.0-windows\TutorConnectApp.pdb
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.TutorMain.resources
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.NavBar.resources
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.csproj.GenerateResource.cache
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.AssemblyInfoInputs.cache
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.AssemblyInfo.cs
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.csproj.CoreCompileInputs.cache
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.sourcelink.json
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.dll
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\refint\TutorConnectApp.dll
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.pdb
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorConnectApp.genruntimeconfig.cache
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\ref\TutorConnectApp.dll
+C:\Users\csabi\OneDrive\Asztali gép\-TutorConnect-\Desktop\TutorConnectApp\TutorConnectApp\obj\Debug\net10.0-windows\TutorCon.E156D163.Up2Date

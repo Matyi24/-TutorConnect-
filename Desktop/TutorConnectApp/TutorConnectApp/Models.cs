@@ -66,12 +66,14 @@ namespace TutorConnectApp
 
     internal class AccountSubjectDto
     {
+        [JsonPropertyName("subject_id")] public int SubjectId { get; set; }
         [JsonPropertyName("name")] public string Name { get; set; } = "";
         [JsonPropertyName("hourly_rate")] public decimal HourlyRate { get; set; }
     }
 
     internal class NamedDto
     {
+        [JsonPropertyName("subject_id")] public int SubjectId { get; set; }
         [JsonPropertyName("name")] public string Name { get; set; } = "";
     }
 
@@ -125,5 +127,19 @@ namespace TutorConnectApp
     {
         [JsonPropertyName("created")] public int Created { get; set; }
         [JsonPropertyName("skipped")] public int Skipped { get; set; }
+    }
+
+    /// <summary>A PUT /api/account válasza: a mentett felhasználó adatai.</summary>
+    internal class AccountUpdateDto
+    {
+        [JsonPropertyName("user")] public UpdatedUserDto? User { get; set; }
+    }
+
+    internal class UpdatedUserDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("email")] public string Email { get; set; } = "";
+        [JsonPropertyName("role")] public string Role { get; set; } = "";
     }
 }

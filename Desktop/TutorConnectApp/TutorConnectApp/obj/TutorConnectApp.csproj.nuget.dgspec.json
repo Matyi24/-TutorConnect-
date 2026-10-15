@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\TC\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {}
+    "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {}
   },
   "projects": {
-    "C:\\TC\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {
+    "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\TC\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
+        "projectUniqueName": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
         "projectName": "TutorConnectApp",
-        "projectPath": "C:\\TC\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
-        "packagesPath": "C:\\Users\\zsomb\\.nuget\\packages\\",
-        "outputPath": "C:\\TC\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\obj\\",
+        "projectPath": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
+        "packagesPath": "C:\\Users\\csabi\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\zsomb\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\csabi\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
