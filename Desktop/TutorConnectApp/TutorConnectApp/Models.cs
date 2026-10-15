@@ -142,4 +142,45 @@ namespace TutorConnectApp
         [JsonPropertyName("email")] public string Email { get; set; } = "";
         [JsonPropertyName("role")] public string Role { get; set; } = "";
     }
+
+    // ------------------------------------------------------------
+    // Chat
+    // ------------------------------------------------------------
+
+    internal class ConversationDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("student_id")] public int StudentId { get; set; }
+        [JsonPropertyName("tutor_id")] public int TutorId { get; set; }
+        [JsonPropertyName("other_user_name")] public string OtherUserName { get; set; } = "";
+        [JsonPropertyName("last_message")] public string? LastMessage { get; set; }
+        [JsonPropertyName("last_message_time")] public DateTime? LastMessageTime { get; set; }
+
+        /// <summary>A MySQL logikai értéke számként (0/1) érkezik.</summary>
+        [JsonPropertyName("last_message_retracted")] public int? LastMessageRetractedValue { get; set; }
+
+        [JsonPropertyName("unread_count")] public int UnreadCount { get; set; }
+
+        [JsonIgnore] public bool LastMessageRetracted => LastMessageRetractedValue == 1;
+    }
+
+    internal class MessageDto
+    {
+        [JsonPropertyName("id")] public int Id { get; set; }
+        [JsonPropertyName("conversation_id")] public int ConversationId { get; set; }
+        [JsonPropertyName("sender_id")] public int SenderId { get; set; }
+        [JsonPropertyName("content")] public string Content { get; set; } = "";
+        [JsonPropertyName("is_read")] public int? IsReadValue { get; set; }
+        [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+        [JsonPropertyName("attachment_name")] public string? AttachmentName { get; set; }
+        [JsonPropertyName("attachment_type")] public string? AttachmentType { get; set; }
+        [JsonPropertyName("attachment_size")] public long? AttachmentSize { get; set; }
+        [JsonPropertyName("deleted_at")] public DateTime? DeletedAt { get; set; }
+        [JsonPropertyName("edited_at")] public DateTime? EditedAt { get; set; }
+
+        [JsonIgnore] public bool IsRead => IsReadValue == 1;
+        [JsonIgnore] public bool IsRetracted => DeletedAt != null;
+        [JsonIgnore] public bool HasAttachment => !string.IsNullOrEmpty(AttachmentName);
+    }
 }
+

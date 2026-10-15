@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{8775A2ED-E59B-5E7A-2BE8-18B41594F8A2}|TutorConnectApp\\TutorConnectApp.csproj|c:\\users\\csabi\\onedrive\\asztali g\u00E9p\\-tutorconnect-\\desktop\\tutorconnectapp\\tutorconnectapp\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8775A2ED-E59B-5E7A-2BE8-18B41594F8A2}|TutorConnectApp\\TutorConnectApp.csproj|solutionrelative:tutorconnectapp\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{8775A2ED-E59B-5E7A-2BE8-18B41594F8A2}|TutorConnectApp\\TutorConnectApp.csproj|c:\\users\\csabi\\onedrive\\asztali g\u00E9p\\-tutorconnect-\\desktop\\tutorconnectapp\\tutorconnectapp\\navbar.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{8775A2ED-E59B-5E7A-2BE8-18B41594F8A2}|TutorConnectApp\\TutorConnectApp.csproj|solutionrelative:tutorconnectapp\\navbar.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -31,6 +35,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "ApiClient.cs",
+              "DocumentMoniker": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\ApiClient.cs",
+              "RelativeDocumentMoniker": "TutorConnectApp\\ApiClient.cs",
+              "ToolTip": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\ApiClient.cs",
+              "RelativeToolTip": "TutorConnectApp\\ApiClient.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-10-15T10:11:07.648Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "NavBar.cs",
               "DocumentMoniker": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\NavBar.cs",
               "RelativeDocumentMoniker": "TutorConnectApp\\NavBar.cs",
@@ -38,24 +55,23 @@
               "RelativeToolTip": "TutorConnectApp\\NavBar.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAuAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-10-14T08:03:51.913Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-10-14T08:03:51.913Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "Form1.Designer.cs",
               "DocumentMoniker": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\Form1.Designer.cs",
               "RelativeDocumentMoniker": "TutorConnectApp\\Form1.Designer.cs",
               "ToolTip": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\Form1.Designer.cs",
               "RelativeToolTip": "TutorConnectApp\\Form1.Designer.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAIAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAYwBYAAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-10-09T09:20:26.946Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "Form1.cs",
               "DocumentMoniker": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\Form1.cs",
               "RelativeDocumentMoniker": "TutorConnectApp\\Form1.cs",
@@ -68,7 +84,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "Form1.cs [Design]",
               "DocumentMoniker": "C:\\Users\\csabi\\OneDrive\\Asztali g\u00E9p\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\Form1.cs",
               "RelativeDocumentMoniker": "TutorConnectApp\\Form1.cs",

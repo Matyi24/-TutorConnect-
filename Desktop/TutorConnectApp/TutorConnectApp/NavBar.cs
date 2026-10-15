@@ -78,6 +78,13 @@ namespace TutorConnectApp
             return button;
         }
 
+        /// <summary>Jelvény (olvasatlan üzenetek, függő foglalások száma) egy menüponton; 0 = nincs jelvény.</summary>
+        public void SetBadge(string key, int count)
+        {
+            if (buttons.TryGetValue(key, out var button))
+                button.SetBadge(count);
+        }
+
         /// <summary>Egy gomb feliratának és ikonjának cseréje (pl. a téma-váltó gombnál).</summary>
         public void SetItemContent(string key, string text, string icon)
         {
@@ -307,6 +314,7 @@ namespace TutorConnectApp
             private bool collapsed;
             private double hoverT;
             private double activeT;
+            private int badge;
             private Anim.Tween? hoverTween;
             private Anim.Tween? activeTween;
 
@@ -323,6 +331,12 @@ namespace TutorConnectApp
             public void SetCollapsed(bool value)
             {
                 collapsed = value;
+                Invalidate();
+            }
+
+            public void SetBadge(int count)
+            {
+                badge = Math.Max(count, 0);
                 Invalidate();
             }
 
@@ -399,6 +413,16 @@ namespace TutorConnectApp
                         : Ui.MakeFont(14F, FontStyle.Bold);
                     string glyph = icon.Length > 0 ? icon : Text[..1];
                     g.DrawString(glyph, glyphFont, textBrush, new Rectangle(0, 0, Width, Height), centered);
+
+                    // összecsukva a jelvény egy kis piros pont az ikon sarkán
+                    if (badge > 0)
+                    {
+                        using var dot = new SolidBrush(Theme.Danger);
+                        using var ring = new Pen(Theme.NavBg, Ui.S(2F));
+                        var dotRect = new Rectangle(Width / 2 + Ui.S(6), Ui.S(10), Ui.S(12), Ui.S(12));
+                        g.FillEllipse(dot, dotRect);
+                        g.DrawEllipse(ring, dotRect);
+                    }
                     return;
                 }
 
@@ -415,7 +439,22 @@ namespace TutorConnectApp
                     LineAlignment = StringAlignment.Center,
                     Trimming = StringTrimming.EllipsisCharacter
                 };
-                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? Ui.S(70) : Ui.S(24), 0, Math.Max(Width - Ui.S(76), 0), Height), textFormat);
+                g.DrawString(Text, font, textBrush, new Rectangle(icon.Length > 0 ? Ui.S(70) : Ui.S(24), 0, Math.Max(Width - Ui.S(76) - (badge > 0 ? Ui.S(44) : 0), 0), Height), textFormat);
+
+                // jelvény: piros pirula a gomb jobb szélén
+                if (badge > 0)
+                {
+                    string count = badge > 99 ? "99+" : badge.ToString();
+                    var badgeFont = Ui.MakeFont(9F, FontStyle.Bold);
+                    int badgeWidth = Math.Max(Ui.S(26), TextRenderer.MeasureText(count, badgeFont).Width + Ui.S(14));
+                    var pill = new Rectangle(Width - Ui.S(16) - badgeWidth, (Height - Ui.S(26)) / 2, badgeWidth, Ui.S(26));
+                    using var pillPath = Ui.RoundedPath(pill, Ui.S(13));
+                    using var pillBrush = new SolidBrush(Theme.Danger);
+                    g.FillPath(pillBrush, pillPath);
+                    using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    using var white = new SolidBrush(Theme.White);
+                    g.DrawString(count, badgeFont, white, pill, center);
+                }
             }
 
             protected override void Dispose(bool disposing)

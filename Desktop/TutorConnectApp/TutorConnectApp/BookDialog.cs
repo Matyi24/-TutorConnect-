@@ -383,7 +383,7 @@ namespace TutorConnectApp
 
         public string ResultMessage { get; private set; } = "";
 
-        public AvailabilityDialog()
+        public AvailabilityDialog(DateTime? presetStart = null, int? presetMinutes = null)
             : base("Új időpont megadása", "Add meg, mikor tudsz tanítani. A diákok ezek közül foglalhatnak.", "Mentés", Ui.Sz(560, 700))
         {
             Section("1   Melyik napon?");
@@ -438,6 +438,22 @@ namespace TutorConnectApp
 
             ActionButton.Enabled = false;
             SetFooter("Válaszd ki a napot.");
+
+            // a naptárból húzott idősáv előre kitölti a mezőket
+            if (presetStart is DateTime preset)
+            {
+                var match = dayChips.FirstOrDefault(c => c.Day == preset.Date);
+                if (match.Chip != null) SelectDay(match.Day);
+
+                string time = $"{preset.Hour:00}:{preset.Minute / 30 * 30:00}";
+                if (timeBox.Items.Contains(time)) timeBox.SelectedItem = time;
+            }
+            if (presetMinutes is int length)
+            {
+                // a legnagyobb megengedett időtartam, ami még belefér a kijelölésbe
+                int index = Array.FindLastIndex(Durations, d => d <= length);
+                durationBox.SelectedIndex = index >= 0 ? index : 0;
+            }
         }
 
         private void SelectDay(DateTime day)

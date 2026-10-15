@@ -91,6 +91,9 @@ namespace TutorConnectApp
             timer.Start();
         }
 
+        /// <summary>Igaz, ha a nézet a tartalom alja közelében van (új elemnél érdemes legörgetni).</summary>
+        public bool IsNearEnd() => MaxOffset - current < Ui.S(160);
+
         private void Step()
         {
             long now = Environment.TickCount64;

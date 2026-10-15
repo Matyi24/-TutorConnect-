@@ -8,6 +8,7 @@ namespace TutorConnectApp
         /// <summary>A bejelentkezett felhasználó aktuális adatai (a profil mentése után változhatnak).</summary>
         private static UserInfo Me => ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
         private string currentKey = "";
+        private readonly System.Windows.Forms.Timer badgeTimer = new() { Interval = 400 };
 
         /// <summary>Igaz, ha a felhasználó kijelentkezett (és nem simán bezárta az appot).</summary>
         public bool LoggedOut { get; private set; }
@@ -30,6 +31,13 @@ namespace TutorConnectApp
 
             Theme.Changed += OnThemeChanged;
             ApiClient.CurrentUserChanged += OnUserChanged;
+            Realtime.EventReceived += OnRealtimeEvent;
+            AppEvents.BadgesStale += ScheduleBadges;
+            badgeTimer.Tick += async (_, _) =>
+            {
+                badgeTimer.Stop();
+                await RefreshBadgesAsync();
+            };
             ApplyTheme();
 
             navBar.Select("home");
@@ -37,21 +45,24 @@ namespace TutorConnectApp
 
         /// <summary>
         /// A menü szerepkör szerint épül fel, a weboldalhoz hasonlóan:
-        /// mindenki: Főoldal, Chat, Tantárgyak, Profil, Beállítások; diák: + Oktatók, Foglalás; oktató: + Foglalás.
+        /// mindenki: Főoldal, Chat, Tantárgyak, Profil, Beállítások; diák: + Oktatók, Naptár, Foglalás; oktató: + Naptár, Foglalás.
         /// Új menüpont: egy sor itt + egy oldal (PageBase utód).
         /// Ikonok: Segoe MDL2 Assets karakterek.
         /// </summary>
         private void BuildMenu(UserInfo user)
         {
             AddPage("home", "Főoldal", "", () => new HomePage(Me));
-            AddPage("chat", "Chat", "", () => new ChatPage());
+            AddPage("chat", "Chat", "", () => new ChatPage(Me));
             AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage(Me));
 
             if (user.Role == "STUDENT")
                 AddPage("tutors", "Oktatók", "", () => new TutorsPage());
 
             if (user.Role == "STUDENT" || user.Role == "TUTOR")
-                AddPage("bookings", "Foglalás", "", () => new BookingsPage(Me));
+            {
+                AddPage("calendar", "Naptár", "\uE787", () => new CalendarPage(Me));
+                AddPage("bookings", "Foglalás", "\uE81C", () => new BookingsPage(Me));
+            }
 
             AddPage("profile", "Profil", "", () => new ProfilePage());
             AddPage("settings", "Beállítások", "", () => new SettingsPage(Me));
@@ -88,11 +99,62 @@ namespace TutorConnectApp
             WindowChrome.ApplyBlack(this); // fekete címsor és szegély
         }
 
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+
+            Realtime.Start();   // valós idejű értesítések (új üzenet, foglalás-változás)
+            ScheduleBadges();
+        }
+
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             Theme.Changed -= OnThemeChanged;
             ApiClient.CurrentUserChanged -= OnUserChanged;
+            Realtime.EventReceived -= OnRealtimeEvent;
+            AppEvents.BadgesStale -= ScheduleBadges;
+            badgeTimer.Dispose();
+            Realtime.Stop();
             base.OnFormClosed(e);
+        }
+
+        // ------------------------------------------------------------
+        // Jelvények: olvasatlan üzenetek és (oktatónál) függő foglalások
+        // ------------------------------------------------------------
+
+        private void OnRealtimeEvent(RealtimeEvent e)
+        {
+            if (e.Type is "new_message" or "message_retracted" or "message_edited" or "booking_update")
+                ScheduleBadges();
+        }
+
+        /// <summary>Rövid késleltetéssel frissíti a jelvényeket, így az egymás utáni események egyetlen lekérést adnak.</summary>
+        private void ScheduleBadges()
+        {
+            if (IsDisposed) return;
+            badgeTimer.Stop();
+            badgeTimer.Start();
+        }
+
+        private async Task RefreshBadgesAsync()
+        {
+            try
+            {
+                var conversations = await ApiClient.GetAsync<List<ConversationDto>>("/api/conversations");
+                if (IsDisposed) return;
+                navBar.SetBadge("chat", conversations.Sum(c => c.UnreadCount));
+
+                if (Me.Role == "TUTOR")
+                {
+                    var summary = await ApiClient.GetAsync<BookingSummaryDto>("/api/bookings/summary");
+                    if (IsDisposed) return;
+                    navBar.SetBadge("bookings", summary.Pending);
+                }
+            }
+            catch (ApiException)
+            {
+                // a jelvény nem kritikus: a következő eseménynél újra próbálkozik
+            }
         }
 
         private void NavBar_ItemClicked(object? sender, string key)

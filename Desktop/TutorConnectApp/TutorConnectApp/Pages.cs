@@ -365,8 +365,34 @@ namespace TutorConnectApp
             if (!string.IsNullOrWhiteSpace(tutor.Bio))
                 card.Controls.Add(Ui.Lbl(tutor.Bio!, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 4, 0, 4)));
 
-            card.Controls.Add(Ui.PrimaryBtn("Időpont foglalása", (_, _) => OpenBooking(tutor)));
+            var actions = Ui.Row();
+            actions.Controls.Add(Ui.PrimaryBtn("Időpont foglalása", (_, _) => OpenBooking(tutor)));
+            actions.Controls.Add(Ui.Btn("Naptár", Theme.CardBg, Theme.Text, (_, _) =>
+            {
+                CalendarPage.InitialTutorId = tutor.Id;
+                Navigate("calendar");
+            }, outline: true));
+            actions.Controls.Add(Ui.Btn("Üzenet", Theme.CardBg, Theme.Text, async (_, _) => await MessageAsync(tutor), outline: true));
+            card.Controls.Add(actions);
             return card;
+        }
+
+        /// <summary>Beszélgetést indít az oktatóval (vagy megnyitja a meglévőt), és átvált a Chatre.</summary>
+        private async Task MessageAsync(TutorDto tutor)
+        {
+            try
+            {
+                var conversation = await ApiClient.PostAsync<ConversationDto>("/api/conversations",
+                    new Dictionary<string, object?> { ["tutor_id"] = tutor.Id });
+                if (IsDisposed) return;
+
+                ChatPage.PendingConversationId = conversation.Id;
+                Navigate("chat");
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült megnyitni a beszélgetést", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private void OpenBooking(TutorDto tutor)
@@ -609,6 +635,7 @@ namespace TutorConnectApp
             try
             {
                 await ApiClient.PostAsync($"/api/bookings/{booking.Id}/{action}");
+                AppEvents.RaiseBadgesStale();
             }
             catch (ApiException ex)
             {
@@ -874,21 +901,6 @@ namespace TutorConnectApp
             table.Controls.Add(text, 0, 0);
             table.Controls.Add(toggle, 1, 0);
             return table;
-        }
-    }
-
-    // ================================================================
-    // CHAT: egyelőre csak jelzés (a weben ez egy nagy, valós idejű modul)
-    // ================================================================
-    internal class ChatPage : PageBase
-    {
-        public ChatPage() : base("Chat", "Beszélgess az oktatóiddal és a diákjaiddal.") { }
-
-        protected override Task BuildAsync()
-        {
-            ClearBody();
-            AddRow(Ui.MessageCard("A chat hamarosan elérhető lesz az alkalmazásban. Addig használd a weboldalon.", ""));
-            return Task.CompletedTask;
         }
     }
 }

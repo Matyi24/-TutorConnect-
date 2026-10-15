@@ -8,6 +8,10 @@ namespace TutorConnectApp
     internal abstract class PageBase : UserControl
     {
         protected readonly FlowLayoutPanel Body;
+
+        /// <summary>Nem görgetett oldalaknál (pl. Chat) a teljes oldalt kitöltő felület.</summary>
+        protected readonly Panel Surface = new() { Dock = DockStyle.Fill };
+
         private readonly SmoothScrollPanel scroll;
         private int lastFitWidth = -1;
         private int revealIndex;
@@ -18,7 +22,7 @@ namespace TutorConnectApp
         /// <summary>Az oldal kijelentkezést kér (a Profil oldal gombja).</summary>
         public event Action? LogoutRequested;
 
-        protected PageBase(string title, string subtitle)
+        protected PageBase(string title, string subtitle, bool scrollable = true)
         {
             Dock = DockStyle.Fill;
             BackColor = Theme.PageBg;
@@ -43,8 +47,18 @@ namespace TutorConnectApp
             header.Controls.Add(Ui.Lbl(title, 23F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 2)));
             header.Controls.Add(Ui.Lbl(subtitle, 10.5F, Theme.Muted, margin: Ui.Pad(4, 0, 0, 0)));
 
-            Controls.Add(scroll);  // a kitöltő (Fill) elem legyen elöl a sorrendben
-            Controls.Add(header);
+            Surface.BackColor = Theme.PageBg;
+
+            if (scrollable)
+            {
+                Controls.Add(scroll);  // a kitöltő (Fill) elem legyen elöl a sorrendben
+                Controls.Add(header);
+            }
+            else
+            {
+                // a saját elrendezésű oldalak (Chat) fejléc és görgetés nélkül, teljes felületet kapnak
+                Controls.Add(Surface);
+            }
         }
 
         protected void Navigate(string key) => NavigateRequested?.Invoke(key);
@@ -128,7 +142,7 @@ namespace TutorConnectApp
             }
         }
 
-        private void ShowError(string message)
+        protected virtual void ShowError(string message)
         {
             ClearBody();
             var card = new CardPanel();

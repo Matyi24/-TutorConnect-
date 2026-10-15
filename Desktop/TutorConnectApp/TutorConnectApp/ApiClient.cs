@@ -24,14 +24,27 @@ namespace TutorConnectApp
         public static readonly string BaseUrl =
             (Environment.GetEnvironmentVariable("TUTORCONNECT_URL") ?? "http://localhost:3000").TrimEnd('/');
 
-        private static readonly HttpClient Http = new(new HttpClientHandler
+        private static readonly CookieContainer CookieJar = new();
+
+        private static readonly HttpClientHandler Handler = new()
         {
-            CookieContainer = new CookieContainer(),
+            CookieContainer = CookieJar,
             AllowAutoRedirect = false // a szerver sikeres belépésnél /index-re irányít, ezt nem követjük
-        })
+        };
+
+        private static readonly HttpClient Http = new(Handler, disposeHandler: false)
         {
             Timeout = TimeSpan.FromSeconds(10)
         };
+
+        // hosszabb időkorlát a fájlok fel- és letöltéséhez (ugyanazzal a munkamenet-sütivel)
+        private static readonly HttpClient FileHttp = new(Handler, disposeHandler: false)
+        {
+            Timeout = TimeSpan.FromMinutes(2)
+        };
+
+        /// <summary>A munkamenet sütije (a valós idejű WebSocket-kapcsolat is ezt használja).</summary>
+        public static CookieContainer Cookies => CookieJar;
 
         private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
         {
@@ -161,18 +174,63 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>PATCH kérés (üzenet szerkesztése).</summary>
+        public static Task PatchAsync(string path, object payload) =>
+            SendAsync(HttpMethod.Patch, path, payload);
+
+        /// <summary>Fájl feltöltése űrlapként ("file" mező), opcionális szöveggel; a válasz JSON-ját visszaadja.</summary>
+        public static async Task<T> UploadAsync<T>(string path, string filePath, string? caption)
+        {
+            await using var stream = File.OpenRead(filePath);
+            using var form = new MultipartFormDataContent();
+            form.Add(new StreamContent(stream), "file", Path.GetFileName(filePath));
+            if (!string.IsNullOrWhiteSpace(caption))
+                form.Add(new StringContent(caption), "content");
+
+            return Deserialize<T>(await SendAsync(HttpMethod.Post, path, null, form, FileHttp));
+        }
+
+        /// <summary>Fájl letöltése a megadott helyre (üzenet csatolmánya).</summary>
+        public static async Task DownloadAsync(string path, string destinationFile)
+        {
+            try
+            {
+                using var response = await FileHttp.GetAsync(BaseUrl + path, HttpCompletionOption.ResponseHeadersRead);
+                if (!response.IsSuccessStatusCode)
+                    throw new ApiException(ReadError(await response.Content.ReadAsStringAsync(), response.StatusCode));
+
+                await using var source = await response.Content.ReadAsStreamAsync();
+                await using var target = File.Create(destinationFile);
+                await source.CopyToAsync(target);
+            }
+            catch (TaskCanceledException)
+            {
+                throw new ApiException(TimeoutMessage);
+            }
+            catch (HttpRequestException)
+            {
+                throw new ApiException(UnreachableMessage);
+            }
+            catch (IOException ex)
+            {
+                throw new ApiException("A fájl mentése nem sikerült: " + ex.Message);
+            }
+        }
+
         public static Task DeleteAsync(string path) =>
             SendAsync(HttpMethod.Delete, path, null);
 
-        private static async Task<string> SendAsync(HttpMethod method, string path, object? payload)
+        private static async Task<string> SendAsync(HttpMethod method, string path, object? payload, HttpContent? content = null, HttpClient? client = null)
         {
             using var request = new HttpRequestMessage(method, BaseUrl + path);
-            if (payload != null)
+            if (content != null)
+                request.Content = content;
+            else if (payload != null)
                 request.Content = JsonContent.Create(payload);
 
             try
             {
-                using var response = await Http.SendAsync(request);
+                using var response = await (client ?? Http).SendAsync(request);
                 string body = await response.Content.ReadAsStringAsync();
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
@@ -195,7 +253,7 @@ namespace TutorConnectApp
             }
         }
 
-        private static T Deserialize<T>(string body)
+        internal static T Deserialize<T>(string body)
         {
             try
             {
