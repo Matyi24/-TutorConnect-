@@ -47,6 +47,15 @@ namespace TutorConnectApp
         [JsonPropertyName("comment")] public string Comment { get; set; } = "";
     }
 
+    /// <summary>Egy értékelés az oktatóról (GET /api/tutors/:id/reviews).</summary>
+    internal class ReviewItemDto
+    {
+        [JsonPropertyName("rating")] public int Rating { get; set; }
+        [JsonPropertyName("comment")] public string? Comment { get; set; }
+        [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+        [JsonPropertyName("reviewer_name")] public string? ReviewerName { get; set; }
+    }
+
     internal class BookingDto
     {
         [JsonPropertyName("id")] public int Id { get; set; }

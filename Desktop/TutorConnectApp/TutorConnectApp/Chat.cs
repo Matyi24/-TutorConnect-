@@ -13,6 +13,116 @@ namespace TutorConnectApp
         public static void RaiseBadgesStale() => BadgesStale?.Invoke();
     }
 
+    /// <summary>
+    /// A beszélgetések közös, memóriabeli állapota: ebből számolódik a navbár olvasatlan-jelvénye is,
+    /// ezért a jelvényhez nem kell minden eseménynél újra letölteni a teljes listát.
+    /// A valós idejű események a főablakon keresztül frissítik; a Chat oldal a Changed eseményre rajzol újra.
+    /// </summary>
+    internal static class ChatState
+    {
+        private static List<ConversationDto> conversations = new();
+        private static int requestCounter;
+        private static int appliedRequest;
+
+        public static IReadOnlyList<ConversationDto> Conversations => conversations;
+
+        public static int TotalUnread => conversations.Sum(c => c.UnreadCount);
+
+        /// <summary>Igaz, ha a lista már legalább egyszer betöltődött.</summary>
+        public static bool Loaded { get; private set; }
+
+        /// <summary>Az utolsó sikeres betöltés ideje (Environment.TickCount64).</summary>
+        public static long LastLoadedTick { get; private set; }
+
+        /// <summary>A Chat oldalon jelenleg látható (megnyitott) beszélgetés – annak üzenetei nem számítanak olvasatlannak.</summary>
+        public static int? OpenConversationId { get; set; }
+
+        public static event Action? Changed;
+
+        public static ConversationDto? Find(int id) => conversations.FirstOrDefault(c => c.Id == id);
+
+        public static async Task LoadAsync()
+        {
+            int request = ++requestCounter;
+            var list = await ApiClient.GetAsync<List<ConversationDto>>("/api/conversations");
+
+            // ha közben egy újabb lekérés már megérkezett, ezt a régebbi választ eldobjuk
+            if (request < appliedRequest) return;
+            appliedRequest = request;
+
+            conversations = Sort(list);
+            Loaded = true;
+            LastLoadedTick = Environment.TickCount64;
+            Changed?.Invoke();
+        }
+
+        /// <summary>Kijelentkezéskor: a következő felhasználónak ne maradjon meg semmi.</summary>
+        public static void Clear()
+        {
+            requestCounter++;
+            appliedRequest = requestCounter;
+            conversations = new List<ConversationDto>();
+            Loaded = false;
+            OpenConversationId = null;
+            Changed?.Invoke();
+        }
+
+        private static List<ConversationDto> Sort(IEnumerable<ConversationDto> list) => list
+            .OrderByDescending(c => c.LastMessageTime ?? DateTime.MinValue)
+            .ThenByDescending(c => c.Id)
+            .ToList();
+
+        /// <summary>A beszélgetés előnézetét és idejét frissíti, és előre teszi a listában.</summary>
+        public static void Bump(ConversationDto conversation, string preview, DateTime time)
+        {
+            conversation.LastMessage = preview;
+            conversation.LastMessageTime = time;
+            conversation.LastMessageRetractedValue = 0;
+            conversations = Sort(conversations);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Csak az előnézet szövegét módosítja (szerkesztés / visszavonás után), a sorrend nem változik.</summary>
+        public static void UpdatePreview(ConversationDto conversation, string preview, bool retracted)
+        {
+            conversation.LastMessage = preview;
+            conversation.LastMessageRetractedValue = retracted ? 1 : 0;
+            Changed?.Invoke();
+        }
+
+        public static void MarkRead(ConversationDto conversation)
+        {
+            if (conversation.UnreadCount == 0) return;
+            conversation.UnreadCount = 0;
+            Changed?.Invoke();
+        }
+
+        /// <summary>Új beérkező üzenet: olvasatlan számláló és előnézet. Ismeretlen beszélgetésnél letölti a listát.</summary>
+        public static async Task OnNewMessageAsync(MessageDto message, int myId)
+        {
+            var conversation = Find(message.ConversationId);
+            if (conversation == null)
+            {
+                await LoadAsync(); // új beszélgetés (az oktatónál az első üzenettel jelenik meg)
+                return;
+            }
+
+            if (message.SenderId != myId && OpenConversationId != conversation.Id)
+                conversation.UnreadCount++;
+            Bump(conversation, message.Content, message.CreatedAt);
+        }
+
+        /// <summary>
+        /// Szerkesztés / visszavonás esemény. A megnyitott beszélgetést a Chat oldal helyben frissíti,
+        /// minden másnál a lista újratöltése a legegyszerűbb (ritka esemény).
+        /// </summary>
+        public static async Task OnMessageChangedAsync(int conversationId)
+        {
+            if (OpenConversationId == conversationId) return;
+            await LoadAsync();
+        }
+    }
+
     // ================================================================
     // CHAT: kétpaneles felület (beszélgetések + üzenetek), valós idejű frissítéssel
     // ================================================================
@@ -37,13 +147,29 @@ namespace TutorConnectApp
         private readonly HoverButton sendButton;
         private readonly ComposerBox composer;
         private readonly System.Windows.Forms.Timer statusTimer = new() { Interval = 3000 };
+        private readonly System.Windows.Forms.Timer receiptTimer = new() { Interval = 8000 };
+        private bool receiptsBusy;
 
-        private List<ConversationDto> conversations = new();
+        /// <summary>Az el nem küldött üzenetek beszélgetésenként: oldalváltás vagy témaváltás után sem vesznek el.</summary>
+        private static readonly Dictionary<int, string> Drafts = new();
+
+        /// <summary>Üzenetek száma, amennyit egyszerre megjelenítünk (a régebbiek gombra töltődnek be).</summary>
+        private const int MessagePageSize = 60;
+
         private List<MessageDto> messages = new();
+        private int shownFrom;
+        private int? restoreConversationId;
         private ConversationDto? current;
         private bool showThread;
         private bool busy;
         private long lastTypingSent;
+        private bool restoringDraft;
+
+        /// <summary>
+        /// A saját szerkesztésről a szerver nekünk is küld eseményt; ezt nem kell újratöltéssel kezelni,
+        /// mert a módosítást már helyben alkalmaztuk. Üzenetazonosító → a szerkesztés időpontja.
+        /// </summary>
+        private readonly Dictionary<int, long> selfEdits = new();
         private int lastMessageWidth = -1;
 
         public ChatPage(UserInfo me) : base("Chat", "", scrollable: false)
@@ -131,7 +257,12 @@ namespace TutorConnectApp
             attachButton.Size = Ui.Sz(50, 50);
             composer = new ComposerBox("Írj üzenetet...");
             composer.SendRequested += async (_, _) => await SendAsync();
-            composer.TextEdited += (_, _) => NotifyTyping();
+            composer.TextEdited += (_, _) =>
+            {
+                if (restoringDraft) return;
+                SaveDraft();
+                NotifyTyping();
+            };
             sendButton = Ui.PrimaryBtn("Küldés", async (_, _) => await SendAsync());
             sendButton.AutoSize = false;
             sendButton.Size = Ui.Sz(104, 50);
@@ -156,8 +287,36 @@ namespace TutorConnectApp
                 headerStatus.Text = "";
             };
 
+            // a szerver nem küld eseményt az olvasásról, ezért amíg van olvasatlan saját üzenetünk, időnként rákérdezünk
+            receiptTimer.Tick += async (_, _) => await RefreshReceiptsAsync();
+            receiptTimer.Start();
+
             Realtime.EventReceived += OnRealtime;
+            ChatState.Changed += OnChatStateChanged;
             UpdateLayout();
+
+            if (ChatState.Loaded) RenderList(); // a már ismert beszélgetések azonnal látszanak
+        }
+
+        // ------------------------------------------------------------
+        // Állapot átvitele újraépítéskor (témaváltás, másik monitor)
+        // ------------------------------------------------------------
+
+        public override object? CaptureState() => current?.Id;
+
+        public override void RestoreState(object? state)
+        {
+            if (state is int id) restoreConversationId = id;
+        }
+
+        private void OnChatStateChanged()
+        {
+            if (IsDisposed) return;
+
+            // a lista cseréjekor új objektumok jönnek létre: a megnyitott beszélgetés hivatkozását frissítjük
+            if (current != null)
+                current = ChatState.Find(current.Id) ?? current;
+            RenderList();
         }
 
         // ------------------------------------------------------------
@@ -184,8 +343,14 @@ namespace TutorConnectApp
                 threadPanel.Visible = showThread;
                 backButton.Visible = current != null;
             }
+            SyncOpenState();
             LayoutHeader();
         }
+
+        /// <summary>Igaz, ha egy beszélgetés üzenetei éppen látszanak a képernyőn.</summary>
+        private bool ThreadVisible => current != null && (Wide || showThread);
+
+        private void SyncOpenState() => ChatState.OpenConversationId = ThreadVisible ? current!.Id : null;
 
         private void LayoutHeader()
         {
@@ -223,15 +388,16 @@ namespace TutorConnectApp
         protected override async Task BuildAsync()
         {
             ClearBody();
-            await LoadConversationsAsync();
+            await ChatState.LoadAsync();
             if (IsDisposed) return;
 
-            if (PendingConversationId is int id)
-            {
-                PendingConversationId = null;
-                var target = conversations.FirstOrDefault(c => c.Id == id);
-                if (target != null) await SelectAsync(target);
-            }
+            // elsőbbség: az Oktatók oldalról kért beszélgetés, utána az újraépítés előtt nyitott
+            int? wanted = PendingConversationId ?? restoreConversationId;
+            PendingConversationId = null;
+            restoreConversationId = null;
+
+            if (wanted is int id && ChatState.Find(id) is { } target)
+                await SelectAsync(target);
         }
 
         protected override void ShowError(string message)
@@ -240,19 +406,6 @@ namespace TutorConnectApp
             if (listScroll.Content.Controls.Contains(listMessage)) listScroll.Content.Controls.Remove(listMessage);
             Ui.Reset(listScroll.Content);
             listScroll.Content.Controls.Add(listMessage);
-        }
-
-        private async Task LoadConversationsAsync()
-        {
-            var list = await ApiClient.GetAsync<List<ConversationDto>>("/api/conversations");
-            if (IsDisposed) return;
-
-            conversations = list
-                .OrderByDescending(c => c.LastMessageTime ?? DateTime.MinValue)
-                .ThenByDescending(c => c.Id)
-                .ToList();
-            RenderList();
-            AppEvents.RaiseBadgesStale();
         }
 
         private void RenderList()
@@ -264,6 +417,7 @@ namespace TutorConnectApp
             if (content.Controls.Contains(listMessage)) content.Controls.Remove(listMessage);
             Ui.Reset(content);
 
+            var conversations = ChatState.Conversations;
             if (conversations.Count == 0)
             {
                 listMessage.Text = me.Role == "STUDENT"
@@ -312,14 +466,19 @@ namespace TutorConnectApp
             UpdateLayout();
             LayoutComposer();
 
-            await ReloadMessagesAsync();
+            // az el nem küldött szöveg visszatöltése (a beállítás közben nem számít szerkesztésnek)
+            restoringDraft = true;
+            composer.SetValue(Drafts.TryGetValue(conversation.Id, out var draft) ? draft : "");
+            restoringDraft = false;
+
+            await ReloadMessagesAsync(scrollToEnd: true, firstLoad: true);
             if (IsDisposed || current?.Id != conversation.Id) return;
 
             composer.FocusInput();
             await MarkReadAsync();
         }
 
-        private async Task ReloadMessagesAsync()
+        private async Task ReloadMessagesAsync(bool scrollToEnd, bool firstLoad = false)
         {
             var open = current;
             if (open == null) return;
@@ -330,7 +489,9 @@ namespace TutorConnectApp
                 if (IsDisposed || current?.Id != open.Id) return;
 
                 messages = list;
-                RenderMessages();
+                // új beszélgetésnél az utolsó oldalnyi üzenet látszik, újratöltéskor a már megnyitott régebbiek is
+                shownFrom = firstLoad ? Math.Max(0, messages.Count - MessagePageSize) : Math.Min(shownFrom, Math.Max(0, messages.Count - MessagePageSize));
+                RenderMessages(scrollToEnd);
             }
             catch (ApiException ex)
             {
@@ -342,21 +503,49 @@ namespace TutorConnectApp
         // Üzenetek megjelenítése
         // ------------------------------------------------------------
 
-        private void RenderMessages()
+        private void RenderMessages(bool scrollToEnd)
         {
             var content = messageScroll.Content;
             content.SuspendLayout();
             Ui.Reset(content);
 
-            DateTime? lastDay = null;
-            foreach (var message in messages)
+            // régebbi üzenetek: csak kérésre jelennek meg, így hosszú beszélgetésnél sem lassul a felület
+            if (shownFrom > 0)
             {
-                AddMessageControl(message, ref lastDay);
+                var older = Ui.Btn($"Korábbi üzenetek ({shownFrom})", Theme.CardBg, Theme.Text, (_, _) => BeginInvoke(new Action(ShowOlderMessages)), outline: true);
+                older.Tag = "older";
+                content.Controls.Add(older);
             }
+
+            DateTime? lastDay = null;
+            for (int i = shownFrom; i < messages.Count; i++)
+                AddMessageControl(messages[i], ref lastDay);
 
             content.ResumeLayout(true);
             FitMessages();
-            ScrollToEnd();
+            if (scrollToEnd) ScrollToEnd();
+        }
+
+        /// <summary>Még egy oldalnyi régebbi üzenet; az olvasott rész a képernyőn ugyanott marad.</summary>
+        private void ShowOlderMessages()
+        {
+            double offset = messageScroll.Offset;
+            int oldHeight = messageScroll.Content.Height;
+
+            shownFrom = Math.Max(0, shownFrom - MessagePageSize);
+            RenderMessages(scrollToEnd: false);
+
+            messageScroll.JumpTo(offset + (messageScroll.Content.Height - oldHeight));
+        }
+
+        private MessageBubble CreateBubble(MessageDto message)
+        {
+            var bubble = new MessageBubble(message, message.SenderId == me.Id);
+            bubble.EditRequested += async b => await EditAsync(b.Message);
+            bubble.RetractRequested += async b => await RetractAsync(b.Message);
+            bubble.AttachmentRequested += async b => await DownloadAsync(b.Message, open: false);
+            bubble.AttachmentOpenRequested += async b => await DownloadAsync(b.Message, open: true);
+            return bubble;
         }
 
         private void AddMessageControl(MessageDto message, ref DateTime? lastDay)
@@ -368,11 +557,34 @@ namespace TutorConnectApp
                 lastDay = day;
             }
 
-            var bubble = new MessageBubble(message, message.SenderId == me.Id);
-            bubble.EditRequested += async b => await EditAsync(b.Message);
-            bubble.RetractRequested += async b => await RetractAsync(b.Message);
-            bubble.AttachmentRequested += async b => await DownloadAsync(b.Message);
-            messageScroll.Content.Controls.Add(bubble);
+            messageScroll.Content.Controls.Add(CreateBubble(message));
+        }
+
+        /// <summary>Egyetlen üzenet buborékját cseréli le (szerkesztés / visszavonás után), az egész lista újraépítése nélkül.</summary>
+        private void ReplaceBubble(MessageDto message)
+        {
+            var content = messageScroll.Content;
+            var old = content.Controls.OfType<MessageBubble>().FirstOrDefault(b => b.Message.Id == message.Id);
+            if (old == null) return;
+
+            int index = content.Controls.GetChildIndex(old);
+            var replacement = CreateBubble(message);
+
+            content.SuspendLayout();
+            content.Controls.Add(replacement);
+            content.Controls.SetChildIndex(replacement, index);
+            content.Controls.Remove(old);
+            old.Dispose();
+            replacement.SetRowWidth(Math.Max(content.ClientSize.Width - content.Padding.Horizontal, Ui.S(160)));
+            content.ResumeLayout(true);
+        }
+
+        /// <summary>A beszélgetés előnézetét igazítja, ha a módosított üzenet az utolsó volt.</summary>
+        private void RefreshPreviewIfLast(MessageDto message)
+        {
+            var open = current;
+            if (open == null || messages.Count == 0 || messages[^1].Id != message.Id) return;
+            ChatState.UpdatePreview(open, message.IsRetracted ? "" : message.Content, message.IsRetracted);
         }
 
         private void AppendMessage(MessageDto message)
@@ -401,6 +613,9 @@ namespace TutorConnectApp
                         break;
                     case DaySeparator separator:
                         separator.Width = width;
+                        break;
+                    case HoverButton { Tag: "older" } older:
+                        older.Margin = new Padding(Math.Max((width - older.Width) / 2, 0), Ui.S(6), 0, Ui.S(10));
                         break;
                 }
             }
@@ -443,11 +658,11 @@ namespace TutorConnectApp
                 if (IsDisposed) return;
 
                 if (current?.Id == open.Id) AppendMessage(message);
-                BumpConversation(open, message.Content, message.CreatedAt);
+                ChatState.Bump(open, message.Content, message.CreatedAt);
             }
             catch (ApiException ex)
             {
-                composer.SetValue(text); // hiba esetén nem vész el a szöveg
+                if (!IsDisposed && current?.Id == open.Id) composer.SetValue(text); // hiba esetén nem vész el a szöveg
                 ShowStatus(ex.Message, error: true);
             }
             finally
@@ -476,9 +691,12 @@ namespace TutorConnectApp
                 var message = await ApiClient.UploadAsync<MessageDto>($"/api/conversations/{open.Id}/attachments", dialog.FileName, caption);
                 if (IsDisposed) return;
 
-                composer.SetValue("");
-                if (current?.Id == open.Id) AppendMessage(message);
-                BumpConversation(open, message.Content, message.CreatedAt);
+                if (current?.Id == open.Id)
+                {
+                    composer.SetValue("");
+                    AppendMessage(message);
+                }
+                ChatState.Bump(open, message.Content, message.CreatedAt);
                 ShowStatus("", error: false);
             }
             catch (ApiException ex)
@@ -491,30 +709,72 @@ namespace TutorConnectApp
             }
         }
 
-        private async Task DownloadAsync(MessageDto message)
+        /// <summary>Kiterjesztések, amelyek megnyitása nem futtathat kódot (makró, szkript) – ezeket kérdés nélkül megnyitjuk.</summary>
+        private static readonly HashSet<string> SafeToOpen = new(StringComparer.OrdinalIgnoreCase)
+            { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".txt" };
+
+        /// <summary>Mentés másként (open = false), vagy ideiglenes mappába töltés és megnyitás a "Megnyitás" gombra.</summary>
+        private async Task DownloadAsync(MessageDto message, bool open)
         {
-            using var dialog = new SaveFileDialog { FileName = message.AttachmentName ?? "fajl", Title = "Csatolmány mentése" };
-            if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+            string name = SafeFileName(message.AttachmentName);
+            string path;
+
+            if (open)
+            {
+                // az Office-fájlok makrót tartalmazhatnak: megnyitás előtt rákérdezünk
+                if (!SafeToOpen.Contains(Path.GetExtension(name)) &&
+                    MessageBox.Show(FindForm(),
+                        "Ezt a fájlt a számítógépeden lévő program nyitja meg. Csak akkor folytasd, ha ismered és megbízol a feladóban.\n\nMegnyitod?",
+                        "Fájl megnyitása", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                    return;
+
+                string folder = Path.Combine(Path.GetTempPath(), "TutorConnect", message.Id.ToString());
+                Directory.CreateDirectory(folder);
+                path = Path.Combine(folder, name);
+            }
+            else
+            {
+                using var dialog = new SaveFileDialog { FileName = name, Title = "Csatolmány mentése" };
+                if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+                path = dialog.FileName;
+            }
 
             try
             {
                 ShowStatus("Letöltés...", error: false, autoHide: false);
-                await ApiClient.DownloadAsync($"/api/messages/{message.Id}/attachment", dialog.FileName);
-                ShowStatus("A fájl elmentve.", error: false);
+                await ApiClient.DownloadAsync($"/api/messages/{message.Id}/attachment", path);
+                ShowStatus(open ? "" : "A fájl elmentve.", error: false);
 
-                try
+                if (open)
                 {
-                    Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
-                }
-                catch (Win32Exception)
-                {
-                    // nincs hozzá társított program: a fájl így is elmentve marad
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                    }
+                    catch (Win32Exception)
+                    {
+                        ShowStatus("Nincs program, ami meg tudná nyitni ezt a fájlt. Használd a mentést.", error: true);
+                    }
                 }
             }
             catch (ApiException ex)
             {
                 ShowStatus(ex.Message, error: true);
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ShowStatus("A fájl mentése nem sikerült: " + ex.Message, error: true);
+            }
+        }
+
+        /// <summary>A szervertől kapott fájlnévből eltávolítja az útvonalat és a tiltott karaktereket.</summary>
+        private static string SafeFileName(string? raw)
+        {
+            string name = Path.GetFileName((raw ?? "").Replace('/', '\\'));
+            foreach (char invalid in Path.GetInvalidFileNameChars())
+                name = name.Replace(invalid, '_');
+            name = name.Trim().TrimEnd('.');
+            return name.Length == 0 ? "fajl" : name;
         }
 
         private async Task EditAsync(MessageDto message)
@@ -524,12 +784,24 @@ namespace TutorConnectApp
 
             try
             {
+                // az esemény a válasz előtt is megérkezhet, ezért a kérés előtt jegyezzük fel
+                selfEdits[message.Id] = Environment.TickCount64;
                 await ApiClient.PatchAsync($"/api/messages/{message.Id}", new Dictionary<string, object?> { ["content"] = dialog.NewText });
-                await ReloadMessagesAsync();
-                await LoadConversationsAsync();
+                if (IsDisposed) return;
+
+                // a módosítást helyben alkalmazzuk, nincs szükség az üzenetek újratöltésére
+                var local = messages.FirstOrDefault(m => m.Id == message.Id);
+                if (local != null)
+                {
+                    local.Content = dialog.NewText;
+                    local.EditedAt = DateTime.UtcNow;
+                    ReplaceBubble(local);
+                    RefreshPreviewIfLast(local);
+                }
             }
             catch (ApiException ex)
             {
+                selfEdits.Remove(message.Id);
                 ShowStatus(ex.Message, error: true);
             }
         }
@@ -543,8 +815,8 @@ namespace TutorConnectApp
             try
             {
                 await ApiClient.DeleteAsync($"/api/messages/{message.Id}");
-                await ReloadMessagesAsync();
-                await LoadConversationsAsync();
+                if (IsDisposed) return;
+                ApplyRetracted(message.Id);
             }
             catch (ApiException ex)
             {
@@ -552,42 +824,39 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>Visszavont üzenet helyi jelölése (saját visszavonás után, illetve a másik fél eseményére).</summary>
+        private void ApplyRetracted(int messageId)
+        {
+            var local = messages.FirstOrDefault(m => m.Id == messageId);
+            if (local == null || local.IsRetracted) return;
+
+            local.DeletedAt = DateTime.UtcNow;
+            ReplaceBubble(local);
+            RefreshPreviewIfLast(local);
+        }
+
         private async Task MarkReadAsync()
         {
             var open = current;
             if (open == null || open.UnreadCount == 0) return;
 
-            open.UnreadCount = 0;
-            RenderList();
+            ChatState.MarkRead(open); // a lista és a navbár jelvénye azonnal frissül
             try
             {
                 await ApiClient.PostAsync($"/api/conversations/{open.Id}/read");
-                AppEvents.RaiseBadgesStale();
             }
             catch (ApiException)
             {
-                // nem kritikus: a következő frissítéskor újra próbálkozik
+                // nem kritikus: a következő betöltéskor a szerver állapota érvényesül
             }
-        }
-
-        /// <summary>A beszélgetés előnézetét és idejét frissíti, és előre teszi a listában.</summary>
-        private void BumpConversation(ConversationDto conversation, string preview, DateTime time)
-        {
-            conversation.LastMessage = preview;
-            conversation.LastMessageTime = time;
-            conversation.LastMessageRetractedValue = 0;
-
-            conversations = conversations
-                .OrderByDescending(c => c.LastMessageTime ?? DateTime.MinValue)
-                .ThenByDescending(c => c.Id)
-                .ToList();
-            RenderList();
         }
 
         // ------------------------------------------------------------
         // Valós idejű események
         // ------------------------------------------------------------
 
+        // A beszélgetések listáját és az olvasatlan számlálót a ChatState frissíti (a főablak hívja);
+        // itt csak a megnyitott beszélgetés üzenetei változnak.
         private async void OnRealtime(RealtimeEvent e)
         {
             if (IsDisposed) return;
@@ -601,9 +870,21 @@ namespace TutorConnectApp
                         break;
 
                     case "message_retracted":
+                        if (current?.Id == e.ConversationId) ApplyRetracted(e.MessageId);
+                        break;
+
                     case "message_edited":
-                        if (current?.Id == e.ConversationId) await ReloadMessagesAsync();
-                        await LoadConversationsAsync();
+                        // az esemény nem hozza az új szöveget, ezért a megnyitott beszélgetést újratöltjük
+                        if (selfEdits.Remove(e.MessageId, out long editedAt) && Environment.TickCount64 - editedAt < 10_000)
+                            break; // a saját szerkesztésünk visszhangja: már helyben alkalmaztuk
+
+                        if (current?.Id == e.ConversationId)
+                        {
+                            bool stick = messageScroll.IsNearEnd();
+                            await ReloadMessagesAsync(stick);
+                            if (!IsDisposed && messages.Count > 0)
+                                RefreshPreviewIfLast(messages[^1]);
+                        }
                         break;
 
                     case "typing":
@@ -619,25 +900,51 @@ namespace TutorConnectApp
 
         private async Task OnNewMessageAsync(MessageDto message)
         {
-            var conversation = conversations.FirstOrDefault(c => c.Id == message.ConversationId);
+            if (current?.Id != message.ConversationId) return;
 
-            if (current?.Id == message.ConversationId)
-            {
-                AppendMessage(message);
-                if (conversation != null) BumpConversation(conversation, message.Content, message.CreatedAt);
+            AppendMessage(message);
+
+            // csak akkor olvasott, ha a beszélgetés tényleg látszik (keskeny ablaknál a lista mögött nem)
+            if (ThreadVisible)
                 await ApiClient.PostAsync($"/api/conversations/{message.ConversationId}/read");
-                AppEvents.RaiseBadgesStale();
-            }
-            else if (conversation != null)
+        }
+
+        /// <summary>Frissíti az olvasottsági jelzést (✓ → ✓✓) a saját, még olvasatlan üzeneteknél.</summary>
+        private async Task RefreshReceiptsAsync()
+        {
+            var open = current;
+            if (open == null || !ThreadVisible || receiptsBusy || IsDisposed || Form.ActiveForm == null) return;
+            if (!messages.Any(m => m.SenderId == me.Id && !m.IsRead && !m.IsRetracted)) return;
+
+            receiptsBusy = true;
+            try
             {
-                conversation.UnreadCount++;
-                BumpConversation(conversation, message.Content, message.CreatedAt);
-                AppEvents.RaiseBadgesStale();
+                var fresh = await ApiClient.GetAsync<List<MessageDto>>($"/api/conversations/{open.Id}/messages");
+                if (IsDisposed || current?.Id != open.Id) return;
+
+                var readIds = fresh.Where(m => m.IsRead).Select(m => m.Id).ToHashSet();
+                foreach (var local in messages.Where(m => m.SenderId == me.Id && !m.IsRead && readIds.Contains(m.Id)).ToList())
+                {
+                    local.IsReadValue = 1;
+                    ReplaceBubble(local);
+                }
             }
-            else
+            catch (ApiException)
             {
-                await LoadConversationsAsync(); // új beszélgetés (az oktatónál az első üzenettel jelenik meg)
+                // nem kritikus: a következő ellenőrzéskor újra próbálkozik
             }
+            finally
+            {
+                receiptsBusy = false;
+            }
+        }
+
+        private void SaveDraft()
+        {
+            if (current == null) return;
+            string text = composer.Value;
+            if (text.Length == 0) Drafts.Remove(current.Id);
+            else Drafts[current.Id] = text;
         }
 
         private void NotifyTyping()
@@ -663,7 +970,10 @@ namespace TutorConnectApp
             if (disposing)
             {
                 Realtime.EventReceived -= OnRealtime;
+                ChatState.Changed -= OnChatStateChanged;
+                ChatState.OpenConversationId = null;
                 statusTimer.Dispose();
+                receiptTimer.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -839,12 +1149,14 @@ namespace TutorConnectApp
         private Rectangle bubble;
         private Rectangle textRect;
         private Rectangle attachRect;
+        private Rectangle openRect;
         private Rectangle metaRect;
         private string metaText = "";
 
         public event Action<MessageBubble>? EditRequested;
         public event Action<MessageBubble>? RetractRequested;
         public event Action<MessageBubble>? AttachmentRequested;
+        public event Action<MessageBubble>? AttachmentOpenRequested;
 
         public MessageBubble(MessageDto message, bool mine)
         {
@@ -883,7 +1195,8 @@ namespace TutorConnectApp
             if (hasAttachment)
             {
                 var nameSize = TextRenderer.MeasureText(Message.AttachmentName ?? "", Ui.MakeFont(9.5F, FontStyle.Bold));
-                attachWidth = Math.Min(maxContent, Math.Max(Ui.S(190), nameSize.Width + Ui.S(64)));
+                // a név mellett a "Megnyitás" gomb is elfér
+                attachWidth = Math.Min(maxContent, Math.Max(Ui.S(280), nameSize.Width + Ui.S(64) + Ui.S(100)));
             }
 
             int contentWidth = Math.Max(Math.Max(textSize.Width, attachWidth), metaSize.Width);
@@ -905,11 +1218,14 @@ namespace TutorConnectApp
             {
                 cursor += hasText ? Ui.S(8) : 0;
                 attachRect = new Rectangle(bubble.X + padX, cursor, contentWidth, attachHeight);
+                int openWidth = Ui.S(88);
+                openRect = new Rectangle(attachRect.Right - openWidth - Ui.S(6), attachRect.Y + Ui.S(7), openWidth, attachRect.Height - Ui.S(14));
                 cursor += attachHeight;
             }
             else
             {
                 attachRect = Rectangle.Empty;
+                openRect = Rectangle.Empty;
             }
             metaRect = new Rectangle(bubble.X + padX, cursor + Ui.S(4), contentWidth, metaSize.Height);
 
@@ -965,7 +1281,16 @@ namespace TutorConnectApp
             using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 g.DrawString("", Ui.IconFont(14F), iconBrush, icon, center);
 
-            var nameRect = new Rectangle(icon.Right + Ui.S(4), attachRect.Y + Ui.S(5), attachRect.Right - icon.Right - Ui.S(12), Ui.S(20));
+            // jobb oldalt a "Megnyitás" gomb; a név a maradék helyen jelenik meg
+            using (var openPath = Ui.RoundedPath(openRect, openRect.Height / 2))
+            {
+                using var openFill = new SolidBrush(mine ? Color.FromArgb(70, Color.White) : Theme.ChipBg);
+                g.FillPath(openFill, openPath);
+            }
+            TextRenderer.DrawText(g, "Megnyitás", Ui.MakeFont(8.5F, FontStyle.Bold), openRect, mine ? Color.White : Theme.ChipFg,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+
+            var nameRect = new Rectangle(icon.Right + Ui.S(4), attachRect.Y + Ui.S(5), Math.Max(openRect.Left - icon.Right - Ui.S(10), 0), Ui.S(20));
             TextRenderer.DrawText(g, Message.AttachmentName ?? "fájl", Ui.MakeFont(9.5F, FontStyle.Bold), nameRect, textColor,
                 TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
@@ -992,7 +1317,12 @@ namespace TutorConnectApp
         protected override void OnMouseClick(MouseEventArgs e)
         {
             base.OnMouseClick(e);
-            if (e.Button == MouseButtons.Left && !attachRect.IsEmpty && attachRect.Contains(e.Location))
+            if (e.Button != MouseButtons.Left || attachRect.IsEmpty || !attachRect.Contains(e.Location)) return;
+
+            // a "Megnyitás" gomb megnyitja, a kártya többi része csak elmenti a fájlt
+            if (openRect.Contains(e.Location))
+                AttachmentOpenRequested?.Invoke(this);
+            else
                 AttachmentRequested?.Invoke(this);
         }
 

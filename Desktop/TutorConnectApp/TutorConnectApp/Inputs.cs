@@ -4,6 +4,18 @@ using System.Drawing.Text;
 namespace TutorConnectApp
 {
     /// <summary>
+    /// Dupla pufferelt, függőlegesen egymás alá rendező panel. A görgetett tartalom ebből áll: a pufferelés nélkül
+    /// minden görgetési lépésnél villogna és szakadozna a kép.
+    /// </summary>
+    internal sealed class BufferedFlowPanel : FlowLayoutPanel
+    {
+        public BufferedFlowPanel()
+        {
+            DoubleBuffered = true;
+        }
+    }
+
+    /// <summary>
     /// Sima (animált) görgetésű tartalom-panel vékony, modern görgetősávval.
     /// A tartalmat a Content panelbe kell tenni; a szélessége a panelhez igazodik (a jobb oldalon fix sáv
     /// marad a görgetősávnak, így a tartalom nem ugrál). Az egérgörgő a panel fölött mindig működik.
@@ -29,7 +41,7 @@ namespace TutorConnectApp
             DoubleBuffered = true;
             ResizeRedraw = true;
 
-            Content = new FlowLayoutPanel
+            Content = new BufferedFlowPanel
             {
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
@@ -93,6 +105,18 @@ namespace TutorConnectApp
 
         /// <summary>Igaz, ha a nézet a tartalom alja közelében van (új elemnél érdemes legörgetni).</summary>
         public bool IsNearEnd() => MaxOffset - current < Ui.S(160);
+
+        /// <summary>A jelenlegi görgetési pozíció (képpont).</summary>
+        public double Offset => current;
+
+        /// <summary>Animáció nélkül a megadott pozícióra ugrik (pl. régebbi elemek beszúrása után).</summary>
+        public void JumpTo(double offset)
+        {
+            timer.Stop();
+            target = Math.Clamp(offset, 0, MaxOffset);
+            current = target;
+            ApplyOffset();
+        }
 
         private void Step()
         {

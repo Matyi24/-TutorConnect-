@@ -40,9 +40,9 @@ namespace TutorConnectApp
             };
             itemsPanel.Resize += (_, _) => ResizeButtons();
 
-            header = new BrandHeader { Dock = DockStyle.Top, Height = Ui.S(112) };
+            header = new BrandHeader { Dock = DockStyle.Top, Height = Ui.S(108) };
 
-            userChip = new UserChip { Dock = DockStyle.Bottom, Height = Ui.S(92) };
+            userChip = new UserChip { Dock = DockStyle.Bottom, Height = Ui.S(96) };
             userChip.Click += (_, _) => Select("profile"); // a felhasználóra kattintva a profil nyílik meg
 
             Controls.Add(itemsPanel); // a kitöltő (Fill) elem legyen elöl a sorrendben
@@ -137,8 +137,8 @@ namespace TutorConnectApp
         /// <summary>Másik DPI-jű monitorra húzáskor: a rögzített méretek újraszámolása.</summary>
         public void ApplyScale()
         {
-            header.Height = Ui.S(112);
-            userChip.Height = Ui.S(92);
+            header.Height = Ui.S(108);
+            userChip.Height = Ui.S(96);
             itemsPanel.Padding = Ui.Pad(14, 14, 14, 0);
             foreach (var button in buttons.Values)
             {
@@ -178,7 +178,7 @@ namespace TutorConnectApp
             base.Dispose(disposing);
         }
 
-        /// <summary>Logó (kör, benne T betű) és az alkalmazás neve.</summary>
+        /// <summary>Logó (lekerekített csempe, benne T betű) és a kétsúlyú "TutorConnect" felirat.</summary>
         private class BrandHeader : Control
         {
             private bool collapsed;
@@ -201,46 +201,53 @@ namespace TutorConnectApp
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-                // összecsukva a logó középen, egyébként balra
-                int circleSize = Ui.S(52);
-                int circleX = collapsed ? (Width - circleSize) / 2 : Ui.S(26);
-                var circle = new Rectangle(circleX, (Height - circleSize) / 2, circleSize, circleSize);
-                using (var fill = new SolidBrush(Theme.White))
-                    g.FillEllipse(fill, circle);
+                // lekerekített csempe színátmenettel; összecsukva középen, egyébként balra
+                int tileSize = Ui.S(50);
+                int tileX = collapsed ? (Width - tileSize) / 2 : Ui.S(22);
+                var tile = new Rectangle(tileX, (Height - tileSize) / 2, tileSize, tileSize);
 
-                var logoFont = Ui.MakeFont(21F, FontStyle.Bold);
+                using (var shadowPath = Ui.RoundedPath(new Rectangle(tile.X, tile.Y + Ui.S(3), tile.Width, tile.Height), Ui.S(16)))
+                using (var shadow = new SolidBrush(Color.FromArgb(45, Color.Black)))
+                    g.FillPath(shadow, shadowPath);
+
+                using (var path = Ui.RoundedPath(tile, Ui.S(16)))
+                using (var fill = new LinearGradientBrush(tile, Theme.White, Anim.Lerp(Theme.White, Theme.MainBlueDark, 0.28), 60F))
+                    g.FillPath(fill, path);
+
                 using (var logoBrush = new SolidBrush(Theme.MainBlueDark))
                 using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
-                    g.DrawString("T", logoFont, logoBrush, circle, center);
+                    g.DrawString("T", Ui.MakeFont(20F, FontStyle.Bold), logoBrush, tile, center);
 
-                if (!collapsed)
+                if (collapsed) return;
+
+                // A felirat soha nem törik új sorba: ha nem fér el, a betűméret csökken.
+                int textX = tile.Right + Ui.S(14);
+                int textWidth = Math.Max(Width - textX - Ui.S(14), 0);
+                float size = 16F;
+                var light = Ui.MakeFont(size);
+                var bold = Ui.MakeFont(size, FontStyle.Bold);
+                while (size > 9F && Measure("Tutor", light) + Measure("Connect", bold) > textWidth)
                 {
-                    // A cím soha nem törik új sorba: ha nem fér el, a betűméret csökken.
-                    var textArea = new Rectangle(Ui.S(92), 0, Math.Max(Width - Ui.S(92) - Ui.S(14), 0), Height);
-                    float size = 17F;
-                    var titleFont = Ui.MakeFont(size, FontStyle.Bold);
-                    while (size > 9F && TextRenderer.MeasureText("TutorConnect", titleFont).Width > textArea.Width)
-                    {
-                        size -= 0.5F;
-                        titleFont = Ui.MakeFont(size, FontStyle.Bold);
-                    }
-
-                    using (var format = new StringFormat(StringFormatFlags.NoWrap)
-                    {
-                        LineAlignment = StringAlignment.Center,
-                        Trimming = StringTrimming.EllipsisCharacter
-                    })
-                    using (var titleBrush = new SolidBrush(Theme.White))
-                        g.DrawString("TutorConnect", titleFont, titleBrush, textArea, format);
+                    size -= 0.5F;
+                    light = Ui.MakeFont(size);
+                    bold = Ui.MakeFont(size, FontStyle.Bold);
                 }
 
-                // vékony elválasztó vonal a fejléc alatt
-                using var line = new Pen(Color.FromArgb(55, Theme.White));
-                g.DrawLine(line, Ui.S(16), Height - 1, Width - Ui.S(16), Height - 1);
+                int titleY = Height / 2 - Ui.S(25);
+                var flags = TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine;
+                int lightWidth = Measure("Tutor", light);
+                TextRenderer.DrawText(g, "Tutor", light, new Point(textX, titleY), Color.FromArgb(215, Theme.White), flags);
+                TextRenderer.DrawText(g, "Connect", bold, new Point(textX + lightWidth, titleY), Theme.White, flags);
+
+                TextRenderer.DrawText(g, "Tanulj és taníts", Ui.MakeFont(8.5F), new Point(textX, titleY + Ui.S(30)),
+                    Color.FromArgb(150, Theme.White), flags);
             }
+
+            private static int Measure(string text, Font font) =>
+                TextRenderer.MeasureText(text, font, Size.Empty, TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
         }
 
-        /// <summary>Felhasználói blokk a navbár alján: avatar, név és szerepkör.</summary>
+        /// <summary>Felhasználói kártya a navbár alján: avatar online-jelzéssel, név, szerepkör és nyíl.</summary>
         private class UserChip : Control
         {
             private string name = "";
@@ -277,33 +284,47 @@ namespace TutorConnectApp
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-                if (hover)
+                // lebegő, áttetsző kártya (vonal nélkül)
+                var card = new Rectangle(Ui.S(14), Ui.S(8), Math.Max(Width - Ui.S(28), 0), Math.Max(Height - Ui.S(24), 0));
+                using (var path = Ui.RoundedPath(card, Ui.S(18)))
                 {
-                    using var path = Ui.RoundedPath(new Rectangle(Ui.S(10), Ui.S(8), Width - Ui.S(21), Height - Ui.S(17)), Ui.S(12));
-                    using var hoverBrush = new SolidBrush(Color.FromArgb(110, Theme.NavActive));
-                    g.FillPath(hoverBrush, path);
+                    using var fill = new SolidBrush(Color.FromArgb(hover ? 62 : 36, Theme.White));
+                    using var border = new Pen(Color.FromArgb(hover ? 90 : 50, Theme.White));
+                    g.FillPath(fill, path);
+                    g.DrawPath(border, path);
                 }
 
-                using (var line = new Pen(Color.FromArgb(55, Theme.White)))
-                    g.DrawLine(line, Ui.S(16), 0, Width - Ui.S(16), 0);
-
-                int size = Ui.S(48);
-                var avatar = new Rectangle(collapsed ? (Width - size) / 2 : Ui.S(24), (Height - size) / 2, size, size);
+                int size = Ui.S(44);
+                var avatar = new Rectangle(collapsed ? card.X + (card.Width - size) / 2 : card.X + Ui.S(12), card.Y + (card.Height - size) / 2, size, size);
                 Ui.DrawAvatar(g, avatar, Ui.Initials(name), Theme.White, Theme.MainBlueDark);
+
+                // online-jelzés
+                int dot = Ui.S(12);
+                var dotRect = new Rectangle(avatar.Right - dot + Ui.S(2), avatar.Bottom - dot + Ui.S(2), dot, dot);
+                using (var ring = new SolidBrush(Theme.NavBg))
+                    g.FillEllipse(ring, Rectangle.Inflate(dotRect, Ui.S(2), Ui.S(2)));
+                using (var online = new SolidBrush(Theme.Success))
+                    g.FillEllipse(online, dotRect);
 
                 if (collapsed) return;
 
+                int arrowWidth = Ui.S(22);
                 int x = avatar.Right + Ui.S(12);
-                int textWidth = Math.Max(Width - x - Ui.S(12), 0);
+                int textWidth = Math.Max(card.Right - arrowWidth - x - Ui.S(4), 0);
+                int midY = card.Y + card.Height / 2;
+
                 using var nameFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter, LineAlignment = StringAlignment.Far };
-                var nameFont = Ui.MakeFont(11.5F, FontStyle.Bold);
                 using var nameBrush = new SolidBrush(Theme.White);
-                g.DrawString(name, nameFont, nameBrush, new Rectangle(x, Height / 2 - Ui.S(26), textWidth, Ui.S(26)), nameFormat);
+                g.DrawString(name, Ui.MakeFont(11F, FontStyle.Bold), nameBrush, new Rectangle(x, midY - Ui.S(24), textWidth, Ui.S(24)), nameFormat);
 
                 using var roleFormat = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
-                var roleFont = Ui.MakeFont(9.5F);
-                using var roleBrush = new SolidBrush(Color.FromArgb(200, Theme.White));
-                g.DrawString(role, roleFont, roleBrush, new Rectangle(x, Height / 2 + Ui.S(1), textWidth, Ui.S(22)), roleFormat);
+                using var roleBrush = new SolidBrush(Color.FromArgb(185, Theme.White));
+                g.DrawString(role, Ui.MakeFont(9F), roleBrush, new Rectangle(x, midY + Ui.S(1), textWidth, Ui.S(22)), roleFormat);
+
+                // nyíl a kártya jobb szélén
+                using var arrowBrush = new SolidBrush(Color.FromArgb(hover ? 230 : 140, Theme.White));
+                using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString("\uE76C", Ui.IconFont(10F), arrowBrush, new Rectangle(card.Right - arrowWidth - Ui.S(6), card.Y, arrowWidth, card.Height), center);
             }
         }
 
@@ -314,6 +335,7 @@ namespace TutorConnectApp
             private bool collapsed;
             private double hoverT;
             private double activeT;
+            private bool activeTarget;
             private int badge;
             private Anim.Tween? hoverTween;
             private Anim.Tween? activeTween;
@@ -349,6 +371,10 @@ namespace TutorConnectApp
 
             public void SetActive(bool value)
             {
+                // a már beállított állapotot nem animáljuk újra (kattintáskor minden gombra meghívódik)
+                if (value == activeTarget) return;
+                activeTarget = value;
+
                 activeTween?.Cancel();
                 double from = activeT;
                 double to = value ? 1 : 0;
@@ -433,7 +459,8 @@ namespace TutorConnectApp
                     g.DrawString(icon, iconFont, textBrush, new Rectangle(Ui.S(22), 0, Ui.S(40), Height), middle);
                 }
 
-                var font = Ui.MakeFont(12.5F, activeT > 0.5 ? FontStyle.Bold : FontStyle.Regular);
+                // a vastagság a cél-állapotot követi, így az animáció közben nem ugrál a szöveg szélessége
+                var font = Ui.MakeFont(12.5F, activeTarget ? FontStyle.Bold : FontStyle.Regular);
                 using var textFormat = new StringFormat(StringFormatFlags.NoWrap)
                 {
                     LineAlignment = StringAlignment.Center,

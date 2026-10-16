@@ -94,7 +94,11 @@ namespace TutorConnectApp
                 }
                 catch (Exception ex) when (ex is WebSocketException or IOException or HttpRequestException or ObjectDisposedException)
                 {
-                    // nem elérhető a szerver, vagy megszakadt a kapcsolat: újrapróbáljuk
+                    // 401: a szerver elutasította a munkamenetet (lejárt): a felület visszalép a belépéshez
+                    if (ex.Message.Contains("401"))
+                        Post(ApiClient.NotifySessionExpired);
+
+                    // egyébként nem elérhető a szerver, vagy megszakadt a kapcsolat: újrapróbáljuk
                 }
 
                 socket = null;

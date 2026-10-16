@@ -9,6 +9,14 @@ namespace TutorConnectApp
         private static UserInfo Me => ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
         private string currentKey = "";
         private readonly System.Windows.Forms.Timer badgeTimer = new() { Interval = 400 };
+        private readonly NotifyIcon tray = new();
+        private ContextMenuStrip? trayMenu;
+        private Icon? trayIcon;
+        private string trayTarget = "";
+        private int? trayConversationId;
+        private long lastBookingToast;
+        private FlowLayoutPanel? verifyBanner;
+        private bool verifyChecking;
 
         /// <summary>Igaz, ha a felhasználó kijelentkezett (és nem simán bezárta az appot).</summary>
         public bool LoggedOut { get; private set; }
@@ -29,15 +37,21 @@ namespace TutorConnectApp
             ClientSizeChanged += (_, _) => navBar.ApplyResponsive(ClientSize.Width);
             navBar.ApplyResponsive(ClientSize.Width);
 
+            BuildTray();
+
             Theme.Changed += OnThemeChanged;
             ApiClient.CurrentUserChanged += OnUserChanged;
+            ApiClient.SessionExpired += OnSessionExpired;
             Realtime.EventReceived += OnRealtimeEvent;
+            Realtime.ConnectionChanged += OnConnectionChanged;
+            ChatState.Changed += UpdateChatBadge;
             AppEvents.BadgesStale += ScheduleBadges;
             badgeTimer.Tick += async (_, _) =>
             {
                 badgeTimer.Stop();
                 await RefreshBadgesAsync();
             };
+            BuildBanner();
             ApplyTheme();
 
             navBar.Select("home");
@@ -89,8 +103,9 @@ namespace TutorConnectApp
             navBar.ApplyScale();
             navBar.ApplyResponsive(ClientSize.Width);
 
+            BuildBanner();
             if (pages.TryGetValue(currentKey, out var factory))
-                ShowPage(factory());
+                ShowPage(factory(), carryState: true);
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -104,6 +119,7 @@ namespace TutorConnectApp
             base.OnShown(e);
 
             Realtime.Start();   // valós idejű értesítések (új üzenet, foglalás-változás)
+            _ = LoadChatAsync(); // a navbár olvasatlan-jelvényéhez
             ScheduleBadges();
         }
 
@@ -111,10 +127,19 @@ namespace TutorConnectApp
         {
             Theme.Changed -= OnThemeChanged;
             ApiClient.CurrentUserChanged -= OnUserChanged;
+            ApiClient.SessionExpired -= OnSessionExpired;
             Realtime.EventReceived -= OnRealtimeEvent;
+            Realtime.ConnectionChanged -= OnConnectionChanged;
+            ChatState.Changed -= UpdateChatBadge;
             AppEvents.BadgesStale -= ScheduleBadges;
             badgeTimer.Dispose();
             Realtime.Stop();
+            ChatState.Clear(); // a következő bejelentkezőnek ne maradjon meg a beszélgetés-lista
+
+            tray.Visible = false;
+            tray.Dispose();
+            trayMenu?.Dispose();
+            trayIcon?.Dispose();
             base.OnFormClosed(e);
         }
 
@@ -122,10 +147,62 @@ namespace TutorConnectApp
         // Jelvények: olvasatlan üzenetek és (oktatónál) függő foglalások
         // ------------------------------------------------------------
 
-        private void OnRealtimeEvent(RealtimeEvent e)
+        private async void OnRealtimeEvent(RealtimeEvent e)
         {
-            if (e.Type is "new_message" or "message_retracted" or "message_edited" or "booking_update")
-                ScheduleBadges();
+            if (IsDisposed) return;
+
+            try
+            {
+                switch (e.Type)
+                {
+                    case "new_message" when e.Message != null:
+                        // előbb a közös állapot (olvasatlan számláló), utána az értesítés a már ismert névvel
+                        await ChatState.OnNewMessageAsync(e.Message, Me.Id);
+                        NotifyNewMessage(e.Message);
+                        break;
+
+                    case "message_retracted":
+                    case "message_edited":
+                        await ChatState.OnMessageChangedAsync(e.ConversationId);
+                        break;
+
+                    case "booking_update":
+                        ScheduleBadges();
+                        NotifyBookingChange();
+                        break;
+                }
+            }
+            catch (ApiException)
+            {
+                // a következő esemény vagy az újracsatlakozás rendbe teszi
+            }
+        }
+
+        private void OnConnectionChanged(bool connected)
+        {
+            if (!connected || IsDisposed) return;
+
+            // újracsatlakozás után lehet, hogy lemaradtunk eseményekről: a számlálókat újra lekérjük
+            if (Environment.TickCount64 - ChatState.LastLoadedTick > 3000)
+                _ = LoadChatAsync();
+            ScheduleBadges();
+        }
+
+        private async Task LoadChatAsync()
+        {
+            try
+            {
+                await ChatState.LoadAsync();
+            }
+            catch (ApiException)
+            {
+                // a jelvény nem kritikus: az újracsatlakozás vagy a Chat oldal megnyitása újra próbálkozik
+            }
+        }
+
+        private void UpdateChatBadge()
+        {
+            if (!IsDisposed) navBar.SetBadge("chat", ChatState.TotalUnread);
         }
 
         /// <summary>Rövid késleltetéssel frissíti a jelvényeket, így az egymás utáni események egyetlen lekérést adnak.</summary>
@@ -136,25 +213,102 @@ namespace TutorConnectApp
             badgeTimer.Start();
         }
 
+        /// <summary>A függő foglalások száma az oktatónál (kis, külön végpont; az olvasatlan üzeneteket a ChatState számolja).</summary>
         private async Task RefreshBadgesAsync()
         {
+            if (Me.Role != "TUTOR") return;
+
             try
             {
-                var conversations = await ApiClient.GetAsync<List<ConversationDto>>("/api/conversations");
+                var summary = await ApiClient.GetAsync<BookingSummaryDto>("/api/bookings/summary");
                 if (IsDisposed) return;
-                navBar.SetBadge("chat", conversations.Sum(c => c.UnreadCount));
-
-                if (Me.Role == "TUTOR")
-                {
-                    var summary = await ApiClient.GetAsync<BookingSummaryDto>("/api/bookings/summary");
-                    if (IsDisposed) return;
-                    navBar.SetBadge("bookings", summary.Pending);
-                }
+                navBar.SetBadge("bookings", summary.Pending);
             }
             catch (ApiException)
             {
                 // a jelvény nem kritikus: a következő eseménynél újra próbálkozik
             }
+        }
+
+        // ------------------------------------------------------------
+        // Tálcaikon és értesítések (csak akkor, ha az ablak nincs előtérben)
+        // ------------------------------------------------------------
+
+        private void BuildTray()
+        {
+            try
+            {
+                trayIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            }
+            catch (Exception ex) when (ex is ArgumentException or IOException)
+            {
+                trayIcon = null; // a rendszer alapértelmezett ikonja marad
+            }
+
+            tray.Icon = trayIcon ?? SystemIcons.Application;
+            tray.Text = "TutorConnect";
+
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Items.Add("Megnyitás", null, (_, _) => RestoreFromTray("", null));
+            trayMenu.Items.Add("Kilépés", null, (_, _) => Close());
+            tray.ContextMenuStrip = trayMenu;
+            tray.DoubleClick += (_, _) => RestoreFromTray("", null);
+            tray.BalloonTipClicked += (_, _) => RestoreFromTray(trayTarget, trayConversationId);
+            tray.Visible = true;
+        }
+
+        /// <summary>Előhozza az ablakot, és (ha kell) a kért oldalra, illetve beszélgetésre ugrik.</summary>
+        private void RestoreFromTray(string target, int? conversationId)
+        {
+            if (IsDisposed) return;
+
+            if (WindowState == FormWindowState.Minimized)
+                WindowState = FormWindowState.Normal;
+            Activate();
+
+            if (target.Length == 0) return;
+            if (target == "chat" && conversationId is int id)
+                ChatPage.PendingConversationId = id;
+            navBar.Select(target);
+        }
+
+        /// <summary>Igaz, ha az alkalmazás egyik ablaka sem aktív (háttérben van vagy le van kicsinyítve).</summary>
+        private bool InBackground => WindowState == FormWindowState.Minimized || ActiveForm == null;
+
+        private void ShowToast(string title, string text, string target, int? conversationId = null)
+        {
+            if (IsDisposed || !AppSettings.NotificationsEnabled || !InBackground) return;
+
+            trayTarget = target;
+            trayConversationId = conversationId;
+            tray.ShowBalloonTip(6000, Shorten(title, 60), Shorten(text, 200), ToolTipIcon.Info);
+        }
+
+        private static string Shorten(string text, int max)
+        {
+            text = text.Replace('\r', ' ').Replace('\n', ' ').Trim();
+            return text.Length <= max ? text : text[..(max - 1)] + "…";
+        }
+
+        private void NotifyNewMessage(MessageDto message)
+        {
+            if (message.SenderId == Me.Id) return;
+
+            string name = ChatState.Find(message.ConversationId)?.OtherUserName ?? "";
+            bool onlyFile = message.HasAttachment && (string.IsNullOrWhiteSpace(message.Content) || message.Content == message.AttachmentName);
+            string body = onlyFile ? "Csatolmány: " + message.AttachmentName : message.Content;
+
+            ShowToast(name.Length > 0 ? $"Új üzenet: {name}" : "Új üzenet", body, "chat", message.ConversationId);
+        }
+
+        private void NotifyBookingChange()
+        {
+            // egymás utáni események (több foglalás) ne záporozzanak értesítésként
+            long now = Environment.TickCount64;
+            if (now - lastBookingToast < 10_000) return;
+            lastBookingToast = now;
+
+            ShowToast("Foglalás", "Változás történt a foglalásaidban.", "bookings");
         }
 
         private void NavBar_ItemClicked(object? sender, string key)
@@ -172,6 +326,24 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>A munkamenet lejárt (7 nap telt el, vagy a szerver újraindult): szólunk, és visszalépünk a belépéshez.</summary>
+        private void OnSessionExpired()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+
+            BeginInvoke(new Action(() =>
+            {
+                if (IsDisposed || LoggedOut) return;
+
+                MessageBox.Show(this, "A munkameneted lejárt, ezért újra be kell jelentkezned.", "Munkamenet lejárt",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                ApiClient.DropSession();
+                LoggedOut = true;
+                Close();
+            }));
+        }
+
         private async Task LogoutAsync()
         {
             await ApiClient.LogoutAsync();
@@ -184,6 +356,72 @@ namespace TutorConnectApp
             // a navbár felhasználói blokkja és az ablak címe az új névvel
             navBar.SetUser(Me.Name, Me.Role);
             Text = $"TutorConnect – {Me.Name}";
+            if (verifyBanner != null) verifyBanner.Visible = !Me.EmailVerified;
+        }
+
+        // ------------------------------------------------------------
+        // E-mail megerősítés: a szerver foglaláshoz és időpont-hirdetéshez megköveteli
+        // ------------------------------------------------------------
+
+        /// <summary>Figyelmeztető sáv az ablak tetején, amíg az e-mail cím nincs megerősítve.</summary>
+        private void BuildBanner()
+        {
+            if (verifyBanner != null)
+            {
+                contentPanel.Controls.Remove(verifyBanner);
+                verifyBanner.Dispose();
+            }
+
+            var bar = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Top,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = true,
+                BackColor = Theme.Warning,
+                Padding = Ui.Pad(16, 10, 16, 6),
+                Visible = !Me.EmailVerified
+            };
+
+            var text = Ui.Lbl("Az e-mail címed még nincs megerősítve, ezért nem tudsz foglalni, illetve időpontot hirdetni.", 10F, Theme.White, bold: true, margin: Ui.Pad(0, 6, 14, 4));
+            bar.Controls.Add(text);
+            bar.Controls.Add(Ui.Btn("Levél újraküldése", Theme.White, Color.Black, async (_, _) => await VerifyUi.ResendAsync(this)));
+            bar.Controls.Add(Ui.Btn("Már megerősítettem", Theme.White, Color.Black, async (_, _) => await CheckVerifiedAsync(true)));
+
+            verifyBanner = bar;
+            contentPanel.Controls.Add(bar);
+            // a Fill oldalnak a Z-sorrendben legelöl kell lennie, különben a sáv alá csúszik
+            currentPage?.BringToFront();
+        }
+
+        /// <summary>Újra lekéri a fiók állapotát (pl. miután a böngészőben megnyitotta a linket).</summary>
+        private async Task CheckVerifiedAsync(bool manual)
+        {
+            if (verifyChecking || IsDisposed) return;
+            verifyChecking = true;
+            try
+            {
+                await ApiClient.RefreshUserAsync();
+                if (manual && !IsDisposed && !Me.EmailVerified)
+                    MessageBox.Show(this, "A szerver szerint az e-mail címed még nincs megerősítve. Nyisd meg a levélben kapott linket, majd próbáld újra.",
+                        "E-mail megerősítése", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (ApiException ex)
+            {
+                if (manual) MessageBox.Show(this, ex.Message, "Nem sikerült frissíteni", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                verifyChecking = false;
+            }
+        }
+
+        /// <summary>Ha a felhasználó visszatér az ablakhoz (a böngészőből), csendben újraellenőrizzük.</summary>
+        protected override async void OnActivated(EventArgs e)
+        {
+            base.OnActivated(e);
+            if (ApiClient.CurrentUser is { EmailVerified: false })
+                await CheckVerifiedAsync(false);
         }
 
         private void OnThemeChanged()
@@ -192,7 +430,7 @@ namespace TutorConnectApp
 
             // az oldal újraépül az új színekkel
             if (pages.TryGetValue(currentKey, out var factory))
-                ShowPage(factory());
+                ShowPage(factory(), carryState: true);
         }
 
         /// <summary>A főablak keretének színei a téma szerint (az oldalak maguktól újraépülnek).</summary>
@@ -209,8 +447,12 @@ namespace TutorConnectApp
                 navBar.SetItemContent("theme", "Sötét mód", "");
         }
 
-        private void ShowPage(PageBase page)
+        /// <param name="carryState">Igaz, ha ugyanazt az oldalt építjük újra (téma-, DPI-váltás): a felhasználó beállításai átkerülnek.</param>
+        private void ShowPage(PageBase page, bool carryState = false)
         {
+            if (carryState && currentPage != null)
+                page.RestoreState(currentPage.CaptureState());
+
             page.NavigateRequested += key => navBar.Select(key);
             page.LogoutRequested += () => _ = LogoutAsync();
 
@@ -219,6 +461,7 @@ namespace TutorConnectApp
             var old = currentPage;
             currentPage = page;
             contentPanel.Controls.Add(page);
+            page.BringToFront();
             if (old != null)
             {
                 contentPanel.Controls.Remove(old);
