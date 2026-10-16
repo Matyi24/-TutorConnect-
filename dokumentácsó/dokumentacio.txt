@@ -5,7 +5,7 @@
 - Szerver → adatbázis: `mysql2` kapcsolat, paraméterezett SQL lekérdezésekkel.
 - Az üzenetek és az oldalak kiszolgálását elsősorban a `main.js` kezeli.
 
- 3.4 REST API
+3.4 REST API
 Az API JSON-t fogad és ad vissza. Hibánál a megfelelő HTTP státuszkódot (400, 401, 403, 404, 409, 500) és `{ "error": "..." }` törzset küldi. A védett végpontok munkamenet nélkül 401-et adnak.
 
 ## 4.4 Kapcsolatok
