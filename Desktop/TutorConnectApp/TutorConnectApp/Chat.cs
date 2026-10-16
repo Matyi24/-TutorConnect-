@@ -145,6 +145,8 @@ namespace TutorConnectApp
         private readonly HoverButton backButton;
         private readonly HoverButton attachButton;
         private readonly HoverButton sendButton;
+        private readonly HoverButton profileButton;
+        private readonly SearchBox listSearch;
         private readonly ComposerBox composer;
         private readonly System.Windows.Forms.Timer statusTimer = new() { Interval = 3000 };
         private readonly System.Windows.Forms.Timer receiptTimer = new() { Interval = 8000 };
@@ -159,6 +161,7 @@ namespace TutorConnectApp
         private List<MessageDto> messages = new();
         private int shownFrom;
         private int? restoreConversationId;
+        private string listFilter = "";
         private ConversationDto? current;
         private bool showThread;
         private bool busy;
@@ -184,10 +187,40 @@ namespace TutorConnectApp
                 e.Graphics.DrawLine(pen, listPanel.Width - 1, 0, listPanel.Width - 1, listPanel.Height);
             };
 
-            var listHeader = new Panel { Dock = DockStyle.Top, Height = Ui.S(72), BackColor = Theme.CardBg };
+            var listHeader = new Panel { Dock = DockStyle.Top, Height = Ui.S(142), BackColor = Theme.CardBg };
             var listTitle = Ui.Lbl("Üzenetek", 17F, Theme.Text, bold: true);
             listTitle.Location = Ui.Pt(24, 20);
             listHeader.Controls.Add(listTitle);
+
+            // keresés a beszélgetések között (név és utolsó üzenet alapján, ékezetek nélkül is)
+            listSearch = new SearchBox("Keresés a beszélgetések között...") { Margin = Ui.Pad(0) };
+            listSearch.ValueChanged += (_, _) =>
+            {
+                listFilter = listSearch.Value.Trim();
+                RenderList();
+            };
+            listHeader.Controls.Add(listSearch);
+
+            // a diák a Chat oldalról is indíthat új beszélgetést
+            HoverButton? newButton = null;
+            if (me.Role == "STUDENT")
+            {
+                newButton = Ui.PrimaryBtn("+ Új", async (_, _) => await NewConversationAsync());
+                newButton.AutoSize = false;
+                newButton.Size = Ui.Sz(86, 40);
+                newButton.Margin = Ui.Pad(0);
+                listHeader.Controls.Add(newButton);
+            }
+
+            listHeader.Resize += (_, _) =>
+            {
+                listSearch.SetBounds(Ui.S(16), Ui.S(78), Math.Max(listHeader.Width - Ui.S(32), Ui.S(120)), Ui.S(50));
+                if (newButton != null)
+                    newButton.Location = new Point(listHeader.Width - newButton.Width - Ui.S(20), Ui.S(18));
+            };
+            listSearch.SetBounds(Ui.S(16), Ui.S(78), Ui.S(308), Ui.S(50));
+            if (newButton != null)
+                newButton.Location = new Point(Ui.S(340) - newButton.Width - Ui.S(20), Ui.S(18));
 
             listScroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.CardBg };
             listScroll.Content.Padding = Ui.Pad(8, 0, 0, 12);
@@ -239,9 +272,15 @@ namespace TutorConnectApp
             backButton.Visible = false;
             headerName = Ui.Lbl("", 13F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 0));
             headerStatus = Ui.Lbl("", 9.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 0));
+            profileButton = Ui.Btn("Profil megtekintése", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenProfileAsync(), outline: true);
+            profileButton.AutoSize = false;
+            profileButton.Size = Ui.Sz(190, 40);
+            profileButton.Margin = Ui.Pad(0);
+            profileButton.Visible = false;
             threadHeader.Controls.Add(backButton);
             threadHeader.Controls.Add(headerName);
             threadHeader.Controls.Add(headerStatus);
+            threadHeader.Controls.Add(profileButton);
             threadHeader.Resize += (_, _) => LayoutHeader();
 
             composerBar = new Panel { Dock = DockStyle.Bottom, Height = Ui.S(80), BackColor = Theme.CardBg, Visible = false };
@@ -360,6 +399,7 @@ namespace TutorConnectApp
             int top = (threadHeader.Height - nameHeight - statusHeight) / 2;
             headerName.Location = new Point(left, top);
             headerStatus.Location = new Point(left + Ui.S(2), top + nameHeight);
+            profileButton.Location = new Point(Math.Max(threadHeader.Width - profileButton.Width - Ui.S(20), left), (threadHeader.Height - profileButton.Height) / 2);
         }
 
         private void LayoutComposer()
@@ -417,12 +457,14 @@ namespace TutorConnectApp
             if (content.Controls.Contains(listMessage)) content.Controls.Remove(listMessage);
             Ui.Reset(content);
 
-            var conversations = ChatState.Conversations;
+            var conversations = FilteredConversations();
             if (conversations.Count == 0)
             {
-                listMessage.Text = me.Role == "STUDENT"
-                    ? "Még nincs beszélgetésed. Az Oktatók oldalon az Üzenet gombbal indíthatsz egyet."
-                    : "Még nem érkezett üzeneted. Ha egy diák ír neked, itt fog megjelenni.";
+                listMessage.Text = ChatState.Conversations.Count > 0
+                    ? "Nincs a keresésnek megfelelő beszélgetés."
+                    : me.Role == "STUDENT"
+                        ? "Még nincs beszélgetésed. A + Új gombbal indíthatsz egyet."
+                        : "Még nem érkezett üzeneted. Ha egy diák ír neked, itt fog megjelenni.";
                 content.Controls.Add(listMessage);
             }
             else
@@ -439,6 +481,19 @@ namespace TutorConnectApp
 
             content.ResumeLayout(true);
         }
+
+        private List<ConversationDto> FilteredConversations()
+        {
+            var all = ChatState.Conversations;
+            if (listFilter.Length == 0) return all.ToList();
+
+            return all.Where(c => MatchesFilter(c.OtherUserName, listFilter) || MatchesFilter(c.LastMessage ?? "", listFilter)).ToList();
+        }
+
+        /// <summary>Kis- és nagybetűre, ékezetre érzéketlen keresés ("o" megtalálja az "ő"-t is).</summary>
+        private static bool MatchesFilter(string text, string query) =>
+            System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
+                text, query, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0;
 
         private void FitList()
         {
@@ -459,6 +514,7 @@ namespace TutorConnectApp
 
             headerName.Text = conversation.OtherUserName;
             headerStatus.Text = "";
+            profileButton.Visible = true;
             placeholder.Visible = false;
             threadHeader.Visible = true;
             composerBar.Visible = true;
@@ -543,8 +599,8 @@ namespace TutorConnectApp
             var bubble = new MessageBubble(message, message.SenderId == me.Id);
             bubble.EditRequested += async b => await EditAsync(b.Message);
             bubble.RetractRequested += async b => await RetractAsync(b.Message);
-            bubble.AttachmentRequested += async b => await DownloadAsync(b.Message, open: false);
-            bubble.AttachmentOpenRequested += async b => await DownloadAsync(b.Message, open: true);
+            bubble.AttachmentRequested += async b => await OpenAttachmentAsync(b.Message, open: false);
+            bubble.AttachmentOpenRequested += async b => await OpenAttachmentAsync(b.Message, open: true);
             return bubble;
         }
 
@@ -706,6 +762,110 @@ namespace TutorConnectApp
             finally
             {
                 busy = false;
+            }
+        }
+
+        private static bool IsImage(MessageDto message) =>
+            (message.AttachmentType ?? "").StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+            || new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(Path.GetExtension(message.AttachmentName ?? "").ToLowerInvariant());
+
+        /// <summary>A képek a beépített képnézegetőben nyílnak meg (kattintásra), a többi fájl mentés / megnyitás szerint.</summary>
+        private async Task OpenAttachmentAsync(MessageDto message, bool open)
+        {
+            if (IsImage(message)) await ShowImageAsync(message);
+            else await DownloadAsync(message, open);
+        }
+
+        private async Task ShowImageAsync(MessageDto message)
+        {
+            string name = SafeFileName(message.AttachmentName);
+            try
+            {
+                ShowStatus("Kép betöltése...", error: false, autoHide: false);
+                string folder = Path.Combine(Path.GetTempPath(), "TutorConnect", message.Id.ToString());
+                Directory.CreateDirectory(folder);
+                string path = Path.Combine(folder, name);
+
+                await ApiClient.DownloadAsync($"/api/messages/{message.Id}/attachment", path);
+                if (IsDisposed) return;
+                ShowStatus("", error: false);
+
+                using var viewer = new ImageViewerForm(path, name);
+                viewer.ShowDialog(FindForm());
+            }
+            catch (ApiException ex)
+            {
+                ShowStatus(ex.Message, error: true);
+            }
+            catch (ArgumentException)
+            {
+                // nem olvasható képként: a megszokott módon mentjük / megnyitjuk
+                ShowStatus("", error: false);
+                await DownloadAsync(message, open: true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or OutOfMemoryException)
+            {
+                ShowStatus("A kép megnyitása nem sikerült: " + ex.Message, error: true);
+            }
+        }
+
+        // ------------------------------------------------------------
+        // Új beszélgetés és profilok
+        // ------------------------------------------------------------
+
+        private async Task NewConversationAsync()
+        {
+            try
+            {
+                var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (IsDisposed) return;
+
+                using var dialog = new NewConversationDialog(tutors, ChatState.Conversations.Select(c => c.TutorId));
+                if (dialog.ShowDialog(FindForm()) != DialogResult.OK || IsDisposed) return;
+
+                await ChatState.LoadAsync();
+                if (!IsDisposed && ChatState.Find(dialog.ConversationId) is { } created)
+                    await SelectAsync(created);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült megnyitni a beszélgetést", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        /// <summary>Diáknál az oktató profilja (foglalással, naptárral), oktatónál a diák profilja.</summary>
+        private async Task OpenProfileAsync()
+        {
+            var conversation = current;
+            if (conversation == null) return;
+
+            try
+            {
+                if (me.Role == "STUDENT")
+                {
+                    var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                    if (IsDisposed) return;
+
+                    var tutor = tutors.FirstOrDefault(t => t.Id == conversation.TutorId);
+                    if (tutor == null)
+                    {
+                        ShowStatus("Az oktató profilja nem érhető el.", error: true);
+                        return;
+                    }
+                    await TutorActions.ShowProfileAsync(FindForm(), tutor, Navigate);
+                }
+                else
+                {
+                    var student = await ApiClient.GetAsync<StudentProfileDto>($"/api/students/{conversation.StudentId}/profile");
+                    if (IsDisposed) return;
+
+                    using var dialog = new StudentProfileDialog(student);
+                    dialog.ShowDialog(FindForm());
+                }
+            }
+            catch (ApiException ex)
+            {
+                ShowStatus(ex.Message, error: true);
             }
         }
 
@@ -1452,8 +1612,9 @@ namespace TutorConnectApp
         public string NewText { get; private set; } = "";
 
         public EditMessageDialog(string text)
-            : base("Üzenet szerkesztése", "A módosított üzenet mellett \"szerkesztve\" jelzés jelenik meg.", "Mentés", Ui.Sz(560, 400))
+            : base("Üzenet szerkesztése", "A módosított üzenet mellett \"szerkesztve\" jelzés jelenik meg.", "Mentés", Ui.Sz(560, 400), "\uE70F")
         {
+            Section("Üzenet szövege");
             box = NewTextBox(170, 2000);
             box.Text = text;
             AddBody(box);

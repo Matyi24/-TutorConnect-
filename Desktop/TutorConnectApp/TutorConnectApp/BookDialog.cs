@@ -4,20 +4,33 @@ using System.Text.RegularExpressions;
 namespace TutorConnectApp
 {
     /// <summary>
-    /// A dialógusok közös váza: fejléc (cím, alcím), görgethető tartalom, lábléc (állapotsor + művelet-gomb).
-    /// Megjelenéskor halványan beúszik, a keret fekete, a színek a témát követik.
+    /// A dialógusok közös váza: színátmenetes fejléc (ikon, cím, alcím), görgethető tartalom,
+    /// lábléc (állapotsor + Mégse + művelet-gomb). Megjelenéskor halványan beúszik, a keret fekete,
+    /// a színek a témát követik. A megadott méretnél kicsit nagyobb ablak nyílik (a képernyőre korlátozva).
     /// </summary>
     internal abstract class DialogBase : Form
     {
         /// <summary>A tartalom (pirulák, beviteli mezők) szélessége; a képernyő nagyításával együtt nő.</summary>
-        protected static int ContentWidth => Ui.S(488);
+        protected static int ContentWidth => Ui.S(528);
 
-        protected readonly FlowLayoutPanel Body;
+        private readonly FlowLayoutPanel root;
+        private SectionGroup? group;
+
+        /// <summary>A tartalom helye: az aktuális szakasz doboza (a Section hívás után), korábban maga a görgetett felület.</summary>
+        protected FlowLayoutPanel Body => group ?? root;
+
         protected readonly HoverButton ActionButton;
+        protected readonly HoverButton DismissButton;
         private readonly Label footerLabel;
 
-        protected DialogBase(string title, string subtitle, string actionText, Size clientSize)
+        protected DialogBase(string title, string subtitle, string actionText, Size clientSize, string glyph = "")
         {
+            // nagyobb ablak a korábbinál, de nem lóg ki a képernyőről
+            var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+            clientSize = new Size(
+                Math.Min(clientSize.Width + Ui.S(80), area.Width - Ui.S(60)),
+                Math.Min(clientSize.Height + Ui.S(70), area.Height - Ui.S(110)));
+
             Text = title;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -30,46 +43,51 @@ namespace TutorConnectApp
             Font = Ui.MakeFont(10F);
             Opacity = 0; // az OnShown-ban úszik be
 
-            // a fejléc magassága a szövegből jön, így semmilyen nagyításnál nem fedi egymást a cím és az alcím
-            var header = new FlowLayoutPanel
-            {
-                Dock = DockStyle.Top,
-                FlowDirection = FlowDirection.TopDown,
-                WrapContents = false,
-                AutoSize = true,
-                AutoSizeMode = AutoSizeMode.GrowAndShrink,
-                BackColor = Theme.CardBg,
-                Padding = Ui.Pad(24, 16, 24, 8)
-            };
-            header.Controls.Add(Ui.Lbl(title, 17F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 4)));
-            header.Controls.Add(Ui.Lbl(subtitle, 10.5F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 0)));
+            var header = new DialogHeader(title, subtitle, glyph, clientSize.Width) { Dock = DockStyle.Top };
 
-            // sima görgetésű tartalom; a Body a görgetett panel (a bejegyzések fix szélességűek)
+            // sima görgetésű tartalom; a szakaszok dobozai (SectionGroup) ennek a panelnek a gyerekei
             var scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.CardBg };
-            Body = scroll.Content;
-            Body.Padding = Ui.Pad(24, 0, 10, 12);
+            root = scroll.Content;
+            root.Padding = Ui.Pad(28, 18, 12, 14);
 
-            var footer = new Panel { Dock = DockStyle.Bottom, Height = Ui.S(92), BackColor = Theme.CardBg };
+            int footerHeight = Ui.S(104);
+            var footer = new Panel { Dock = DockStyle.Bottom, Height = footerHeight, BackColor = Theme.PageBg };
             footer.Paint += (_, e) =>
             {
                 using var pen = new Pen(Theme.CardBorder);
                 e.Graphics.DrawLine(pen, 0, 0, footer.Width, 0);
             };
 
-            int buttonWidth = Ui.S(190);
-            footerLabel = new Label
-            {
-                Bounds = new Rectangle(Ui.S(24), Ui.S(12), clientSize.Width - Ui.S(24) - buttonWidth - Ui.S(36), Ui.S(68)),
-                ForeColor = Theme.Muted,
-                BackColor = Theme.CardBg
-            };
+            int buttonHeight = Ui.S(48);
+            int buttonY = (footerHeight - buttonHeight) / 2;
+            int actionWidth = Ui.S(214);
+            int dismissWidth = Ui.S(120);
+            int right = clientSize.Width - Ui.S(28);
 
             ActionButton = Ui.PrimaryBtn(actionText, async (_, _) => await OnActionAsync());
             ActionButton.AutoSize = false;
-            ActionButton.Bounds = new Rectangle(clientSize.Width - Ui.S(24) - buttonWidth, Ui.S(24), buttonWidth, Ui.S(46));
+            ActionButton.Font = Ui.MakeFont(10.5F, FontStyle.Bold);
+            ActionButton.Bounds = new Rectangle(right - actionWidth, buttonY, actionWidth, buttonHeight);
             ActionButton.Margin = Ui.Pad(0);
 
+            DismissButton = Ui.Btn("Mégse", Theme.CardBg, Theme.Text, null, outline: true);
+            DismissButton.AutoSize = false;
+            DismissButton.Font = Ui.MakeFont(10.5F, FontStyle.Bold);
+            DismissButton.Bounds = new Rectangle(ActionButton.Left - Ui.S(12) - dismissWidth, buttonY, dismissWidth, buttonHeight);
+            DismissButton.Margin = Ui.Pad(0);
+            DismissButton.DialogResult = DialogResult.Cancel; // Esc és a gomb is bezárja
+            CancelButton = DismissButton;
+
+            footerLabel = new Label
+            {
+                Bounds = new Rectangle(Ui.S(28), Ui.S(12), Math.Max(DismissButton.Left - Ui.S(16) - Ui.S(28), Ui.S(80)), footerHeight - Ui.S(24)),
+                ForeColor = Theme.Muted,
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
             footer.Controls.Add(footerLabel);
+            footer.Controls.Add(DismissButton);
             footer.Controls.Add(ActionButton);
 
             Controls.Add(scroll); // a kitöltő elem legyen elöl a sorrendben
@@ -80,12 +98,20 @@ namespace TutorConnectApp
         /// <summary>A művelet-gombra kattintáskor fut le.</summary>
         protected abstract Task OnActionAsync();
 
-        protected void Section(string text) =>
-            Body.Controls.Add(Ui.Lbl(text, 11F, Theme.Text, bold: true, margin: Ui.Pad(0, 14, 0, 8)));
+        /// <summary>
+        /// Új szakasz: külön doboz címmel és elválasztó vonallal; a következő AddBody / Body.Controls.Add hívások
+        /// ebbe kerülnek a következő Section-ig. Az "1   Szöveg" alakú címeknél a szám kék körben jelenik meg.
+        /// </summary>
+        protected void Section(string text)
+        {
+            group = new SectionGroup(ContentWidth + Ui.S(40));
+            root.Controls.Add(group);
+            group.Controls.Add(new SectionHeading(text, ContentWidth));
+        }
 
         protected void AddBody(Control control)
         {
-            control.Margin = Ui.Pad(0, 0, 0, 8);
+            control.Margin = Ui.Pad(0, 0, 0, 10);
             Body.Controls.Add(control);
         }
 
@@ -116,7 +142,7 @@ namespace TutorConnectApp
             BorderStyle = BorderStyle.FixedSingle,
             BackColor = Theme.InputBg,
             ForeColor = Theme.Text,
-            Font = Ui.MakeFont(10.5F)
+            Font = Ui.MakeFont(11F)
         };
 
         protected static TextBox NewTextBox(int height, int maxLength) => new()
@@ -129,7 +155,7 @@ namespace TutorConnectApp
             BorderStyle = BorderStyle.FixedSingle,
             BackColor = Theme.InputBg,
             ForeColor = Theme.Text,
-            Font = Ui.MakeFont(10.5F)
+            Font = Ui.MakeFont(11F)
         };
 
         protected static ComboBox NewCombo(int width) => new()
@@ -139,7 +165,7 @@ namespace TutorConnectApp
             FlatStyle = FlatStyle.Flat,
             BackColor = Theme.InputBg,
             ForeColor = Theme.Text,
-            Font = Ui.MakeFont(10.5F),
+            Font = Ui.MakeFont(11F),
             Margin = Ui.Pad(0, 0, 16, 0)
         };
 
@@ -169,7 +195,7 @@ namespace TutorConnectApp
         private SlotDto? selectedSlot;
 
         public BookDialog(TutorDto tutor)
-            : base("Időpontfoglalás", SubtitleFor(tutor), "Foglalás elküldése", Ui.Sz(560, 700))
+            : base("Időpontfoglalás", SubtitleFor(tutor), "Foglalás elküldése", Ui.Sz(560, 700), "\uE787")
         {
             this.tutor = tutor;
 
@@ -325,7 +351,7 @@ namespace TutorConnectApp
         private readonly TextBox commentBox;
 
         public ReviewDialog(BookingDto booking)
-            : base("Óra értékelése", $"{booking.SubjectName ?? "Óra"}  ·  {booking.OtherName ?? "oktató"}", "Értékelés mentése", Ui.Sz(540, 500))
+            : base("Óra értékelése", $"{booking.SubjectName ?? "Óra"}  ·  {booking.OtherName ?? "oktató"}", "Értékelés mentése", Ui.Sz(560, 500), "\uE734")
         {
             this.booking = booking;
 
@@ -384,7 +410,7 @@ namespace TutorConnectApp
         public string ResultMessage { get; private set; } = "";
 
         public AvailabilityDialog(DateTime? presetStart = null, int? presetMinutes = null)
-            : base("Új időpont megadása", "Add meg, mikor tudsz tanítani. A diákok ezek közül foglalhatnak.", "Mentés", Ui.Sz(560, 700))
+            : base("Új időpont megadása", "Add meg, mikor tudsz tanítani. A diákok ezek közül foglalhatnak.", "Mentés", Ui.Sz(560, 700), "\uE121")
         {
             Section("1   Melyik napon?");
             var days = NewWrap();
@@ -533,7 +559,7 @@ namespace TutorConnectApp
         private readonly Dictionary<int, decimal> rates = new();
 
         public EditProfileDialog(AccountDto account, List<SubjectDto> subjects)
-            : base("Adatok szerkesztése", "Módosítsd a profilodat, majd mentsd el.", "Mentés", Ui.Sz(560, 760))
+            : base("Adatok szerkesztése", "Módosítsd a profilodat, majd mentsd el.", "Mentés", Ui.Sz(560, 760), "\uE77B")
         {
             this.account = account;
             isTutor = account.Role == "TUTOR";

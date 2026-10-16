@@ -4,7 +4,13 @@
     <Compile Update="BookDialog.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="ChatDialogs.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="DialogParts.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Update="Form1.cs">
@@ -24,6 +30,9 @@
     </Compile>
     <Compile Update="Pages.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="TutorProfile.cs">
+      <SubType>Form</SubType>
     </Compile>
   </ItemGroup>
 </Project>

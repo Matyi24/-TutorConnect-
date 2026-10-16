@@ -47,12 +47,28 @@ namespace TutorConnectApp
         [JsonPropertyName("comment")] public string Comment { get; set; } = "";
     }
 
+    /// <summary>A diák profilja az oktatónak (GET /api/students/:id/profile; e-mail cím nélkül).</summary>
+    internal class StudentProfileDto
+    {
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("school_level")] public string? SchoolLevel { get; set; }
+        [JsonPropertyName("grade")] public string? Grade { get; set; }
+        [JsonPropertyName("subjects")] public List<string> Subjects { get; set; } = new();
+    }
+
     /// <summary>Egy értékelés az oktatóról (GET /api/tutors/:id/reviews).</summary>
     internal class ReviewItemDto
     {
+        [JsonIgnore]
+        public DateTime? CreatedAt => DateTime.TryParse(CreatedAtRaw, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var value)
+            ? value
+            : null;
+
         [JsonPropertyName("rating")] public int Rating { get; set; }
         [JsonPropertyName("comment")] public string? Comment { get; set; }
-        [JsonPropertyName("created_at")] public DateTime CreatedAt { get; set; }
+        // az időpont hiányozhat vagy szövegként érkezhet: nyersen olvassuk, és hibatűrően értelmezzük
+        [JsonPropertyName("created_at")] public string? CreatedAtRaw { get; set; }
         [JsonPropertyName("reviewer_name")] public string? ReviewerName { get; set; }
     }
 
@@ -65,6 +81,7 @@ namespace TutorConnectApp
         [JsonPropertyName("price")] public decimal? Price { get; set; }
         [JsonPropertyName("note")] public string? Note { get; set; }
         [JsonPropertyName("as_student")] public bool AsStudent { get; set; }
+        [JsonPropertyName("other_id")] public int OtherId { get; set; }
         [JsonPropertyName("other_name")] public string? OtherName { get; set; }
         [JsonPropertyName("subject_name")] public string? SubjectName { get; set; }
         [JsonPropertyName("review")] public ReviewDto? Review { get; set; }

@@ -915,7 +915,7 @@ namespace TutorConnectApp
         private SlotSubjectDto? selected;
 
         public QuickBookDialog(string tutorName, SlotDto slot, List<SlotSubjectDto> subjects)
-            : base("Jelentkezés órára", $"{tutorName}  ·  {Ui.FormatRange(slot.StartTime, slot.EndTime)}", "Jelentkezés", Ui.Sz(560, 520))
+            : base("Jelentkezés órára", $"{tutorName}  ·  {Ui.FormatRange(slot.StartTime, slot.EndTime)}", "Jelentkezés", Ui.Sz(560, 520), "\uE787")
         {
             this.slot = slot;
 

@@ -132,6 +132,16 @@ namespace TutorConnectApp
             public bool Dark { get; set; }
             public bool Animations { get; set; } = true;
             public bool Notifications { get; set; } = true;
+            public bool FavoriteAlerts { get; set; } = true;
+        }
+
+        /// <summary>Értesítés, ha egy kedvenc oktató új szabad időpontot hirdet (amíg az app fut).</summary>
+        public static bool FavoriteAlertsEnabled { get; private set; } = true;
+
+        public static void SetFavoriteAlerts(bool enabled)
+        {
+            FavoriteAlertsEnabled = enabled;
+            Save();
         }
 
         /// <summary>Tálcaértesítések (új üzenet, foglalás-változás), ha az ablak nincs előtérben.</summary>
@@ -156,6 +166,7 @@ namespace TutorConnectApp
                 Theme.Init(data.Dark);
                 Anim.Init(data.Animations);
                 NotificationsEnabled = data.Notifications;
+                FavoriteAlertsEnabled = data.FavoriteAlerts;
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
             {
@@ -168,7 +179,7 @@ namespace TutorConnectApp
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data { Dark = Theme.Dark, Animations = Anim.Enabled, Notifications = NotificationsEnabled }));
+                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data { Dark = Theme.Dark, Animations = Anim.Enabled, Notifications = NotificationsEnabled, FavoriteAlerts = FavoriteAlertsEnabled }));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

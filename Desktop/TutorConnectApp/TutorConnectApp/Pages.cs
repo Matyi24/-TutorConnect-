@@ -285,6 +285,9 @@ namespace TutorConnectApp
         private DropdownSelect subjectBox = null!;
         private DropdownSelect ratingBox = null!;
         private DropdownSelect sortBox = null!;
+        private DropdownSelect minPriceBox = null!;
+        private DropdownSelect maxPriceBox = null!;
+        private DropdownSelect viewBox = null!;
         private Label countLabel = null!;
         private State? restored;
         private int limit = PageSize;
@@ -292,10 +295,16 @@ namespace TutorConnectApp
         /// <summary>Ennyi oktatókártyát rajzolunk egyszerre; a többi gombnyomásra jelenik meg.</summary>
         private const int PageSize = 12;
 
-        private sealed record State(string Query, int Subject, int Rating, int Sort);
+        /// <summary>Az óradíj-szűrők választható értékei (0 = bármennyi).</summary>
+        private static readonly int[] PriceSteps = { 0, 3000, 4000, 5000, 6000, 8000, 10000, 15000 };
+
+        private sealed record State(string Query, int Subject, int Rating, int Sort, int MinPrice, int MaxPrice, int View);
 
         public override object? CaptureState() =>
-            search == null ? null : new State(search.Value, subjectBox.SelectedIndex, ratingBox.SelectedIndex, sortBox.SelectedIndex);
+            search == null
+                ? null
+                : new State(search.Value, subjectBox.SelectedIndex, ratingBox.SelectedIndex, sortBox.SelectedIndex,
+                    minPriceBox.SelectedIndex, maxPriceBox.SelectedIndex, viewBox.SelectedIndex);
 
         public override void RestoreState(object? state) => restored = state as State;
 
@@ -342,7 +351,10 @@ namespace TutorConnectApp
             subjectBox = new DropdownSelect("Tantárgy", new[] { AllSubjects }.Concat(subjectNames), initial);
             ratingBox = new DropdownSelect("Értékelés", RatingOptions.Select(o => o.Label), keep?.Rating ?? 0);
             sortBox = new DropdownSelect("Rendezés", SortOptions, keep?.Sort ?? 0);
-            foreach (var box in new[] { subjectBox, ratingBox, sortBox })
+            minPriceBox = new DropdownSelect("Óradíj legalább", PriceSteps.Select(PriceLabel), keep?.MinPrice ?? 0);
+            maxPriceBox = new DropdownSelect("Óradíj legfeljebb", PriceSteps.Select(PriceLabel), keep?.MaxPrice ?? 0);
+            viewBox = new DropdownSelect("Megjelenítés", new[] { "Minden oktató", "Csak a kedvenceim" }, keep?.View ?? 0);
+            foreach (var box in new[] { subjectBox, ratingBox, sortBox, minPriceBox, maxPriceBox, viewBox })
                 box.SelectionChanged += (_, _) =>
                 {
                     limit = PageSize;
@@ -353,12 +365,25 @@ namespace TutorConnectApp
             options.Controls.Add(subjectBox);
             options.Controls.Add(ratingBox);
             options.Controls.Add(sortBox);
+            options.Controls.Add(minPriceBox);
+            options.Controls.Add(maxPriceBox);
+            options.Controls.Add(viewBox);
             AddRow(options);
 
             countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12));
             AddRow(countLabel);
 
             RenderList(animate: true);
+        }
+
+        private static string PriceLabel(int value) => value == 0 ? "Bármennyi" : Ui.Money(value);
+
+        /// <summary>Az oktató legkisebb és legnagyobb óradíja; (0, 0), ha nincs megadva.</summary>
+        private static (decimal Min, decimal Max) PriceBounds(TutorDto tutor)
+        {
+            var prices = ParseSubjects(tutor.SubjectPrices).Select(s => s.Price).Where(p => p > 0).ToList();
+            if (prices.Count == 0 && tutor.HourlyRate > 0) prices.Add(tutor.HourlyRate);
+            return prices.Count == 0 ? (0m, 0m) : (prices.Min(), prices.Max());
         }
 
         private static bool HasSubject(TutorDto tutor, string subject) =>
@@ -371,13 +396,18 @@ namespace TutorConnectApp
             string query = search.Value.Trim();
             string? subject = subjectBox.SelectedIndex > 0 ? subjectBox.SelectedText : null;
             decimal minRating = RatingOptions[ratingBox.SelectedIndex].Min;
+            int minPrice = PriceSteps[minPriceBox.SelectedIndex];
+            int maxPrice = PriceSteps[maxPriceBox.SelectedIndex];
+            bool onlyFavorites = viewBox.SelectedIndex == 1;
 
             IEnumerable<TutorDto> filtered = tutors.Where(t =>
                 (query.Length == 0
                     || t.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
                     || (t.Subjects ?? "").Contains(query, StringComparison.CurrentCultureIgnoreCase))
                 && (subject == null || HasSubject(t, subject))
-                && t.AverageRating >= minRating);
+                && t.AverageRating >= minRating
+                && (!onlyFavorites || Favorites.IsFavorite(t.Id))
+                && MatchesPrice(t, minPrice, maxPrice));
 
             filtered = sortBox.SelectedIndex switch
             {
@@ -425,40 +455,112 @@ namespace TutorConnectApp
             Body.ResumeLayout(true);
         }
 
+        /// <summary>Az óradíj-tartomány átfedi a szűrő sávját? Óradíj nélküli oktató csak akkor jelenik meg, ha nincs ár-szűrő.</summary>
+        private static bool MatchesPrice(TutorDto tutor, int minPrice, int maxPrice)
+        {
+            if (minPrice == 0 && maxPrice == 0) return true;
+
+            var (low, high) = PriceBounds(tutor);
+            if (high == 0) return false;
+            return (minPrice == 0 || high >= minPrice) && (maxPrice == 0 || low <= maxPrice);
+        }
+
         private CardPanel BuildCard(TutorDto tutor)
         {
-            var card = new CardPanel();
+            // a kiemelkedően jól értékelt oktatók kártyáján arany jelzősáv van
+            bool top = tutor.ReviewCount >= 3 && tutor.AverageRating >= 4.5m;
+            var card = new AccentCard(top ? Theme.Star : Theme.MainBlue);
 
+            // ---------- fej: avatar, név, értékelés, óradíj ----------
             var head = Ui.Row();
-            head.Controls.Add(new AvatarCircle(tutor.FullName, 50));
-            head.Controls.Add(Ui.Lbl(tutor.FullName, 13.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 13, 14, 0)));
+            head.Controls.Add(new AvatarCircle(tutor.FullName, 64));
+
+            var info = Ui.Row();
+            info.FlowDirection = FlowDirection.TopDown;
+            info.Controls.Add(Ui.Lbl(tutor.FullName, 14.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 0, 2)));
+
+            var rating = Ui.Row();
             if (tutor.ReviewCount > 0)
             {
-                var rating = Ui.Chip($"★ {tutor.AverageRating.ToString("0.0", Ui.Hu)}  ({tutor.ReviewCount})", Theme.Warning);
-                rating.Margin = Ui.Pad(0, 12, 0, 0);
-                head.Controls.Add(rating);
+                rating.Controls.Add(Ui.Lbl(Stars(tutor.AverageRating), 11.5F, Theme.Star, margin: Ui.Pad(0, 0, 8, 0)));
+                rating.Controls.Add(Ui.Lbl($"{tutor.AverageRating.ToString("0.0", Ui.Hu)}  ({tutor.ReviewCount} értékelés)", 10F, Theme.Muted, margin: Ui.Pad(0, 3, 0, 0)));
             }
+            else
+            {
+                rating.Controls.Add(Ui.Lbl("Még nincs értékelés", 10F, Theme.Muted, margin: Ui.Pad(0, 1, 0, 0)));
+            }
+            info.Controls.Add(rating);
+
+            string range = PriceRange(tutor);
+            if (range.Length > 0)
+                info.Controls.Add(Ui.Lbl(range, 10.5F, Theme.MainBlue, bold: true, margin: Ui.Pad(0, 2, 0, 0)));
+            head.Controls.Add(info);
             card.Controls.Add(head);
 
+            // ---------- tantárgyak ----------
             var chips = Ui.WrapRow();
             foreach (var (name, price) in ParseSubjects(tutor.SubjectPrices))
                 chips.Controls.Add(Ui.Chip(price > 0 ? $"{name} · {Ui.Money(price)}/óra" : name));
             card.Controls.Add(chips);
 
+            // ---------- bemutatkozás (rövidítve; a teljes a profilon) ----------
             if (!string.IsNullOrWhiteSpace(tutor.Bio))
-                card.Controls.Add(Ui.Lbl(tutor.Bio!, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 4, 0, 4)));
-
-            var actions = Ui.Row();
-            actions.Controls.Add(Ui.PrimaryBtn("Időpont foglalása", (_, _) => OpenBooking(tutor)));
-            actions.Controls.Add(Ui.Btn("Naptár", Theme.CardBg, Theme.Text, (_, _) =>
             {
-                CalendarPage.InitialTutorId = tutor.Id;
-                Navigate("calendar");
-            }, outline: true));
+                string bio = tutor.Bio!.Trim();
+                if (bio.Length > 220) bio = bio[..220].TrimEnd() + "…";
+                card.Controls.Add(Ui.Lbl(bio, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 4, 0, 8)));
+            }
+
+            // ---------- műveletek ----------
+            var actions = Ui.Row();
+            actions.Controls.Add(Ui.Btn("Profil megtekintése", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenProfileAsync(tutor), outline: true));
+            actions.Controls.Add(Ui.PrimaryBtn("Időpont foglalása", (_, _) => OpenBooking(tutor)));
+            actions.Controls.Add(Ui.Btn("Naptár", Theme.CardBg, Theme.Text, (_, _) => OpenCalendar(tutor), outline: true));
             actions.Controls.Add(Ui.Btn("Üzenet", Theme.CardBg, Theme.Text, async (_, _) => await MessageAsync(tutor), outline: true));
+
+            // kedvenc: a szív megnyomására elmentődik; ha az oktató új időpontot hirdet, az app értesít
+            HoverButton? favorite = null;
+            favorite = Ui.Btn(Favorites.IsFavorite(tutor.Id) ? "♥ Kedvenc" : "♡ Kedvenc", Theme.CardBg,
+                Favorites.IsFavorite(tutor.Id) ? Theme.Danger : Theme.Text, (_, _) =>
+                {
+                    bool now = Favorites.Toggle(tutor.Id);
+                    favorite!.Text = now ? "♥ Kedvenc" : "♡ Kedvenc";
+                    favorite.ForeColor = now ? Theme.Danger : Theme.Text;
+                    if (viewBox.SelectedIndex == 1 && !now)
+                        BeginInvoke(new Action(() => RenderList(animate: false))); // a kedvencek listájából kikerül
+                }, outline: true);
+            actions.Controls.Add(favorite);
             card.Controls.Add(actions);
             return card;
         }
+
+        private static string Stars(decimal average)
+        {
+            int full = Math.Clamp((int)Math.Round(average, MidpointRounding.AwayFromZero), 0, 5);
+            return new string('★', full) + new string('☆', 5 - full);
+        }
+
+        /// <summary>Az oktató óradíj-tartománya szövegként ("6 500 – 9 000 Ft/óra"); üres, ha nincs megadva.</summary>
+        internal static string PriceRange(TutorDto tutor)
+        {
+            var prices = ParseSubjects(tutor.SubjectPrices).Select(s => s.Price).Where(p => p > 0).ToList();
+            if (prices.Count == 0) return tutor.HourlyRate > 0 ? $"{Ui.Money(tutor.HourlyRate)}/óra" : "";
+
+            decimal min = prices.Min();
+            decimal max = prices.Max();
+            return min == max
+                ? $"{Ui.Money(min)}/óra"
+                : $"{min.ToString("N0", Ui.Hu)} – {Ui.Money(max)}/óra";
+        }
+
+        private void OpenCalendar(TutorDto tutor)
+        {
+            CalendarPage.InitialTutorId = tutor.Id;
+            Navigate("calendar");
+        }
+
+        /// <summary>Megnyitja az oktató teljes profilját; onnan foglalás, naptár vagy üzenet indítható.</summary>
+        private Task OpenProfileAsync(TutorDto tutor) => TutorActions.ShowProfileAsync(FindForm(), tutor, Navigate);
 
         /// <summary>Beszélgetést indít az oktatóval (vagy megnyitja a meglévőt), és átvált a Chatre.</summary>
         private async Task MessageAsync(TutorDto tutor)
@@ -490,7 +592,7 @@ namespace TutorConnectApp
             }
         }
 
-        private static IEnumerable<(string Name, decimal Price)> ParseSubjects(string? raw)
+        internal static IEnumerable<(string Name, decimal Price)> ParseSubjects(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) yield break;
 
@@ -520,6 +622,7 @@ namespace TutorConnectApp
         private readonly Dictionary<string, SelectableChip> tabChips = new();
         private BookingSummaryDto summary = new();
         private FlowLayoutPanel tabRow = null!;
+        private readonly Dictionary<string, CountCard> countCards = new();
         private string filter = "";
         private int loadId;
 
@@ -557,6 +660,7 @@ namespace TutorConnectApp
 
             ClearBody();
             tabChips.Clear();
+            countCards.Clear();
 
             if (user.Role == "STUDENT")
             {
@@ -565,6 +669,28 @@ namespace TutorConnectApp
                 top.Controls.Add(Ui.PrimaryBtn("+  Új foglalás", (_, _) => Navigate("tutors")));
                 AddRow(top);
             }
+
+            // áttekintő: számlálókártyák, amelyekre kattintva az adott lista nyílik meg
+            var overview = Ui.WrapRow();
+            foreach (var (key, title, glyph, color) in new[]
+            {
+                ("pending", "Függőben", "\uE121", Theme.Warning),
+                ("upcoming", "Közelgő", "\uE787", Theme.Success),
+                ("past", "Korábbi", "\uE81C", Theme.MainBlue),
+                ("cancelled", "Lemondott", "\uE711", Theme.Muted)
+            })
+            {
+                string cardKey = key;
+                var card = new CountCard(title, glyph, color, async () =>
+                {
+                    if (filter == cardKey) return;
+                    filter = cardKey;
+                    await LoadListAsync();
+                });
+                countCards[key] = card;
+                overview.Controls.Add(card);
+            }
+            AddRow(overview);
 
             tabRow = Ui.WrapRow();
             foreach (var (key, _) in tabs)
@@ -602,6 +728,12 @@ namespace TutorConnectApp
                 int? count = CountFor(key);
                 chip.SetText(count.HasValue ? $"{label} ({count})" : label);
                 chip.SetSelected(key == filter);
+
+                if (countCards.TryGetValue(key, out var card))
+                {
+                    card.SetCount(count ?? 0);
+                    card.SetSelected(key == filter);
+                }
             }
         }
 
@@ -696,7 +828,36 @@ namespace TutorConnectApp
                 card.Controls.Add(actions);
             }
 
+            if (b.AsStudent && b.OtherId > 0)
+            {
+                var more = Ui.Row();
+                more.Controls.Add(Ui.Btn("Oktató profilja", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenTutorProfileAsync(b.OtherId), outline: true));
+                card.Controls.Add(more);
+            }
+
             return card;
+        }
+
+        /// <summary>A foglalás oktatójának profilja (a már letöltött oktatólistából).</summary>
+        private async Task OpenTutorProfileAsync(int tutorId)
+        {
+            try
+            {
+                var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (IsDisposed) return;
+
+                var tutor = tutors.FirstOrDefault(t => t.Id == tutorId);
+                if (tutor == null)
+                {
+                    MessageBox.Show(FindForm(), "Az oktató profilja nem érhető el.", "Oktató profilja", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                await TutorActions.ShowProfileAsync(FindForm(), tutor, Navigate);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült megnyitni a profilt", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         private static Label StatusChip(string status) => status switch
@@ -992,7 +1153,7 @@ namespace TutorConnectApp
             var row = Ui.Row();
             row.Controls.Add(Ui.Chip($"★ {review.Rating}", Theme.Warning));
             row.Controls.Add(Ui.Lbl(string.IsNullOrWhiteSpace(review.ReviewerName) ? "Diák" : review.ReviewerName!, 10.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 1, 12, 0)));
-            row.Controls.Add(Ui.Lbl(review.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd.", Ui.Hu), 9.5F, Theme.Muted, margin: Ui.Pad(0, 3, 0, 0)));
+            row.Controls.Add(Ui.Lbl(review.CreatedAt is DateTime created ? created.ToLocalTime().ToString("yyyy. MM. dd.", Ui.Hu) : "", 9.5F, Theme.Muted, margin: Ui.Pad(0, 3, 0, 0)));
             card.Controls.Add(row);
 
             if (!string.IsNullOrWhiteSpace(review.Comment))
@@ -1052,6 +1213,9 @@ namespace TutorConnectApp
             notifications.Controls.Add(Ui.Lbl("Értesítések", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
             notifications.Controls.Add(SwitchRow("Tálcaértesítések", "Új üzenetről és foglalás-változásról jelez, ha az ablak nincs előtérben.",
                 AppSettings.NotificationsEnabled, on => AppSettings.SetNotifications(on)));
+            if (user.Role == "STUDENT")
+                notifications.Controls.Add(SwitchRow("Kedvenc oktatók új időpontjai", "Jelez, ha egy kedvenc oktatód új szabad időpontot hirdet (amíg az app fut).",
+                    AppSettings.FavoriteAlertsEnabled, on => AppSettings.SetFavoriteAlerts(on)));
             AddRow(notifications);
 
             AddPrivacyCard();

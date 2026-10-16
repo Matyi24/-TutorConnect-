@@ -9,6 +9,8 @@ namespace TutorConnectApp
         private static UserInfo Me => ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
         private string currentKey = "";
         private readonly System.Windows.Forms.Timer badgeTimer = new() { Interval = 400 };
+        private readonly System.Windows.Forms.Timer favoriteTimer = new() { Interval = 5 * 60 * 1000 };
+        private bool favoriteChecking;
         private readonly NotifyIcon tray = new();
         private ContextMenuStrip? trayMenu;
         private Icon? trayIcon;
@@ -51,6 +53,13 @@ namespace TutorConnectApp
                 badgeTimer.Stop();
                 await RefreshBadgesAsync();
             };
+            // a diák kedvenc oktatóinak új szabad időpontjairól 5 percenként érdeklődünk (amíg az app fut)
+            if (user.Role == "STUDENT")
+            {
+                favoriteTimer.Tick += async (_, _) => await CheckFavoritesAsync();
+                favoriteTimer.Start();
+            }
+
             BuildBanner();
             ApplyTheme();
 
@@ -121,6 +130,7 @@ namespace TutorConnectApp
             Realtime.Start();   // valós idejű értesítések (új üzenet, foglalás-változás)
             _ = LoadChatAsync(); // a navbár olvasatlan-jelvényéhez
             ScheduleBadges();
+            if (Me.Role == "STUDENT") _ = CheckFavoritesAsync(); // az első ellenőrzés csak alapállapotot rögzít
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -133,6 +143,7 @@ namespace TutorConnectApp
             ChatState.Changed -= UpdateChatBadge;
             AppEvents.BadgesStale -= ScheduleBadges;
             badgeTimer.Dispose();
+            favoriteTimer.Dispose();
             Realtime.Stop();
             ChatState.Clear(); // a következő bejelentkezőnek ne maradjon meg a beszélgetés-lista
 
@@ -258,7 +269,7 @@ namespace TutorConnectApp
         }
 
         /// <summary>Előhozza az ablakot, és (ha kell) a kért oldalra, illetve beszélgetésre ugrik.</summary>
-        private void RestoreFromTray(string target, int? conversationId)
+        private void RestoreFromTray(string target, int? targetId)
         {
             if (IsDisposed) return;
 
@@ -267,17 +278,20 @@ namespace TutorConnectApp
             Activate();
 
             if (target.Length == 0) return;
-            if (target == "chat" && conversationId is int id)
-                ChatPage.PendingConversationId = id;
+            if (target == "chat" && targetId is int conversationId)
+                ChatPage.PendingConversationId = conversationId;
+            if (target == "calendar" && targetId is int tutorId)
+                CalendarPage.InitialTutorId = tutorId;
             navBar.Select(target);
         }
 
         /// <summary>Igaz, ha az alkalmazás egyik ablaka sem aktív (háttérben van vagy le van kicsinyítve).</summary>
         private bool InBackground => WindowState == FormWindowState.Minimized || ActiveForm == null;
 
-        private void ShowToast(string title, string text, string target, int? conversationId = null)
+        /// <param name="always">Igaz: akkor is jelez, ha az ablak előtérben van (pl. kedvenc oktató új időpontja).</param>
+        private void ShowToast(string title, string text, string target, int? conversationId = null, bool always = false)
         {
-            if (IsDisposed || !AppSettings.NotificationsEnabled || !InBackground) return;
+            if (IsDisposed || !AppSettings.NotificationsEnabled || (!always && !InBackground)) return;
 
             trayTarget = target;
             trayConversationId = conversationId;
@@ -299,6 +313,52 @@ namespace TutorConnectApp
             string body = onlyFile ? "Csatolmány: " + message.AttachmentName : message.Content;
 
             ShowToast(name.Length > 0 ? $"Új üzenet: {name}" : "Új üzenet", body, "chat", message.ConversationId);
+        }
+
+        /// <summary>
+        /// A kedvenc oktatók szabad időpontjainak lekérése. Ha olyan időpont jelent meg, amit az előző ellenőrzéskor
+        /// még nem láttunk, értesítést kapunk. Az első ellenőrzés csak az alapállapotot rögzíti.
+        /// </summary>
+        private async Task CheckFavoritesAsync()
+        {
+            if (favoriteChecking || IsDisposed || Me.Role != "STUDENT") return;
+
+            var ids = Favorites.Ids.ToList();
+            if (ids.Count == 0) return;
+
+            favoriteChecking = true;
+            try
+            {
+                foreach (int tutorId in ids)
+                {
+                    try
+                    {
+                        var data = await ApiClient.GetAsync<AvailabilityDto>($"/api/tutors/{tutorId}/availability");
+                        if (IsDisposed) return;
+
+                        var current = data.Slots.Select(s => s.Id).ToList();
+                        var known = Favorites.GetKnown(tutorId);
+                        Favorites.SetKnown(tutorId, current);
+
+                        int added = known == null ? 0 : current.Count(id => !known.Contains(id));
+                        if (added == 0 || !AppSettings.FavoriteAlertsEnabled) continue;
+
+                        var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                        string name = tutors.FirstOrDefault(t => t.Id == tutorId)?.FullName ?? "Egy kedvenc oktatód";
+                        ShowToast("Új szabad időpont",
+                            added == 1 ? $"{name} új szabad időpontot hirdetett." : $"{name} {added} új szabad időpontot hirdetett.",
+                            "calendar", tutorId, always: true);
+                    }
+                    catch (ApiException)
+                    {
+                        // egy oktató lekérése nem sikerült (pl. törölt fiók): a többit tovább ellenőrizzük
+                    }
+                }
+            }
+            finally
+            {
+                favoriteChecking = false;
+            }
         }
 
         private void NotifyBookingChange()

@@ -52,8 +52,9 @@ namespace TutorConnectApp
         public string Email { get; private set; } = "";
 
         public RegisterDialog()
-            : base("Fiók létrehozása", "Add meg az adataidat, és már használhatod is az appot.", "Regisztráció", Ui.Sz(560, 760))
+            : base("Fiók létrehozása", "Add meg az adataidat, és már használhatod is az appot.", "Regisztráció", Ui.Sz(560, 760), "\uE77B")
         {
+            Section("Személyes adatok");
             Caption("Név");
             nameBox = NewInput("", 60);
             AddBody(nameBox);
@@ -62,6 +63,7 @@ namespace TutorConnectApp
             emailBox = NewInput("", 100);
             AddBody(emailBox);
 
+            Section("Jelszó");
             Caption("Jelszó (legalább 6 karakter, számmal és speciális karakterrel)");
             passwordBox = NewInput("", 100, password: true);
             AddBody(passwordBox);
@@ -70,18 +72,20 @@ namespace TutorConnectApp
             confirmBox = NewInput("", 100, password: true);
             AddBody(confirmBox);
 
+            Section("Szerepkör");
             Caption("Ki vagy te?");
             roleBox = new DropdownSelect("Szerepkör", new[] { "Diák vagyok", "Oktató vagyok" });
             roleBox.Margin = Ui.Pad(0, 0, 0, 12);
             AddBody(roleBox);
 
+            Section("Hozzájárulás");
             acceptBox = new CheckBox
             {
                 Text = "Elfogadom az adatkezelési tájékoztatót és a felhasználási feltételeket.",
                 AutoSize = true,
                 MaximumSize = new Size(ContentWidth, 0),
                 ForeColor = Theme.Text,
-                BackColor = Theme.CardBg,
+                BackColor = Theme.PageBg,
                 Font = Ui.MakeFont(9.5F),
                 Margin = Ui.Pad(0, 4, 0, 6)
             };
@@ -151,16 +155,18 @@ namespace TutorConnectApp
         private bool sent;
 
         public ForgotPasswordDialog(string presetEmail)
-            : base("Elfelejtett jelszó", "Küldünk egy levelet egy linkkel, amin új jelszót adhatsz meg.", "Link küldése", Ui.Sz(560, 460))
+            : base("Elfelejtett jelszó", "Küldünk egy levelet egy linkkel, amin új jelszót adhatsz meg.", "Link küldése", Ui.Sz(560, 460), "\uE715")
         {
-            var caption = Ui.Lbl("E-mail cím", 9.5F, Theme.Muted, margin: Ui.Pad(0, 6, 0, 6));
+            Section("E-mail cím");
+            var caption = Ui.Lbl("Add meg a fiókodhoz tartozó e-mail címet", 9.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 6));
             Body.Controls.Add(caption);
 
             emailBox = NewInput(presetEmail, 100);
             AddBody(emailBox);
 
+            Section("Hogyan tovább?");
             var note = Ui.Lbl("A levélben kapott linket a böngészőben nyisd meg: ott adhatod meg az új jelszót, utána itt az appban be tudsz jelentkezni vele.",
-                9.5F, Theme.Muted, margin: Ui.Pad(0, 8, 0, 0));
+                9.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 4));
             note.MaximumSize = new Size(ContentWidth, 0);
             Body.Controls.Add(note);
 
@@ -209,16 +215,18 @@ namespace TutorConnectApp
         private readonly CheckBox confirmBox;
 
         public DeleteAccountDialog()
-            : base("Fiók törlése", "Ez a művelet nem vonható vissza.", "Fiók végleges törlése", Ui.Sz(560, 520))
+            : base("Fiók törlése", "Ez a művelet nem vonható vissza.", "Fiók végleges törlése", Ui.Sz(560, 520), "\uE74D")
         {
             ActionButton.SetColors(Theme.Danger, Anim.Lerp(Theme.Danger, Color.Black, 0.14), null);
 
+            Section("Mi történik a fiókoddal?");
             var warning = Ui.Lbl("A fiókod adatai anonimizálódnak: a neved, e-mail címed, bemutatkozásod és tantárgyaid törlődnek, a csatolt fájlok is. " +
                                  "A korábbi foglalások és üzenetek a másik fél számára \"Törölt felhasználó\" névvel maradnak meg. Utána kijelentkeztetünk.",
-                10F, Theme.Muted, margin: Ui.Pad(0, 4, 0, 14));
+                10F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 6));
             warning.MaximumSize = new Size(ContentWidth, 0);
             Body.Controls.Add(warning);
 
+            Section("Megerősítés");
             Body.Controls.Add(Ui.Lbl("A jelenlegi jelszavad", 9.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 6)));
             passwordBox = NewInput("", 100, password: true);
             AddBody(passwordBox);
@@ -229,7 +237,7 @@ namespace TutorConnectApp
                 AutoSize = true,
                 MaximumSize = new Size(ContentWidth, 0),
                 ForeColor = Theme.Text,
-                BackColor = Theme.CardBg,
+                BackColor = Theme.PageBg,
                 Font = Ui.MakeFont(10F),
                 Margin = Ui.Pad(0, 8, 0, 6)
             };

@@ -384,6 +384,105 @@ namespace TutorConnectApp
         }
     }
 
+    /// <summary>
+    /// Kattintható számlálókártya (ikon, szám, felirat) a Foglalások oldal áttekintőjéhez. A kijelölt kártya
+    /// kerete a saját színével jelenik meg.
+    /// </summary>
+    internal sealed class CountCard : Control
+    {
+        private readonly string title;
+        private readonly string glyph;
+        private readonly Color accent;
+        private readonly Font valueFont = Ui.MakeFont(20F, FontStyle.Bold);
+        private readonly Font titleFont = Ui.MakeFont(9.5F);
+        private int count;
+        private bool selected;
+        private double hoverT;
+        private Anim.Tween? hoverTween;
+
+        public CountCard(string title, string glyph, Color accent, Action onClick)
+        {
+            this.title = title;
+            this.glyph = glyph;
+            this.accent = accent;
+
+            int height = Math.Max(Ui.S(88), Ui.S(18) * 2 + Ui.LineHeight(valueFont) + Ui.LineHeight(titleFont));
+            Size = new Size(Ui.S(232), height);
+            Margin = Ui.Pad(0, 0, 16, 16);
+            Cursor = Cursors.Hand;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.Selectable, false);
+            Click += (_, _) => onClick();
+        }
+
+        public void SetCount(int value)
+        {
+            count = value;
+            Invalidate();
+        }
+
+        public void SetSelected(bool value)
+        {
+            selected = value;
+            Invalidate();
+        }
+
+        private void HoverTo(double to)
+        {
+            hoverTween?.Cancel();
+            double from = hoverT;
+            hoverTween = Anim.Run(140, t =>
+            {
+                hoverT = from + (to - from) * t;
+                Invalidate();
+            });
+        }
+
+        protected override void OnMouseEnter(EventArgs e) { HoverTo(1); base.OnMouseEnter(e); }
+        protected override void OnMouseLeave(EventArgs e) { HoverTo(0); base.OnMouseLeave(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.Clear(Ui.EffectiveBack(Parent));
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+
+            using (var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(14)))
+            {
+                using var fill = new SolidBrush(Anim.Lerp(Theme.CardBg, Theme.SoftHover, hoverT));
+                using var border = new Pen(selected ? accent : Theme.CardBorder, selected ? 2.5F : 1F);
+                g.FillPath(fill, path);
+                g.DrawPath(border, path);
+            }
+
+            int badgeSize = Ui.S(46);
+            var badge = new Rectangle(Ui.S(20), (Height - badgeSize) / 2, badgeSize, badgeSize);
+            using (var badgeBrush = new SolidBrush(Anim.Lerp(Theme.CardBg, accent, Theme.Dark ? 0.28 : 0.15)))
+                g.FillEllipse(badgeBrush, badge);
+            using (var iconBrush = new SolidBrush(accent))
+            using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                g.DrawString(glyph, Ui.IconFont(16F), iconBrush, badge, center);
+
+            int textX = badge.Right + Ui.S(16);
+            int textWidth = Math.Max(Width - textX - Ui.S(10), 0);
+            int valueHeight = Ui.LineHeight(valueFont);
+            int top = (Height - valueHeight - Ui.LineHeight(titleFont)) / 2;
+
+            using var format = new StringFormat(StringFormatFlags.NoWrap) { Trimming = StringTrimming.EllipsisCharacter };
+            using var valueBrush = new SolidBrush(Theme.Text);
+            using var titleBrush = new SolidBrush(selected ? accent : Theme.Muted);
+            g.DrawString(count.ToString(), valueFont, valueBrush, new Rectangle(textX, top, textWidth, valueHeight + 2), format);
+            g.DrawString(title, titleFont, titleBrush, new Rectangle(textX, top + valueHeight, textWidth, Ui.LineHeight(titleFont) + 2), format);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) hoverTween?.Cancel();
+            base.Dispose(disposing);
+        }
+    }
+
     /// <summary>Színátmenetes üdvözlő sáv a főoldal tetején, opcionális gombbal.</summary>
     internal class HeroBanner : Control
     {
@@ -542,6 +641,9 @@ namespace TutorConnectApp
             ResizeRedraw = true;
         }
 
+        /// <summary>A megjelenési animáció állása (0–1): az utódok díszítő elemei is ehhez igazodhatnak.</summary>
+        protected double Reveal => reveal;
+
         public void SetReveal(double value)
         {
             reveal = Math.Clamp(value, 0, 1);
@@ -590,6 +692,31 @@ namespace TutorConnectApp
                 else if (tag == "fill")
                     child.Width = inner; // rögzített magasságú elem, a teljes belső szélességre húzva
             }
+        }
+    }
+
+    /// <summary>Kártya bal szélén függőleges színes jelzősávval (pl. oktatói kártya).</summary>
+    internal sealed class AccentCard : CardPanel
+    {
+        private readonly Color accent;
+
+        public AccentCard(Color accent)
+        {
+            this.accent = accent;
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            base.OnPaintBackground(e);
+            if (Width < 8 || Height < 8) return;
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var path = Ui.RoundedPath(new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(14));
+            g.SetClip(path);
+            using (var brush = new SolidBrush(Color.FromArgb((int)(255 * Reveal), accent)))
+                g.FillRectangle(brush, 0, 0, Ui.S(6), Height);
+            g.ResetClip();
         }
     }
 
