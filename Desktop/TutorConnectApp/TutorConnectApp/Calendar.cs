@@ -536,6 +536,10 @@ namespace TutorConnectApp
             toolbar.Controls.Add(next);
             toolbar.Controls.Add(weekLabel);
 
+            var export = Ui.Btn("Exportálás (.ics)", Theme.CardBg, Theme.Text, async (_, _) => await ExportAsync(), outline: true);
+            export.Margin = Ui.Pad(0, 0, 16, 12);
+            toolbar.Controls.Add(export);
+
             if (!isTutor)
             {
                 int initial = 0;
@@ -579,6 +583,47 @@ namespace TutorConnectApp
         // ------------------------------------------------------------
         // Hét léptetése
         // ------------------------------------------------------------
+
+        /// <summary>A függő és a visszaigazolt közelgő foglalások mentése .ics fájlba (Google Naptár, Outlook, telefon).</summary>
+        private async Task ExportAsync()
+        {
+            try
+            {
+                var pendingTask = ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=pending");
+                var upcomingTask = ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=upcoming");
+                await Task.WhenAll(pendingTask, upcomingTask);
+                if (IsDisposed) return;
+
+                var items = pendingTask.Result.Concat(upcomingTask.Result).OrderBy(b => b.StartTime).ToList();
+                if (items.Count == 0)
+                {
+                    MessageBox.Show(FindForm(), "Most nincs exportálható (függő vagy közelgő) foglalásod.", "Exportálás",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                using var dialog = new SaveFileDialog
+                {
+                    Title = "Foglalások exportálása",
+                    Filter = "Naptár fájl (*.ics)|*.ics",
+                    FileName = "tutorconnect-foglalasok.ics"
+                };
+                if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+
+                File.WriteAllText(dialog.FileName, IcsExport.Build(items, isTutor), new System.Text.UTF8Encoding(false));
+                MessageBox.Show(FindForm(), $"{items.Count} foglalás elmentve. A fájlt behúzhatod a Google Naptárba vagy megnyithatod az Outlookban.",
+                    "Exportálás kész", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült az exportálás", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                MessageBox.Show(FindForm(), "A fájl mentése nem sikerült: " + ex.Message, "Nem sikerült az exportálás",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
 
         private void ShiftWeek(int days)
         {

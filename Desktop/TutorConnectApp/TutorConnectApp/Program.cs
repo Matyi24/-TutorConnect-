@@ -26,10 +26,20 @@ namespace TutorConnectApp
             Ui.InitDpi();       // a képernyő nagyítása szerinti méretezéshez
 
             // Belépés nélkül nem nyílik meg a főablak. Kijelentkezés után újra a belépő jön.
+            // Induláskor (ha az "Emlékezz rám" be volt jelölve) a mentett munkamenettel próbálkozunk.
+            bool firstRun = true;
             while (true)
             {
-                using (var login = new LoginForm())
+                bool restored = false;
+                if (firstRun)
                 {
+                    firstRun = false;
+                    restored = Task.Run(() => ApiClient.TryRestoreSessionAsync()).GetAwaiter().GetResult();
+                }
+
+                if (!restored)
+                {
+                    using var login = new LoginForm();
                     if (login.ShowDialog() != DialogResult.OK)
                         return;
                 }

@@ -101,6 +101,13 @@ namespace TutorConnectApp
                 {
                     tween.Cancelled = true; // a vezérlő közben megszűnt
                 }
+                catch (Exception)
+                {
+                    // egy hibás animáció ne ismétlődjön 15 ms-onként (hibaüzenet-áradat): egyszer jelez, aztán leáll
+                    tween.Cancelled = true;
+                    Active.Remove(tween);
+                    throw;
+                }
 
                 if (t >= 1 || tween.Cancelled)
                 {
@@ -124,6 +131,16 @@ namespace TutorConnectApp
         {
             public bool Dark { get; set; }
             public bool Animations { get; set; } = true;
+            public bool Notifications { get; set; } = true;
+        }
+
+        /// <summary>Tálcaértesítések (új üzenet, foglalás-változás), ha az ablak nincs előtérben.</summary>
+        public static bool NotificationsEnabled { get; private set; } = true;
+
+        public static void SetNotifications(bool enabled)
+        {
+            NotificationsEnabled = enabled;
+            Save();
         }
 
         private static string FilePath => Path.Combine(
@@ -138,6 +155,7 @@ namespace TutorConnectApp
                 if (data == null) return;
                 Theme.Init(data.Dark);
                 Anim.Init(data.Animations);
+                NotificationsEnabled = data.Notifications;
             }
             catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
             {
@@ -150,7 +168,7 @@ namespace TutorConnectApp
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data { Dark = Theme.Dark, Animations = Anim.Enabled }));
+                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data { Dark = Theme.Dark, Animations = Anim.Enabled, Notifications = NotificationsEnabled }));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {

@@ -61,6 +61,15 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>
+        /// Az oldal újraépítése előtt (témaváltás, másik monitor) elmenti, amit a felhasználó beállított
+        /// (keresőszöveg, szűrők, megnyitott beszélgetés), hogy az új oldal onnan folytathassa.
+        /// </summary>
+        public virtual object? CaptureState() => null;
+
+        /// <summary>Az előző példány CaptureState() értékét kapja meg, még a betöltés (LoadAsync) előtt.</summary>
+        public virtual void RestoreState(object? state) { }
+
         protected void Navigate(string key) => NavigateRequested?.Invoke(key);
 
         protected void RequestLogout() => LogoutRequested?.Invoke();

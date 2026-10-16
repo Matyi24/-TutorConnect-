@@ -106,6 +106,19 @@ namespace TutorConnectApp
         private Label countLabel = null!;
         private FlowLayoutPanel grid = null!;
         private string selectedCategory = AllCategories;
+        private State? restored;
+        private int limit = PageSize;
+        private Control moreRow = null!;
+        private HoverButton moreButton = null!;
+
+        /// <summary>Ennyi kártyát rajzolunk egyszerre; a többi gombnyomásra jelenik meg (sok tantárgynál így nem lassul az oldal).</summary>
+        private const int PageSize = 48;
+
+        private sealed record State(string Query, string Category);
+
+        public override object? CaptureState() => search == null ? null : new State(search.Value, selectedCategory);
+
+        public override void RestoreState(object? state) => restored = state as State;
 
         public SubjectsPage(UserInfo user) : base("Tantárgyak", "Böngéssz a tantárgyak között, majd nézd meg, kik tanítják őket.")
         {
@@ -123,13 +136,19 @@ namespace TutorConnectApp
             tutors = tutorsTask.Result;
             selectedCategory = AllCategories;
             categoryChips.Clear();
+            limit = PageSize;
 
             ClearBody();
 
             // eszköztár: keresés + kategória-szűrők egy kártyában
             var toolbar = new CardPanel();
             search = new SearchBox("Keresés tantárgy neve alapján...") { Tag = "fill" };
-            search.ValueChanged += (_, _) => RenderGrid();
+            if (restored != null) search.SetValue(restored.Query); // még a figyelő bekötése előtt, hogy ne rajzoljon
+            search.ValueChanged += (_, _) =>
+            {
+                limit = PageSize;
+                RenderGrid();
+            };
             toolbar.Controls.Add(search);
 
             var filters = Ui.WrapRow();
@@ -157,12 +176,27 @@ namespace TutorConnectApp
             grid = Ui.WrapRow();
             AddRow(grid);
 
-            categoryChips[AllCategories].SetSelected(true);
+            var more = Ui.Row();
+            moreButton = Ui.Btn("Továbbiak megjelenítése", Theme.CardBg, Theme.Text, (_, _) =>
+            {
+                limit += PageSize;
+                RenderGrid();
+            }, outline: true);
+            more.Controls.Add(moreButton);
+            moreRow = more;
+            AddRow(moreRow, animate: false);
+
+            if (restored != null && categoryChips.ContainsKey(restored.Category))
+                selectedCategory = restored.Category;
+            restored = null;
+
+            categoryChips[selectedCategory].SetSelected(true);
             RenderGrid();
         }
 
         private void SelectCategory(string category)
         {
+            limit = PageSize;
             selectedCategory = category;
             foreach (var (name, chip) in categoryChips)
                 chip.SetSelected(name == category);
@@ -196,6 +230,10 @@ namespace TutorConnectApp
                 _ => $"{shown.Count} tantárgy"
             };
 
+            int remaining = Math.Max(shown.Count - limit, 0);
+            moreRow.Visible = remaining > 0;
+            moreButton.Text = $"Továbbiak megjelenítése ({remaining})";
+
             grid.SuspendLayout();
             Ui.Reset(grid);
 
@@ -205,7 +243,7 @@ namespace TutorConnectApp
             }
             else
             {
-                foreach (var subject in shown)
+                foreach (var subject in shown.Take(limit))
                 {
                     var card = new SubjectCard(subject, TutorCountFor(subject.Name), studentView);
                     if (studentView)
@@ -248,6 +286,18 @@ namespace TutorConnectApp
         private DropdownSelect ratingBox = null!;
         private DropdownSelect sortBox = null!;
         private Label countLabel = null!;
+        private State? restored;
+        private int limit = PageSize;
+
+        /// <summary>Ennyi oktatókártyát rajzolunk egyszerre; a többi gombnyomásra jelenik meg.</summary>
+        private const int PageSize = 12;
+
+        private sealed record State(string Query, int Subject, int Rating, int Sort);
+
+        public override object? CaptureState() =>
+            search == null ? null : new State(search.Value, subjectBox.SelectedIndex, ratingBox.SelectedIndex, sortBox.SelectedIndex);
+
+        public override void RestoreState(object? state) => restored = state as State;
 
         public TutorsPage() : base("Oktatók", "Válaszd ki a hozzád illő oktatót, és foglalj időpontot.") { }
 
@@ -269,19 +319,35 @@ namespace TutorConnectApp
             int initial = InitialSubject == null
                 ? 0
                 : subjectNames.FindIndex(n => string.Equals(n, InitialSubject, StringComparison.CurrentCultureIgnoreCase)) + 1;
+            bool fromSubjects = InitialSubject != null;
             InitialSubject = null;
+
+            // témaváltás után a korábbi keresés és szűrők visszaállnak (a Tantárgyak oldalról érkezve nem)
+            var keep = fromSubjects ? null : restored;
+            restored = null;
+            if (keep != null) initial = keep.Subject;
+            limit = PageSize;
 
             ClearBody();
 
             search = new SearchBox("Keresés oktató neve vagy tantárgy alapján...");
-            search.ValueChanged += (_, _) => RenderList(animate: false);
+            if (keep != null) search.SetValue(keep.Query); // még a figyelő bekötése előtt, hogy ne rajzoljon
+            search.ValueChanged += (_, _) =>
+            {
+                limit = PageSize;
+                RenderList(animate: false);
+            };
             AddRow(search);
 
             subjectBox = new DropdownSelect("Tantárgy", new[] { AllSubjects }.Concat(subjectNames), initial);
-            ratingBox = new DropdownSelect("Értékelés", RatingOptions.Select(o => o.Label));
-            sortBox = new DropdownSelect("Rendezés", SortOptions);
+            ratingBox = new DropdownSelect("Értékelés", RatingOptions.Select(o => o.Label), keep?.Rating ?? 0);
+            sortBox = new DropdownSelect("Rendezés", SortOptions, keep?.Sort ?? 0);
             foreach (var box in new[] { subjectBox, ratingBox, sortBox })
-                box.SelectionChanged += (_, _) => RenderList(animate: false);
+                box.SelectionChanged += (_, _) =>
+                {
+                    limit = PageSize;
+                    RenderList(animate: false);
+                };
 
             var options = Ui.WrapRow();
             options.Controls.Add(subjectBox);
@@ -336,8 +402,25 @@ namespace TutorConnectApp
             if (shown.Count == 0)
                 AddRow(Ui.MessageCard("Nincs a szűrőknek megfelelő oktató.", "\uE721"), animate);
             else
-                foreach (var tutor in shown)
+            {
+                foreach (var tutor in shown.Take(limit))
                     AddRow(BuildCard(tutor), animate);
+
+                if (shown.Count > limit)
+                {
+                    var more = Ui.Row();
+                    more.Controls.Add(Ui.Btn($"Továbbiak megjelenítése ({shown.Count - limit})", Theme.CardBg, Theme.Text, (_, _) =>
+                    {
+                        // a gomb a saját eltávolítását váltja ki, ezért a kattintás után hajtjuk végre
+                        BeginInvoke(new Action(() =>
+                        {
+                            limit += PageSize;
+                            RenderList(animate: false);
+                        }));
+                    }, outline: true));
+                    AddRow(more, animate: false);
+                }
+            }
 
             Body.ResumeLayout(true);
         }
@@ -739,6 +822,27 @@ namespace TutorConnectApp
             var account = await ApiClient.GetAsync<AccountDto>("/api/account");
             if (IsDisposed) return;
 
+            // az oktatónak statisztika és értékelések is járnak; ha ezek nem töltődnek be, a profil enélkül is megjelenik
+            List<BookingDto>? completed = null;
+            List<ReviewItemDto>? reviews = null;
+            if (account.Role == "TUTOR")
+            {
+                try
+                {
+                    var bookingsTask = ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=past");
+                    var reviewsTask = ApiClient.GetAsync<List<ReviewItemDto>>($"/api/tutors/{account.Id}/reviews");
+                    await Task.WhenAll(bookingsTask, reviewsTask);
+                    completed = bookingsTask.Result;
+                    reviews = reviewsTask.Result;
+                }
+                catch (ApiException)
+                {
+                    completed = null;
+                    reviews = null;
+                }
+                if (IsDisposed) return;
+            }
+
             ClearBody();
 
             var head = new CardPanel();
@@ -749,10 +853,18 @@ namespace TutorConnectApp
             names.FlowDirection = FlowDirection.TopDown;
             names.Controls.Add(Ui.Lbl(account.Name, 17F, Theme.Text, bold: true, margin: Ui.Pad(0, 6, 0, 2)));
             names.Controls.Add(Ui.Lbl(account.Email, 10.5F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 8)));
-            names.Controls.Add(Ui.Chip(Ui.RoleName(account.Role), Theme.MainBlue));
+            bool verified = ApiClient.CurrentUser?.EmailVerified ?? true;
+            var chipRow = Ui.Row();
+            chipRow.Controls.Add(Ui.Chip(Ui.RoleName(account.Role), Theme.MainBlue));
+            chipRow.Controls.Add(verified
+                ? Ui.Chip("E-mail megerősítve", Theme.Success)
+                : Ui.Chip("E-mail nincs megerősítve", Theme.Warning));
+            names.Controls.Add(chipRow);
             top.Controls.Add(names);
             head.Controls.Add(top);
             head.Controls.Add(Ui.PrimaryBtn("Adatok szerkesztése", async (_, _) => await EditAsync(account)));
+            if (!verified)
+                head.Controls.Add(Ui.Btn("Megerősítő levél újraküldése", Theme.MainBlue, Theme.Text, async (_, _) => await ResendAsync(), outline: true));
             AddRow(head);
 
             if (!string.IsNullOrWhiteSpace(account.Bio))
@@ -779,6 +891,9 @@ namespace TutorConnectApp
                     card.Controls.Add(chips);
                 }
                 AddRow(card);
+
+                if (completed != null) AddStats(completed, reviews);
+                if (reviews != null) AddReviews(reviews);
             }
 
             if (account.Role == "STUDENT")
@@ -807,6 +922,89 @@ namespace TutorConnectApp
         }
 
         /// <summary>Megnyitja a szerkesztő ablakot; mentés után az oldal újratölt az új adatokkal.</summary>
+        /// <summary>Teljesített órák, óraszám és bevétel (a szerver az utolsó 200 teljesített órát adja vissza).</summary>
+        private void AddStats(List<BookingDto> completed, List<ReviewItemDto>? reviews)
+        {
+            AddRow(Ui.Section("Statisztikák"));
+
+            double hours = completed.Sum(b => (b.EndTime - b.StartTime).TotalHours);
+            decimal total = completed.Sum(b => b.Price ?? 0m);
+            var now = DateTime.Now;
+            decimal thisMonth = completed
+                .Where(b => b.StartTime.ToLocalTime().Year == now.Year && b.StartTime.ToLocalTime().Month == now.Month)
+                .Sum(b => b.Price ?? 0m);
+
+            var tiles = Ui.WrapRow();
+            tiles.Controls.Add(new StatTile(completed.Count, "", "Teljesített óra", "\uE787", Theme.MainBlue));
+            tiles.Controls.Add(new StatTile((int)Math.Round(hours), " h", "Tartott órák hossza", "\uE121", Theme.Success));
+            AddRow(tiles);
+
+            var money = new CardPanel();
+            money.Controls.Add(Ui.KeyValue("Bevétel összesen", Ui.Money(total)));
+            money.Controls.Add(Ui.KeyValue("Bevétel ebben a hónapban", Ui.Money(thisMonth)));
+            if (reviews is { Count: > 0 })
+                money.Controls.Add(Ui.KeyValue("Átlagos értékelés", $"★ {reviews.Average(r => r.Rating).ToString("0.0", Ui.Hu)}  ({reviews.Count} értékelés)"));
+            if (completed.Count >= 200)
+                money.Controls.Add(Ui.Lbl("Az utolsó 200 teljesített óra alapján.", 9.5F, Theme.Muted, margin: Ui.Pad(0, 6, 0, 0)));
+            AddRow(money);
+        }
+
+        private const int ReviewsShownFirst = 5;
+
+        private void AddReviews(List<ReviewItemDto> reviews)
+        {
+            AddRow(Ui.Section("Értékelések"));
+
+            var card = new CardPanel();
+            if (reviews.Count == 0)
+            {
+                card.Controls.Add(Ui.Lbl("Még nem érkezett értékelésed.", 10.5F, Theme.Muted, margin: Ui.Pad(0)));
+                AddRow(card);
+                return;
+            }
+
+            foreach (var review in reviews.Take(ReviewsShownFirst))
+                AddReview(card, review);
+
+            if (reviews.Count > ReviewsShownFirst)
+            {
+                HoverButton? more = null;
+                more = Ui.Btn($"Mind a(z) {reviews.Count} értékelés megjelenítése", Theme.CardBg, Theme.Text, (_, _) =>
+                {
+                    // a gomb a saját eltávolítását váltja ki, ezért a kattintás után hajtjuk végre
+                    BeginInvoke(new Action(() =>
+                    {
+                        card.SuspendLayout();
+                        card.Controls.Remove(more);
+                        more!.Dispose();
+                        foreach (var review in reviews.Skip(ReviewsShownFirst))
+                            AddReview(card, review);
+                        card.ResumeLayout(true);
+                    }));
+                }, outline: true);
+                card.Controls.Add(more);
+            }
+            AddRow(card);
+        }
+
+        private static void AddReview(CardPanel card, ReviewItemDto review)
+        {
+            var row = Ui.Row();
+            row.Controls.Add(Ui.Chip($"★ {review.Rating}", Theme.Warning));
+            row.Controls.Add(Ui.Lbl(string.IsNullOrWhiteSpace(review.ReviewerName) ? "Diák" : review.ReviewerName!, 10.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 1, 12, 0)));
+            row.Controls.Add(Ui.Lbl(review.CreatedAt.ToLocalTime().ToString("yyyy. MM. dd.", Ui.Hu), 9.5F, Theme.Muted, margin: Ui.Pad(0, 3, 0, 0)));
+            card.Controls.Add(row);
+
+            if (!string.IsNullOrWhiteSpace(review.Comment))
+                card.Controls.Add(Ui.Lbl(review.Comment!, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 0, 0, 14)));
+        }
+
+        private async Task ResendAsync()
+        {
+            await VerifyUi.ResendAsync(FindForm());
+            if (!IsDisposed) await LoadAsync();
+        }
+
         private async Task EditAsync(AccountDto account)
         {
             try
@@ -850,6 +1048,14 @@ namespace TutorConnectApp
                 on => Anim.SetEnabled(on)));
             AddRow(look);
 
+            var notifications = new CardPanel();
+            notifications.Controls.Add(Ui.Lbl("Értesítések", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
+            notifications.Controls.Add(SwitchRow("Tálcaértesítések", "Új üzenetről és foglalás-változásról jelez, ha az ablak nincs előtérben.",
+                AppSettings.NotificationsEnabled, on => AppSettings.SetNotifications(on)));
+            AddRow(notifications);
+
+            AddPrivacyCard();
+
             var account = new CardPanel();
             account.Controls.Add(Ui.Lbl("Fiók", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
             account.Controls.Add(Ui.KeyValue("Név", user.Name));
@@ -864,6 +1070,99 @@ namespace TutorConnectApp
             AddRow(app);
 
             return Task.CompletedTask;
+        }
+
+        // ------------------------------------------------------------
+        // Adatkezelés: tájékoztatók, adatexport, mentett belépés, fióktörlés
+        // ------------------------------------------------------------
+
+        private void AddPrivacyCard()
+        {
+            var card = new CardPanel();
+            card.Controls.Add(Ui.Lbl("Adatkezelés", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 6)));
+            card.Controls.Add(Ui.Lbl("Az adataid a TutorConnect szerverén tárolódnak. Itt elolvashatod a tájékoztatókat, letöltheted az adataidat, vagy törölheted a fiókodat.",
+                9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 0, 0, 10)));
+
+            var documents = Ui.Row();
+            documents.Controls.Add(Ui.Btn("Adatvédelmi tájékoztató", Theme.CardBg, Theme.Text, (_, _) => Web.Open("/adatvedelem"), outline: true));
+            documents.Controls.Add(Ui.Btn("Felhasználási feltételek", Theme.CardBg, Theme.Text, (_, _) => Web.Open("/felhasz_feltetelek"), outline: true));
+            card.Controls.Add(documents);
+
+            var data = Ui.Row();
+            data.Controls.Add(Ui.Btn("Adataim letöltése (JSON)", Theme.CardBg, Theme.Text, async (_, _) => await ExportDataAsync(), outline: true));
+            data.Controls.Add(Ui.Btn("Mentett belépés törlése", Theme.CardBg, Theme.Text, (_, _) =>
+            {
+                ApiClient.RememberSession(false);
+                MessageBox.Show(FindForm(), "A mentett belépést töröltük. Következő induláskor újra be kell jelentkezned.",
+                    "Mentett belépés", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }, outline: true));
+            card.Controls.Add(data);
+
+            if (user.Role != "ADMIN")
+            {
+                card.Controls.Add(Ui.Lbl("Veszélyes zóna", 10.5F, Theme.Danger, bold: true, margin: Ui.Pad(0, 12, 0, 6)));
+                card.Controls.Add(Ui.Btn("Fiók törlése", Theme.CardBg, Theme.Danger, (_, _) => DeleteAccount(), outline: true));
+            }
+            AddRow(card);
+        }
+
+        private void DeleteAccount()
+        {
+            using var dialog = new DeleteAccountDialog();
+            if (dialog.ShowDialog(FindForm()) != DialogResult.OK || IsDisposed) return;
+
+            MessageBox.Show(FindForm(), "A fiókod törölve lett. Köszönjük, hogy használtad a TutorConnectet!", "Fiók törölve",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            RequestLogout(); // a szerver már megszüntette a munkamenetet: vissza a belépőhöz
+        }
+
+        /// <summary>A saját fiók- és foglalási adatok mentése egy JSON-fájlba.</summary>
+        private async Task ExportDataAsync()
+        {
+            try
+            {
+                var sections = new List<(string Name, string Json)> { ("fiok", await ApiClient.GetRawAsync("/api/account")) };
+                foreach (string status in new[] { "pending", "upcoming", "past", "cancelled" })
+                    sections.Add(($"foglalasok_{status}", await ApiClient.GetRawAsync($"/api/bookings?status={status}")));
+                if (IsDisposed) return;
+
+                using var dialog = new SaveFileDialog
+                {
+                    Title = "Adataim mentése",
+                    Filter = "JSON fájl (*.json)|*.json",
+                    FileName = "tutorconnect-adataim.json"
+                };
+                if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
+
+                using (var stream = File.Create(dialog.FileName))
+                using (var writer = new System.Text.Json.Utf8JsonWriter(stream, new System.Text.Json.JsonWriterOptions
+                {
+                    Indented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                }))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("exportalva", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    foreach (var (name, json) in sections)
+                    {
+                        using var document = System.Text.Json.JsonDocument.Parse(json);
+                        writer.WritePropertyName(name);
+                        document.RootElement.WriteTo(writer);
+                    }
+                    writer.WriteEndObject();
+                }
+
+                MessageBox.Show(FindForm(), "Az adataid elmentve.", "Adatexport", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült letölteni az adatokat", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+            {
+                MessageBox.Show(FindForm(), "A fájl mentése nem sikerült: " + ex.Message, "Nem sikerült letölteni az adatokat",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         /// <summary>Egy beállítás-sor: bal oldalt cím és leírás, jobb oldalt a kapcsoló.</summary>
@@ -901,6 +1200,27 @@ namespace TutorConnectApp
             table.Controls.Add(text, 0, 0);
             table.Controls.Add(toggle, 1, 0);
             return table;
+        }
+    }
+
+    /// <summary>Az e-mail megerősítő levél újraküldése – a profil és a felső sáv közös logikája.</summary>
+    internal static class VerifyUi
+    {
+        public static async Task ResendAsync(IWin32Window? owner)
+        {
+            try
+            {
+                bool already = await ApiClient.ResendVerificationAsync();
+                MessageBox.Show(owner,
+                    already
+                        ? "Az e-mail címed már meg van erősítve."
+                        : "Elküldtük a megerősítő levelet. Nyisd meg a levélben lévő linket egy böngészőben, utána az app magától frissül.",
+                    "E-mail megerősítése", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(owner, ex.Message, "Nem sikerült elküldeni", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
     }
 }
