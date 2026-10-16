@@ -1,26 +1,12 @@
-### 3.2 A rendszer komponensei
-**Szerveroldal** (`vsc/js`):
-- `main.js` – az Express szerver: oldalak, REST API, munkamenet, fájlfeltöltés (multer), WebSocket, adatbázis-hozzáférés.
-- `auth.js` – jelszó hash-elés és ellenőrzés Argon2id-vel (`hashPassword`, `verifyPassword`).
-
-**Kliensoldal** (`vsc/js`, `vsc/html`, `vsc/css`):
-- `creator.js` – minden oldalon felépíti a navigációs sávot (a szerepkör szerint), a profil-menüt, a téma kapcsolót és a fiókbeállítások ablakot.
-- `home.js` – a főoldal (statisztikák, diavetítés).
-- `index.js` – a tantárgyak oldal (`subs.html`) logikája.
-- `dropdown.js`, `selectmenu.js` – egyedi legördülő menük.
-- `oktatok.js` – oktatók listázása, szűrés, értékelések.
-- `booking.js`, `foglalas.js`, `foglalasutan.js` – időpontfoglalás, foglalási oldal, foglalások utáni oldal.
-- `chat.js` – a chat oldal, WebSocket kliens, csatolmányok, képnézegető.
-
 ### 3.3 Kommunikáció a komponensek között
-- **Böngésző → szerver:** `fetch` hívások a REST API-ra JSON-nal; a böngésző minden kéréssel automatikusan küldi a `connect.sid` munkamenet-sütit.
-- **Bejelentkezés állapota:** a `creator.js` minden oldalbetöltéskor lekérdezi a `/api/me` végpontot, és ez alapján építi fel a navigációt.
-- **Valós idejű értesítések:** a kliens WebSocket kapcsolatot nyit a szerverhez (a belépéskor kapott süti azonosítja). A szerver `new_message` (új üzenet) és `booking_update` (foglalás változott) eseményeket küld a másik félnek.
-- **Szerver → adatbázis:** `mysql2` kapcsolat, paraméterezett SQL lekérdezésekkel.
+- Böngésző → szerver: `fetch` hívások a REST API-ra JSON-nal; a böngésző minden kéréssel automatikusan küldi a munkamenet-sütit.
+- Bejelentkezés állapota: a `creator.js` minden oldalbetöltéskor lekérdezi a `/api/me` végpontot, és ez alapján építi fel a navigációt.
+- Valós idejű értesítések: a kliens WebSocket kapcsolatot nyit a szerverhez (a belépéskor kapott süti azonosítja). A szerver `new_message` (új üzenet) és `booking_update` (foglalás változott) eseményeket küld a másik félnek.
+- Szerver → adatbázis: `mysql2` kapcsolat, paraméterezett SQL lekérdezésekkel.
 - Az üzenetek és az oldalak kiszolgálását elsősorban a `main.js` kezeli.
 
-### 3.4 REST API
-Röviden (részletes lista a 6.2 pontban): az API JSON-t fogad és ad vissza. Hibánál a megfelelő HTTP státuszkódot (400, 401, 403, 404, 409, 500) és `{ "error": "..." }` törzset küldi. A védett végpontok munkamenet nélkül 401-et adnak.
+3.4 REST API
+Az API JSON-t fogad és ad vissza. Hibánál a megfelelő HTTP státuszkódot (400, 401, 403, 404, 409, 500) és `{ "error": "..." }` törzset küldi. A védett végpontok munkamenet nélkül 401-et adnak.
 
 ## 4.4 Kapcsolatok
 - `users` 1–N `availabilities` (oktató → szabad időpontok)
