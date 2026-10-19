@@ -1,5 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
@@ -144,6 +146,8 @@ namespace TutorConnectApp
         private readonly Label headerStatus;
         private readonly HoverButton backButton;
         private readonly HoverButton attachButton;
+        private readonly HoverButton emojiButton;
+        private readonly HoverButton scrollDownButton;
         private readonly HoverButton sendButton;
         private readonly HoverButton profileButton;
         private readonly SearchBox listSearch;
@@ -154,6 +158,8 @@ namespace TutorConnectApp
 
         /// <summary>Az el nem küldött üzenetek beszélgetésenként: oldalváltás vagy témaváltás után sem vesznek el.</summary>
         private static readonly Dictionary<int, string> Drafts = new();
+
+        private static readonly Font EmojiButtonFont = new("Segoe UI Emoji", 14F, FontStyle.Regular, GraphicsUnit.Point);
 
         /// <summary>Üzenetek száma, amennyit egyszerre megjelenítünk (a régebbiek gombra töltődnek be).</summary>
         private const int MessagePageSize = 60;
@@ -248,6 +254,19 @@ namespace TutorConnectApp
 
             messageScroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.PageBg, Visible = false };
             messageScroll.Content.Padding = Ui.Pad(24, 16, 10, 16);
+
+            // "ugrás az aljára" gomb: akkor látszik, ha nem a legutolsó üzeneteknél jársz
+            scrollDownButton = Ui.PrimaryBtn("\uE74B", (_, _) => messageScroll.ScrollBy(1e9));
+            scrollDownButton.Font = Ui.IconFont(13F);
+            scrollDownButton.AccessibleName = "Ugrás a legutolsó üzenethez";
+            scrollDownButton.AutoSize = false;
+            scrollDownButton.Size = Ui.Sz(46, 46);
+            scrollDownButton.Margin = Ui.Pad(0);
+            scrollDownButton.Visible = false;
+            messageScroll.Controls.Add(scrollDownButton);
+            scrollDownButton.BringToFront();
+            messageScroll.Scrolled += (_, _) => UpdateScrollDownButton();
+            messageScroll.Resize += (_, _) => UpdateScrollDownButton();
             messageScroll.Content.ClientSizeChanged += (_, _) =>
             {
                 // csak szélességváltozásnál kell újraszámolni (a magasság az új üzenetektől változik)
@@ -294,7 +313,14 @@ namespace TutorConnectApp
             attachButton.Text = "";
             attachButton.AutoSize = false;
             attachButton.Size = Ui.Sz(50, 50);
+            emojiButton = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => ShowEmojiPicker(), outline: true);
+            emojiButton.Font = EmojiButtonFont;
+            emojiButton.Text = "😊";
+            emojiButton.AccessibleName = "Emoji beszúrása";
+            emojiButton.AutoSize = false;
+            emojiButton.Size = Ui.Sz(50, 50);
             composer = new ComposerBox("Írj üzenetet...");
+            composer.FileDropped += async path => await UploadFileAsync(path, confirm: true);
             composer.SendRequested += async (_, _) => await SendAsync();
             composer.TextEdited += (_, _) =>
             {
@@ -306,6 +332,7 @@ namespace TutorConnectApp
             sendButton.AutoSize = false;
             sendButton.Size = Ui.Sz(104, 50);
             composerBar.Controls.Add(attachButton);
+            composerBar.Controls.Add(emojiButton);
             composerBar.Controls.Add(composer);
             composerBar.Controls.Add(sendButton);
             composerBar.Resize += (_, _) => LayoutComposer();
@@ -334,7 +361,43 @@ namespace TutorConnectApp
             ChatState.Changed += OnChatStateChanged;
             UpdateLayout();
 
+            // fájlok behúzása az üzenetek vagy a szövegmező fölé
+            foreach (var target in new Control[] { threadPanel, messageScroll, messageScroll.Content, composerBar })
+                HookDrop(target);
+            composer.AttachDrop(HandleDragEnter, HandleDragDrop);
+
             if (ChatState.Loaded) RenderList(); // a már ismert beszélgetések azonnal látszanak
+        }
+
+        private void HookDrop(Control target)
+        {
+            target.AllowDrop = true;
+            target.DragEnter += HandleDragEnter;
+            target.DragDrop += HandleDragDrop;
+        }
+
+        private void HandleDragEnter(object? sender, DragEventArgs e)
+        {
+            e.Effect = current != null && e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
+        }
+
+        private async void HandleDragDrop(object? sender, DragEventArgs e)
+        {
+            if (current != null && e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files)
+                await UploadFileAsync(files[0], confirm: true);
+        }
+
+        private void ShowEmojiPicker() =>
+            EmojiPicker.ShowAbove(emojiButton, emoji => composer.InsertText(emoji));
+
+        private void UpdateScrollDownButton()
+        {
+            if (IsDisposed) return;
+            scrollDownButton.Location = new Point(
+                Math.Max(messageScroll.Width - scrollDownButton.Width - Ui.S(34), 0),
+                Math.Max(messageScroll.Height - scrollDownButton.Height - Ui.S(16), 0));
+            scrollDownButton.Visible = messageScroll.Visible && messages.Count > 0 && !messageScroll.IsNearEnd();
+            if (scrollDownButton.Visible) scrollDownButton.BringToFront();
         }
 
         // ------------------------------------------------------------
@@ -410,8 +473,9 @@ namespace TutorConnectApp
             int y = (composerBar.Height - h) / 2;
 
             attachButton.Location = new Point(pad, y);
+            emojiButton.Location = new Point(attachButton.Right + gap, y);
             sendButton.Location = new Point(composerBar.Width - pad - sendButton.Width, y);
-            int left = attachButton.Right + gap;
+            int left = emojiButton.Right + gap;
             composer.SetBounds(left, y, Math.Max(sendButton.Left - gap - left, Ui.S(80)), h);
         }
 
@@ -654,6 +718,7 @@ namespace TutorConnectApp
             AddMessageControl(message, ref lastDay);
             FitMessages();
             if (stick) ScrollToEnd();
+            else UpdateScrollDownButton();
         }
 
         private void FitMessages()
@@ -727,10 +792,13 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>A szerver által elfogadott csatolmány-kiterjesztések.</summary>
+        private static readonly HashSet<string> SendableExtensions = new(StringComparer.OrdinalIgnoreCase)
+            { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt" };
+
         private async Task AttachAsync()
         {
-            var open = current;
-            if (open == null || busy) return;
+            if (current == null || busy) return;
 
             using var dialog = new OpenFileDialog
             {
@@ -739,12 +807,42 @@ namespace TutorConnectApp
             };
             if (dialog.ShowDialog(FindForm()) != DialogResult.OK) return;
 
+            await UploadFileAsync(dialog.FileName, confirm: false);
+        }
+
+        /// <summary>
+        /// Fájl küldése a megnyitott beszélgetésbe. A behúzott vagy beillesztett fájlnál (confirm) előbb rákérdez,
+        /// hogy véletlenül ne menjen el valami.
+        /// </summary>
+        private async Task UploadFileAsync(string filePath, bool confirm)
+        {
+            var open = current;
+            if (open == null || busy) return;
+
+            string extension = Path.GetExtension(filePath);
+            if (!SendableExtensions.Contains(extension))
+            {
+                ShowStatus("Ezt a fájltípust nem lehet elküldeni (kép, pdf, Office-fájl és txt támogatott).", error: true);
+                return;
+            }
+
+            if (confirm)
+            {
+                long size = 0;
+                try { size = new FileInfo(filePath).Length; }
+                catch (IOException) { }
+
+                string text = $"Elküldöd ezt a fájlt?\n\n{Path.GetFileName(filePath)}" + (size > 0 ? $"  ({FormatBytes(size)})" : "");
+                if (MessageBox.Show(FindForm(), text, "Fájl küldése", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                    return;
+            }
+
             busy = true;
             ShowStatus("Feltöltés...", error: false, autoHide: false);
             try
             {
                 string caption = composer.Value.Trim();
-                var message = await ApiClient.UploadAsync<MessageDto>($"/api/conversations/{open.Id}/attachments", dialog.FileName, caption);
+                var message = await ApiClient.UploadAsync<MessageDto>($"/api/conversations/{open.Id}/attachments", filePath, caption);
                 if (IsDisposed) return;
 
                 if (current?.Id == open.Id)
@@ -759,10 +857,21 @@ namespace TutorConnectApp
             {
                 ShowStatus(ex.Message, error: true);
             }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ShowStatus("A fájl nem olvasható: " + ex.Message, error: true);
+            }
             finally
             {
                 busy = false;
             }
+        }
+
+        private static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+            return $"{bytes / (1024.0 * 1024):0.#} MB";
         }
 
         private static bool IsImage(MessageDto message) =>
@@ -1154,6 +1263,10 @@ namespace TutorConnectApp
         public ConversationItem(ConversationDto conversation)
         {
             Conversation = conversation;
+            AccessibleName = conversation.OtherUserName
+                + (conversation.UnreadCount > 0 ? $", {conversation.UnreadCount} olvasatlan" : "")
+                + (string.IsNullOrEmpty(conversation.LastMessage) ? "" : ", " + conversation.LastMessage);
+            AccessibleRole = AccessibleRole.ListItem;
             Height = Ui.S(80);
             Margin = Ui.Pad(0, 0, 0, 2);
             Cursor = Cursors.Hand;
@@ -1322,6 +1435,9 @@ namespace TutorConnectApp
         {
             Message = message;
             this.mine = mine;
+            AccessibleName = (mine ? "Te" : "Másik fél") + ": "
+                + (message.IsRetracted ? "visszavont üzenet" : message.HasAttachment ? "csatolmány: " + message.AttachmentName + " " + message.Content : message.Content);
+            AccessibleRole = AccessibleRole.StaticText;
             showText = !message.IsRetracted && !(message.HasAttachment && message.Content == message.AttachmentName) && message.Content.Length > 0;
             if (message.IsRetracted) textFont = Ui.MakeFont(10F, FontStyle.Italic);
 
@@ -1523,6 +1639,9 @@ namespace TutorConnectApp
         public event EventHandler? SendRequested;
         public event EventHandler? TextEdited;
 
+        /// <summary>A vágólapról beillesztett (Ctrl+V) kép vagy fájl útvonala; a kép ideiglenes PNG-fájlként készül el.</summary>
+        public event Action<string>? FileDropped;
+
         public ComposerBox(string placeholder)
         {
             Cursor = Cursors.IBeam;
@@ -1535,7 +1654,8 @@ namespace TutorConnectApp
                 PlaceholderText = placeholder,
                 BackColor = Theme.InputBg,
                 ForeColor = Theme.Text,
-                MaxLength = 2000
+                MaxLength = 2000,
+                AccessibleName = "Üzenet szövege"
             };
             input.GotFocus += (_, _) => FocusTo(1);
             input.LostFocus += (_, _) => FocusTo(0);
@@ -1547,6 +1667,13 @@ namespace TutorConnectApp
                     e.SuppressKeyPress = true; // ne csipogjon
                     SendRequested?.Invoke(this, EventArgs.Empty);
                 }
+                else if (e.Control && e.KeyCode == Keys.V && TryGetClipboardFile() is { } path)
+                {
+                    // fájl vagy kép van a vágólapon (nem szöveg): küldésre ajánljuk fel
+                    e.SuppressKeyPress = true;
+                    e.Handled = true;
+                    FileDropped?.Invoke(path);
+                }
             };
             Controls.Add(input);
         }
@@ -1554,6 +1681,57 @@ namespace TutorConnectApp
         public string Value => input.Text;
 
         public void SetValue(string text) => input.Text = text;
+
+        /// <summary>Szöveg beszúrása a kurzor helyére (pl. emoji), majd a fókusz visszakerül a mezőbe.</summary>
+        public void InsertText(string text)
+        {
+            if (input.TextLength + text.Length > input.MaxLength) return;
+            input.SelectedText = text;
+            input.Focus();
+        }
+
+        /// <summary>A szövegmezőre húzott fájlok kezelése (a mező maga is fogadja a húzást).</summary>
+        public void AttachDrop(DragEventHandler enter, DragEventHandler drop)
+        {
+            AllowDrop = true;
+            input.AllowDrop = true;
+            DragEnter += enter;
+            DragDrop += drop;
+            input.DragEnter += enter;
+            input.DragDrop += drop;
+        }
+
+        /// <summary>A vágólap fájlja vagy képe (csak ha nincs rajta szöveg); null, ha nincs ilyen.</summary>
+        private static string? TryGetClipboardFile()
+        {
+            try
+            {
+                if (Clipboard.ContainsText()) return null;
+
+                if (Clipboard.ContainsFileDropList())
+                {
+                    var files = Clipboard.GetFileDropList();
+                    if (files.Count > 0) return files[0];
+                }
+
+                if (Clipboard.ContainsImage())
+                {
+                    using var image = Clipboard.GetImage();
+                    if (image == null) return null;
+
+                    string folder = Path.Combine(Path.GetTempPath(), "TutorConnect", "paste");
+                    Directory.CreateDirectory(folder);
+                    string path = Path.Combine(folder, $"kep-{DateTime.Now:yyyyMMdd-HHmmss}.png");
+                    image.Save(path, ImageFormat.Png);
+                    return path;
+                }
+            }
+            catch (Exception ex) when (ex is ExternalException or IOException or UnauthorizedAccessException)
+            {
+                // a vágólap éppen foglalt vagy a kép nem menthető: a szokásos beillesztés marad
+            }
+            return null;
+        }
 
         public void FocusInput() => input.Focus();
 

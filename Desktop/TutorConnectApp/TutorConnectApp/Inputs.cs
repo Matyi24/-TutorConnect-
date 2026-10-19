@@ -81,11 +81,15 @@ namespace TutorConnectApp
             ApplyOffset();
         }
 
+        /// <summary>A görgetési pozíció vagy a tartalom mérete változott (pl. "ugrás az aljára" gomb megjelenítéséhez).</summary>
+        public event EventHandler? Scrolled;
+
         private void ApplyOffset()
         {
             int top = -(int)Math.Round(current);
             if (Content.Top != top) Content.Top = top;
             Invalidate(new Rectangle(Width - Gutter, 0, Gutter, Height));
+            Scrolled?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>Animáltan görget a megadott képpontnyit (pozitív = lefelé).</summary>
@@ -300,7 +304,8 @@ namespace TutorConnectApp
                 Font = Ui.MakeFont(11.5F),
                 PlaceholderText = placeholder,
                 BackColor = Theme.InputBg,
-                ForeColor = Theme.Text
+                ForeColor = Theme.Text,
+                AccessibleName = placeholder
             };
             input.GotFocus += (_, _) => FocusTo(1);
             input.LostFocus += (_, _) => FocusTo(0);
@@ -445,8 +450,27 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 14, 14);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, true); // Enter / szóköz nyitja a listát
+            TabStop = true;
+            AccessibleRole = AccessibleRole.ComboBox;
+            UpdateAccessibleName();
         }
+
+        private void UpdateAccessibleName() =>
+            AccessibleName = items.Count == 0 ? caption : $"{caption}: {items[Math.Clamp(selectedIndex, 0, items.Count - 1)]}";
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space && !IsOpen)
+            {
+                e.Handled = true;
+                Open();
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
         public int SelectedIndex => selectedIndex;
 
@@ -456,6 +480,7 @@ namespace TutorConnectApp
         public void SetSelected(int index)
         {
             selectedIndex = Math.Clamp(index, 0, Math.Max(items.Count - 1, 0));
+            UpdateAccessibleName();
             Invalidate();
         }
 
@@ -493,6 +518,7 @@ namespace TutorConnectApp
             list.ItemChosen += index =>
             {
                 selectedIndex = index;
+                UpdateAccessibleName();
                 popup?.Close();
                 Invalidate();
                 SelectionChanged?.Invoke(this, EventArgs.Empty);

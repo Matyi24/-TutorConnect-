@@ -6,7 +6,7 @@ namespace TutorConnectApp
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
@@ -27,6 +27,8 @@ namespace TutorConnectApp
 
             // Belépés nélkül nem nyílik meg a főablak. Kijelentkezés után újra a belépő jön.
             // Induláskor (ha az "Emlékezz rám" be volt jelölve) a mentett munkamenettel próbálkozunk.
+            // a Windows-indítás a --tray kapcsolóval a háttérben, a tálcán indítja az appot
+            bool startInTray = args.Contains("--tray");
             bool firstRun = true;
             while (true)
             {
@@ -44,7 +46,8 @@ namespace TutorConnectApp
                         return;
                 }
 
-                var main = new TutorMain();
+                var main = new TutorMain(startInTray);
+                startInTray = false; // csak az első indításra érvényes (kijelentkezés után a belépő jön)
                 Application.Run(main);
 
                 if (!main.LoggedOut)

@@ -49,13 +49,29 @@ namespace TutorConnectApp
         private int selectStart;
         private int selectEnd;
 
+        // szabad időpont áthúzása másik időpontra
+        private bool allowMove;
+        private CalEvent? pressed;
+        private Point pressPoint;
+        private int grabOffset;
+        private bool dragging;
+        private DateTime dragTarget;
+
         public event Action<CalEvent>? EventClicked;
         public event Action<DateTime, DateTime>? RangeSelected;
+
+        /// <summary>Szabad időpontot új helyre húztak: (a bejegyzés, az új kezdés).</summary>
+        public event Action<CalEvent, DateTime>? EventMoved;
+
+        /// <summary>Jobb kattintás egy bejegyzésen: (a bejegyzés, a képernyő-pont).</summary>
+        public event Action<CalEvent, Point>? EventContext;
 
         public WeekCalendar()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.Selectable, false);
+            AccessibleName = "Heti naptár";
+            AccessibleRole = AccessibleRole.Table;
             Margin = Ui.Pad(0, 0, 0, 16);
             UpdateHeight();
         }
@@ -69,6 +85,9 @@ namespace TutorConnectApp
         public DateTime WeekStart => weekStart;
 
         public void SetAllowSelect(bool value) => allowSelect = value;
+
+        /// <summary>Engedélyezi a szabad időpontok áthúzását (az oktató saját naptárában).</summary>
+        public void SetAllowMove(bool value) => allowMove = value;
 
         public void SetWeek(DateTime anyDayOfWeek)
         {
@@ -206,12 +225,59 @@ namespace TutorConnectApp
 
             PaintHeader(g);
             PaintGrid(g);
+            PaintTimeOff(g);
 
             foreach (var (item, rect) in layout)
-                PaintEvent(g, item, rect, item == hover);
+                PaintEvent(g, item, rect, item == hover || (dragging && item == pressed));
 
             PaintSelection(g);
+            PaintDrag(g);
             PaintNowLine(g);
+        }
+
+        /// <summary>A szabadságra jelölt napok szürke csíkozással és felirattal.</summary>
+        private void PaintTimeOff(Graphics g)
+        {
+            double colWidth = ColumnWidth;
+            int bottom = MinuteToY((lastHour + 1) * 60);
+
+            for (int day = 0; day < 7; day++)
+            {
+                if (!TimeOffStore.IsBlocked(weekStart.AddDays(day))) continue;
+
+                var rect = new Rectangle((int)(TimeColumn + day * colWidth) + 1, HeaderHeight, (int)colWidth - 1, bottom - HeaderHeight);
+                using (var hatch = new HatchBrush(HatchStyle.WideUpwardDiagonal, Color.FromArgb(50, Theme.Muted), Color.Transparent))
+                    g.FillRectangle(hatch, rect);
+
+                TextRenderer.DrawText(g, "Szabadság", Ui.MakeFont(8.5F, FontStyle.Bold),
+                    new Rectangle(rect.X, rect.Y + Ui.S(6), rect.Width, Ui.S(20)), Theme.Muted,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+            }
+        }
+
+        /// <summary>Áthúzás közben a célhely halvány kerete a leendő idővel.</summary>
+        private void PaintDrag(Graphics g)
+        {
+            if (!dragging || pressed == null) return;
+
+            int day = (int)(dragTarget.Date - weekStart.Date).TotalDays;
+            if (day < 0 || day > 6) return;
+
+            int startMinute = dragTarget.Hour * 60 + dragTarget.Minute;
+            int minutes = (int)(pressed.End - pressed.Start).TotalMinutes;
+            double colWidth = ColumnWidth;
+            var rect = new Rectangle((int)(TimeColumn + day * colWidth) + Ui.S(3), MinuteToY(startMinute),
+                (int)colWidth - Ui.S(6), Math.Max(MinuteToY(startMinute + minutes) - MinuteToY(startMinute), Ui.S(24)));
+
+            using var path = Ui.RoundedPath(rect, Ui.S(8));
+            using var brush = new SolidBrush(Color.FromArgb(70, Theme.Success));
+            using var pen = new Pen(Theme.Success, Ui.S(2F)) { DashStyle = DashStyle.Dash };
+            g.FillPath(brush, path);
+            g.DrawPath(pen, path);
+
+            string label = $"{startMinute / 60:00}:{startMinute % 60:00} – {(startMinute + minutes) / 60 % 24:00}:{(startMinute + minutes) % 60:00}";
+            using var textBrush = new SolidBrush(Theme.Success);
+            g.DrawString(label, Ui.MakeFont(9F, FontStyle.Bold), textBrush, new Rectangle(rect.X + Ui.S(6), rect.Y + Ui.S(3), rect.Width, Ui.S(22)));
         }
 
         private void PaintHeader(Graphics g)
@@ -396,6 +462,26 @@ namespace TutorConnectApp
         {
             base.OnMouseMove(e);
 
+            // szabad időpont áthúzása
+            if (pressed != null && allowMove && pressed.Kind == CalKind.Free && e.Button == MouseButtons.Left)
+            {
+                if (!dragging && (Math.Abs(e.X - pressPoint.X) > Ui.S(6) || Math.Abs(e.Y - pressPoint.Y) > Ui.S(6)))
+                    dragging = true;
+
+                if (dragging)
+                {
+                    int duration = (int)(pressed.End - pressed.Start).TotalMinutes;
+                    int day = Math.Clamp((int)((e.X - TimeColumn) / ColumnWidth), 0, 6);
+                    int minute = (int)Math.Round((YToMinute(e.Y) - grabOffset) / 30.0) * 30;
+                    minute = Math.Clamp(minute, firstHour * 60, Math.Max((lastHour + 1) * 60 - duration, firstHour * 60));
+
+                    dragTarget = weekStart.AddDays(day).AddMinutes(minute);
+                    Cursor = Cursors.SizeAll;
+                    Invalidate();
+                    return;
+                }
+            }
+
             if (selecting)
             {
                 int minute = Math.Clamp(YToMinute(e.Y), firstHour * 60, (lastHour + 1) * 60);
@@ -421,7 +507,7 @@ namespace TutorConnectApp
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);
-            if (hover != null)
+            if (hover != null && !dragging)
             {
                 hover = null;
                 Invalidate();
@@ -431,7 +517,23 @@ namespace TutorConnectApp
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            if (e.Button != MouseButtons.Left || !allowSelect || !InGrid(e.Location) || EventAt(e.Location) != null) return;
+
+            if (e.Button == MouseButtons.Left)
+            {
+                var hit = EventAt(e.Location);
+                if (hit != null)
+                {
+                    // a kattintás vagy az áthúzás eldöntése az egér felengedésekor / mozgatásakor történik
+                    pressed = hit;
+                    pressPoint = e.Location;
+                    dragging = false;
+                    grabOffset = YToMinute(e.Y) - (hit.Start.Hour * 60 + hit.Start.Minute);
+                    Capture = true;
+                    return;
+                }
+            }
+
+            if (e.Button != MouseButtons.Left || !allowSelect || !InGrid(e.Location)) return;
 
             int day = Math.Clamp((int)((e.X - TimeColumn) / ColumnWidth), 0, 6);
             int minute = SnapDown(Math.Clamp(YToMinute(e.Y), firstHour * 60, (lastHour + 1) * 60 - 30));
@@ -452,6 +554,13 @@ namespace TutorConnectApp
         {
             base.OnMouseUp(e);
 
+            if (e.Button == MouseButtons.Right)
+            {
+                var item = EventAt(e.Location);
+                if (item != null) EventContext?.Invoke(item, PointToScreen(e.Location));
+                return;
+            }
+
             if (selecting)
             {
                 selecting = false;
@@ -465,10 +574,24 @@ namespace TutorConnectApp
                 return;
             }
 
-            if (e.Button == MouseButtons.Left)
+            if (pressed != null && e.Button == MouseButtons.Left)
             {
-                var item = EventAt(e.Location);
-                if (item != null) EventClicked?.Invoke(item);
+                var item = pressed;
+                bool wasDragging = dragging;
+                var target = dragTarget;
+                pressed = null;
+                dragging = false;
+                Capture = false;
+                Cursor = Cursors.Default;
+                Invalidate();
+
+                if (wasDragging)
+                {
+                    if (target != item.Start) EventMoved?.Invoke(item, target);
+                    return;
+                }
+
+                if (EventAt(e.Location) == item) EventClicked?.Invoke(item);
             }
         }
     }
@@ -493,6 +616,10 @@ namespace TutorConnectApp
         private List<SlotItemDto> mySlots = new();
         private AvailabilityDto? tutorAvailability;
         private WeekCalendar calendar = null!;
+        private MonthCalendar monthView = null!;
+        private SelectableChip weekChip = null!;
+        private SelectableChip monthChip = null!;
+        private bool monthMode;
         private Label weekLabel = null!;
         private Label infoLabel = null!;
         private DropdownSelect? tutorBox;
@@ -500,7 +627,7 @@ namespace TutorConnectApp
 
         public CalendarPage(UserInfo me) : base("Naptár",
             me.Role == "TUTOR"
-                ? "Add meg, mikor tartasz órát: húzd végig az egeret a naptár üres részén."
+                ? "Add meg, mikor tartasz órát: húzd végig az egeret a naptár üres részén. A szabad időpontokat áthúzhatod, jobb gombbal másolhatod vagy törölheted."
                 : "Válassz oktatót, majd kattints egy szabad (zöld) időpontra a jelentkezéshez.")
         {
             this.me = me;
@@ -520,11 +647,11 @@ namespace TutorConnectApp
 
             // ---------- eszköztár: hét léptetése + (diáknak) oktatóválasztó ----------
             var toolbar = Ui.WrapRow();
-            var previous = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => ShiftWeek(-7), outline: true);
+            var previous = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => Shift(-1), outline: true);
             previous.Font = Ui.IconFont(11F);
             previous.Text = "";
             var today = Ui.Btn("Ma", Theme.CardBg, Theme.Text, (_, _) => GoToday(), outline: true);
-            var next = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => ShiftWeek(7), outline: true);
+            var next = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => Shift(1), outline: true);
             next.Font = Ui.IconFont(11F);
             next.Text = "";
             foreach (var button in new[] { previous, today, next })
@@ -536,9 +663,30 @@ namespace TutorConnectApp
             toolbar.Controls.Add(next);
             toolbar.Controls.Add(weekLabel);
 
+            // nézetváltó: heti vagy havi áttekintés
+            monthMode = false;
+            weekChip = new SelectableChip("Hét");
+            monthChip = new SelectableChip("Hónap");
+            weekChip.SetSelected(true);
+            weekChip.Click += (_, _) => SetViewMode(false);
+            monthChip.Click += (_, _) => SetViewMode(true);
+            toolbar.Controls.Add(weekChip);
+            toolbar.Controls.Add(monthChip);
+
             var export = Ui.Btn("Exportálás (.ics)", Theme.CardBg, Theme.Text, async (_, _) => await ExportAsync(), outline: true);
-            export.Margin = Ui.Pad(0, 0, 16, 12);
+            export.Margin = Ui.Pad(8, 0, 8, 12);
             toolbar.Controls.Add(export);
+
+            if (isTutor)
+            {
+                var copyWeek = Ui.Btn("Hét másolása →", Theme.CardBg, Theme.Text, async (_, _) => await CopyWeekAsync(), outline: true);
+                copyWeek.Margin = Ui.Pad(0, 0, 8, 12);
+                toolbar.Controls.Add(copyWeek);
+
+                var timeOff = Ui.Btn("Szabadság", Theme.CardBg, Theme.Text, async (_, _) => await OpenTimeOffAsync(), outline: true);
+                timeOff.Margin = Ui.Pad(0, 0, 16, 12);
+                toolbar.Controls.Add(timeOff);
+            }
 
             if (!isTutor)
             {
@@ -564,9 +712,22 @@ namespace TutorConnectApp
 
             calendar = new WeekCalendar();
             calendar.SetAllowSelect(isTutor);
+            calendar.SetAllowMove(isTutor);
             calendar.EventClicked += async item => await OnEventAsync(item);
             calendar.RangeSelected += async (start, end) => await OnRangeAsync(start, end);
+            calendar.EventMoved += async (item, newStart) => await OnMovedAsync(item, newStart);
+            calendar.EventContext += ShowEventMenu;
             AddRow(calendar);
+
+            // havi nézet: egy napra kattintva az adott hét heti nézete nyílik meg
+            monthView = new MonthCalendar();
+            monthView.DayClicked += day =>
+            {
+                calendar.SetWeek(day);
+                SetViewMode(false);
+            };
+            AddRow(monthView, animate: false);
+            monthView.Visible = false;
 
             // ---------- jelmagyarázat ----------
             var legend = Ui.WrapRow();
@@ -625,20 +786,41 @@ namespace TutorConnectApp
             }
         }
 
-        private void ShiftWeek(int days)
+        /// <summary>Heti nézetben egy hetet, havi nézetben egy hónapot lép (irány: -1 vagy 1).</summary>
+        private void Shift(int direction)
         {
-            calendar.SetWeek(calendar.WeekStart.AddDays(days));
+            if (monthMode) monthView.SetMonth(monthView.Month.AddMonths(direction));
+            else calendar.SetWeek(calendar.WeekStart.AddDays(7 * direction));
             UpdateWeekLabel();
         }
 
         private void GoToday()
         {
             calendar.SetWeek(DateTime.Today);
+            monthView.SetMonth(DateTime.Today);
+            UpdateWeekLabel();
+        }
+
+        private void SetViewMode(bool month)
+        {
+            monthMode = month;
+            if (month) monthView.SetMonth(calendar.WeekStart.AddDays(3)); // a hét közepe adja a hónapot
+
+            calendar.Visible = !month;
+            monthView.Visible = month;
+            weekChip.SetSelected(!month);
+            monthChip.SetSelected(month);
             UpdateWeekLabel();
         }
 
         private void UpdateWeekLabel()
         {
+            if (monthMode)
+            {
+                weekLabel.Text = monthView.Month.ToString("yyyy. MMMM", Ui.Hu);
+                return;
+            }
+
             var start = calendar.WeekStart;
             var end = start.AddDays(6);
             weekLabel.Text = start.Month == end.Month
@@ -680,7 +862,9 @@ namespace TutorConnectApp
 
                 infoLabel.ForeColor = Theme.Muted;
                 infoLabel.Text = DescribeState(selected);
-                calendar.SetEvents(BuildEvents());
+                var events = BuildEvents();
+                calendar.SetEvents(events);
+                monthView.SetEvents(events);
             }
             catch (ApiException ex)
             {
@@ -695,7 +879,7 @@ namespace TutorConnectApp
             if (isTutor)
                 return mySlots.Count(s => !s.IsBooked) == 0
                     ? "Még nincs szabad időpontod. Húzd végig az egeret egy üres részen az első megadásához."
-                    : "Kattints egy szabad időpontra a törléséhez, vagy egy foglalásra a részletekért.";
+                    : "Kattints egy szabad időpontra a törléséhez, húzd át egy másik időpontra, vagy jobb gombbal másold. Foglalásra kattintva a részletek nyílnak meg.";
 
             if (selected == null)
                 return "Válassz oktatót a fenti listából, hogy lásd a szabad időpontjait. A saját óráid mindig látszanak.";
@@ -785,6 +969,12 @@ namespace TutorConnectApp
         {
             if (!isTutor) return;
 
+            // szabadságra jelölt napra csak megerősítéssel adható meg időpont
+            if (TimeOffStore.IsBlocked(start) &&
+                MessageBox.Show(FindForm(), "Erre a napra szabadságot jelöltél. Mégis megadsz rá időpontot?", "Szabadság",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
             using var dialog = new AvailabilityDialog(start, (int)(end - start).TotalMinutes);
             if (dialog.ShowDialog(FindForm()) != DialogResult.OK || IsDisposed) return;
 
@@ -807,6 +997,193 @@ namespace TutorConnectApp
                 await BookingDetailsAsync(booking);
             else
                 MessageBox.Show(FindForm(), "Ez az időpont már le van foglalva.", "Naptár", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private async Task OpenTimeOffAsync()
+        {
+            using var dialog = new TimeOffDialog();
+            bool saved = dialog.ShowDialog(FindForm()) == DialogResult.OK;
+            if (IsDisposed) return;
+
+            // a szabadságok listája a megerősítés nélkül is módosulhatott (törlés)
+            calendar.Invalidate();
+            monthView.Invalidate();
+
+            if (!saved) return;
+            MessageBox.Show(FindForm(), dialog.ResultMessage, "Szabadság", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            await RefreshDataAsync();
+        }
+
+        private static string StartText(DateTime local) =>
+            local.ToString("yyyy-MM-dd'T'HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+
+        /// <summary>Szabad időpont áthelyezése: a régi törlődik, az új létrejön (ha az új nem sikerül, a régi visszaáll).</summary>
+        private async Task OnMovedAsync(CalEvent item, DateTime newStart)
+        {
+            if (!isTutor || item.Tag is not SlotItemDto slot) return;
+
+            if (newStart <= DateTime.Now)
+            {
+                MessageBox.Show(FindForm(), "Múltbeli időpontra nem lehet áthelyezni.", "Áthelyezés", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int minutes = (int)(slot.EndTime - slot.StartTime).TotalMinutes;
+            var newEnd = newStart.AddMinutes(minutes);
+            string text = $"Áthelyezed a szabad időpontot?\n\nEddig: {Ui.FormatRange(slot.StartTime, slot.EndTime)}\nEzután: {Ui.FormatRange(newStart, newEnd)}";
+            if (MessageBox.Show(FindForm(), text, "Áthelyezés", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            var oldStart = slot.StartTime.ToLocalTime();
+            try
+            {
+                await ApiClient.DeleteAsync($"/api/availability/{slot.Id}");
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Az áthelyezés nem sikerült", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!IsDisposed) await RefreshDataAsync();
+                return;
+            }
+
+            try
+            {
+                var result = await ApiClient.PostAsync<AvailabilityResultDto>("/api/availability", new Dictionary<string, object?>
+                {
+                    ["start"] = StartText(newStart),
+                    ["minutes"] = minutes,
+                    ["repeat_weeks"] = 1
+                });
+                if (result.Created == 0)
+                    throw new ApiException("Az új időpont ütközik egy meglévővel, vagy nem adható meg.");
+            }
+            catch (ApiException ex)
+            {
+                // az eredeti időpont visszaállítása
+                try
+                {
+                    await ApiClient.PostAsync<AvailabilityResultDto>("/api/availability", new Dictionary<string, object?>
+                    {
+                        ["start"] = StartText(oldStart),
+                        ["minutes"] = minutes,
+                        ["repeat_weeks"] = 1
+                    });
+                }
+                catch (ApiException)
+                {
+                    // ha ez sem megy, a frissítés után látszik az állapot
+                }
+
+                MessageBox.Show(FindForm(), ex.Message + "\nAz eredeti időpont megmaradt.", "Az áthelyezés nem sikerült",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+
+            if (!IsDisposed) await RefreshDataAsync();
+        }
+
+        /// <summary>Szabad időpont másolása a megadott számú héttel későbbre.</summary>
+        private async Task CopySlotAsync(SlotItemDto slot, int weeks)
+        {
+            try
+            {
+                int minutes = (int)(slot.EndTime - slot.StartTime).TotalMinutes;
+                var result = await ApiClient.PostAsync<AvailabilityResultDto>("/api/availability", new Dictionary<string, object?>
+                {
+                    ["start"] = StartText(slot.StartTime.ToLocalTime().AddDays(7 * weeks)),
+                    ["minutes"] = minutes,
+                    ["repeat_weeks"] = 1
+                });
+
+                MessageBox.Show(FindForm(),
+                    result.Created > 0 ? "Az időpont lemásolva a következő hétre." : "Ott már van időpont, vagy nem adható meg.",
+                    "Másolás", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "A másolás nem sikerült", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            if (!IsDisposed) await RefreshDataAsync();
+        }
+
+        /// <summary>A látható hét szabad (még le nem foglalt) időpontjait lemásolja a következő hétre.</summary>
+        private async Task CopyWeekAsync()
+        {
+            var start = calendar.WeekStart;
+            var end = start.AddDays(7);
+            var slots = mySlots
+                .Where(s => !s.IsBooked && s.StartTime.ToLocalTime() >= start && s.StartTime.ToLocalTime() < end)
+                .ToList();
+
+            if (slots.Count == 0)
+            {
+                MessageBox.Show(FindForm(), "Ezen a héten nincs másolható szabad időpontod.", "Hét másolása", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            if (MessageBox.Show(FindForm(), $"Lemásolod a hét {slots.Count} szabad időpontját a következő hétre?", "Hét másolása",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                return;
+
+            int created = 0;
+            int skipped = 0;
+            try
+            {
+                foreach (var slot in slots)
+                {
+                    int minutes = (int)(slot.EndTime - slot.StartTime).TotalMinutes;
+                    var result = await ApiClient.PostAsync<AvailabilityResultDto>("/api/availability", new Dictionary<string, object?>
+                    {
+                        ["start"] = StartText(slot.StartTime.ToLocalTime().AddDays(7)),
+                        ["minutes"] = minutes,
+                        ["repeat_weeks"] = 1
+                    });
+                    created += result.Created;
+                    skipped += result.Skipped;
+                    if (IsDisposed) return;
+                }
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message + $"\nEddig {created} időpont jött létre.", "A másolás megszakadt",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                if (!IsDisposed) await RefreshDataAsync();
+                return;
+            }
+
+            MessageBox.Show(FindForm(),
+                $"{created} időpont lemásolva." + (skipped > 0 ? $" {skipped} kimaradt (ütközés vagy túl messze van)." : ""),
+                "Hét másolása", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (!IsDisposed)
+            {
+                calendar.SetWeek(start.AddDays(7)); // a másolat hetére lépünk
+                UpdateWeekLabel();
+                await RefreshDataAsync();
+            }
+        }
+
+        /// <summary>Jobb gombos menü egy bejegyzésen: törlés, másolás, részletek.</summary>
+        private void ShowEventMenu(CalEvent item, Point screenPoint)
+        {
+            var menu = new ContextMenuStrip();
+            menu.Closed += (_, _) => BeginInvoke(new Action(menu.Dispose));
+
+            if (item.Kind == CalKind.Free && isTutor && item.Tag is SlotItemDto slot)
+            {
+                menu.Items.Add("Másolás a következő hétre", null, async (_, _) => await CopySlotAsync(slot, 1));
+                menu.Items.Add("Másolás két hét múlvára", null, async (_, _) => await CopySlotAsync(slot, 2));
+                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add("Törlés", null, async (_, _) => await DeleteSlotAsync(slot));
+            }
+            else if (item.Kind == CalKind.Free && !isTutor)
+            {
+                menu.Items.Add("Jelentkezés", null, async (_, _) => await OnEventAsync(item));
+            }
+            else
+            {
+                menu.Items.Add("Részletek", null, async (_, _) => await OnEventAsync(item));
+            }
+
+            menu.Show(screenPoint);
         }
 
         private async Task DeleteSlotAsync(SlotItemDto slot)

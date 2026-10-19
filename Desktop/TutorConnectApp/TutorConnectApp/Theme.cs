@@ -29,21 +29,42 @@ namespace TutorConnectApp
 
         public const string FontFamily = "Segoe UI";
 
-        public static bool Dark { get; private set; }
+        private static bool darkSetting;
+
+        /// <summary>Sötét felületek: a sötét mód vagy a magas kontraszt esetén igaz.</summary>
+        public static bool Dark => darkSetting || HighContrast;
+
+        /// <summary>Magas kontrasztú megjelenés (fekete háttér, fehér szöveg és keretek) a jobb olvashatóságért.</summary>
+        public static bool HighContrast { get; private set; }
 
         /// <summary>A téma váltásakor fut le (a főablak újraépíti az oldalt).</summary>
         public static event Action? Changed;
 
         public static void SetDark(bool dark)
         {
-            if (Dark == dark) return;
-            Dark = dark;
+            if (darkSetting == dark) return;
+            darkSetting = dark;
+            AppSettings.Save();
+            Changed?.Invoke();
+        }
+
+        public static void SetHighContrast(bool enabled)
+        {
+            if (HighContrast == enabled) return;
+            HighContrast = enabled;
             AppSettings.Save();
             Changed?.Invoke();
         }
 
         /// <summary>Induláskor a mentett beállításból, esemény nélkül.</summary>
-        public static void Init(bool dark) => Dark = dark;
+        public static void Init(bool dark, bool highContrast = false)
+        {
+            darkSetting = dark;
+            HighContrast = highContrast;
+        }
+
+        /// <summary>A mentett sötét-mód beállítás (a magas kontraszttól függetlenül).</summary>
+        public static bool DarkSetting => darkSetting;
 
         // felületek (módfüggő): a színek egyszer kerülnek feldolgozásra, nem minden rajzoláskor
         private readonly record struct Pair(Color Light, Color Dark)
@@ -65,18 +86,27 @@ namespace TutorConnectApp
         private static readonly Pair NavBgPair = P("#3B5BDB", "#0B0E1C");
         private static readonly Pair NavActivePair = P("#5C7CFA", "#2D3A8C");
 
-        public static Color PageBg => PageBgPair.Get(Dark);
-        public static Color CardBg => CardBgPair.Get(Dark);
-        public static Color CardBorder => CardBorderPair.Get(Dark);
-        public static Color Text => TextPair.Get(Dark);
-        public static Color Muted => MutedPair.Get(Dark);
-        public static Color ChipBg => ChipBgPair.Get(Dark);
-        public static Color ChipFg => ChipFgPair.Get(Dark);
-        public static Color InputBg => InputBgPair.Get(Dark);
-        public static Color SoftHover => SoftHoverPair.Get(Dark);
+        // magas kontraszt: fekete alap, fehér szöveg és keretek, sárga kiemelés
+        private static readonly Color HcBlack = Color.Black;
+        private static readonly Color HcWhite = Color.White;
+        private static readonly Color HcMuted = ColorTranslator.FromHtml("#E6E6E6");
+        private static readonly Color HcChipBg = ColorTranslator.FromHtml("#262626");
+        private static readonly Color HcChipFg = ColorTranslator.FromHtml("#FFFF66");
+        private static readonly Color HcHover = ColorTranslator.FromHtml("#333333");
+        private static readonly Color HcNavActive = ColorTranslator.FromHtml("#0033CC");
+
+        public static Color PageBg => HighContrast ? HcBlack : PageBgPair.Get(Dark);
+        public static Color CardBg => HighContrast ? HcBlack : CardBgPair.Get(Dark);
+        public static Color CardBorder => HighContrast ? HcWhite : CardBorderPair.Get(Dark);
+        public static Color Text => HighContrast ? HcWhite : TextPair.Get(Dark);
+        public static Color Muted => HighContrast ? HcMuted : MutedPair.Get(Dark);
+        public static Color ChipBg => HighContrast ? HcChipBg : ChipBgPair.Get(Dark);
+        public static Color ChipFg => HighContrast ? HcChipFg : ChipFgPair.Get(Dark);
+        public static Color InputBg => HighContrast ? HcBlack : InputBgPair.Get(Dark);
+        public static Color SoftHover => HighContrast ? HcHover : SoftHoverPair.Get(Dark);
 
         // oldalsáv
-        public static Color NavBg => NavBgPair.Get(Dark);
-        public static Color NavActive => NavActivePair.Get(Dark);
+        public static Color NavBg => HighContrast ? HcBlack : NavBgPair.Get(Dark);
+        public static Color NavActive => HighContrast ? HcNavActive : NavActivePair.Get(Dark);
     }
 }

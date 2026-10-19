@@ -1,8 +1,21 @@
+using System.Drawing.Drawing2D;
+using System.Drawing.Text;
+using System.Runtime.InteropServices;
+
 namespace TutorConnectApp
 {
     public partial class TutorMain : Form
     {
+        [DllImport("user32.dll")]
+        private static extern bool DestroyIcon(IntPtr handle);
+
         private readonly Dictionary<string, Func<PageBase>> pages = new();
+        private readonly List<string> pageOrder = new();
+        private readonly Dictionary<string, string> pageTitles = new();
+        private readonly bool startInTray;
+        private bool quitting;
+        private bool trayHintShown;
+        private Icon? badgedIcon;
         private PageBase? currentPage;
 
         /// <summary>A bejelentkezett felhasználó aktuális adatai (a profil mentése után változhatnak).</summary>
@@ -11,6 +24,9 @@ namespace TutorConnectApp
         private readonly System.Windows.Forms.Timer badgeTimer = new() { Interval = 400 };
         private readonly System.Windows.Forms.Timer favoriteTimer = new() { Interval = 5 * 60 * 1000 };
         private bool favoriteChecking;
+        private readonly LessonReminders reminders = new();
+        private readonly System.Windows.Forms.Timer reminderTimer = new() { Interval = 30_000 };
+        private bool reminderChecking;
         private readonly NotifyIcon tray = new();
         private ContextMenuStrip? trayMenu;
         private Icon? trayIcon;
@@ -23,14 +39,18 @@ namespace TutorConnectApp
         /// <summary>Igaz, ha a felhasználó kijelentkezett (és nem simán bezárta az appot).</summary>
         public bool LoggedOut { get; private set; }
 
-        public TutorMain()
+        /// <param name="startInTray">Igaz, ha az app a Windows indításakor (--tray) a háttérben indul.</param>
+        public TutorMain(bool startInTray = false)
         {
             InitializeComponent();
+            this.startInTray = startInTray;
 
             var user = ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
 
             MinimumSize = Ui.Sz(480, 360);
             Text = $"TutorConnect – {user.Name}";
+            RestoreWindowBounds();
+            if (startInTray) WindowState = FormWindowState.Minimized;
 
             BuildMenu(user);
 
@@ -58,6 +78,13 @@ namespace TutorConnectApp
             {
                 favoriteTimer.Tick += async (_, _) => await CheckFavoritesAsync();
                 favoriteTimer.Start();
+            }
+
+            // emlékeztető a visszaigazolt órákra (1 órával és 10 perccel előtte): fél percenként ellenőrizzük
+            if (user.Role is "STUDENT" or "TUTOR")
+            {
+                reminderTimer.Tick += async (_, _) => await CheckRemindersAsync();
+                reminderTimer.Start();
             }
 
             BuildBanner();
@@ -97,6 +124,8 @@ namespace TutorConnectApp
         private void AddPage(string key, string text, string icon, Func<PageBase> factory)
         {
             pages[key] = factory;
+            pageOrder.Add(key);
+            pageTitles[key] = text;
             navBar.AddItem(key, text, icon);
         }
 
@@ -123,6 +152,99 @@ namespace TutorConnectApp
             WindowChrome.ApplyBlack(this); // fekete címsor és szegély
         }
 
+        // ------------------------------------------------------------
+        // Billentyűparancsok: Ctrl+1..9 oldalváltás, Ctrl+K gyorskereső
+        // ------------------------------------------------------------
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.K))
+            {
+                _ = OpenQuickSwitcherAsync();
+                return true;
+            }
+
+            for (int i = 0; i < pageOrder.Count && i < 9; i++)
+            {
+                if (keyData == (Keys.Control | (Keys.D1 + i)) || keyData == (Keys.Control | (Keys.NumPad1 + i)))
+                {
+                    navBar.Select(pageOrder[i]);
+                    return true;
+                }
+            }
+
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private async Task OpenQuickSwitcherAsync()
+        {
+            if (IsDisposed || ActiveForm != this) return; // másik ablak (dialógus) fölött nem nyílik
+
+            var entries = new List<QuickEntry>();
+            for (int i = 0; i < pageOrder.Count; i++)
+            {
+                string key = pageOrder[i];
+                entries.Add(new QuickEntry("page", key, 0, pageTitles[key], i < 9 ? $"Oldal · Ctrl+{i + 1}" : "Oldal", "→"));
+            }
+            entries.Add(new QuickEntry("action", "theme", 0, "Téma váltása", "Sötét / világos mód", "◐"));
+            entries.Add(new QuickEntry("action", "logout", 0, "Kijelentkezés", "Vissza a belépőhöz", "↩"));
+
+            using var dialog = new QuickSwitcherDialog(entries);
+            if (Me.Role == "STUDENT") _ = AddTutorsToSwitcherAsync(dialog);
+
+            if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Chosen is not { } chosen || IsDisposed) return;
+
+            switch (chosen.Kind)
+            {
+                case "page":
+                    navBar.Select(chosen.Key);
+                    break;
+                case "action" when chosen.Key == "theme":
+                    Theme.SetDark(!Theme.DarkSetting);
+                    break;
+                case "action" when chosen.Key == "logout":
+                    _ = LogoutAsync();
+                    break;
+                case "chat":
+                    ChatPage.PendingConversationId = chosen.Id;
+                    navBar.Select("chat");
+                    break;
+                case "tutor":
+                    await ShowTutorAsync(chosen.Id);
+                    break;
+            }
+        }
+
+        private static async Task AddTutorsToSwitcherAsync(QuickSwitcherDialog dialog)
+        {
+            try
+            {
+                var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (dialog.IsDisposed) return;
+
+                dialog.AddEntries(tutors.Select(t =>
+                    new QuickEntry("tutor", "tutor", t.Id, t.FullName, "Oktató · " + (string.IsNullOrWhiteSpace(t.Subjects) ? "nincs tantárgy" : t.Subjects), "★")));
+            }
+            catch (ApiException)
+            {
+                // az oktatók nélkül is használható a gyorskereső
+            }
+        }
+
+        private async Task ShowTutorAsync(int tutorId)
+        {
+            try
+            {
+                var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (tutors.FirstOrDefault(t => t.Id == tutorId) is { } tutor)
+                    await TutorActions.ShowProfileAsync(this, tutor, key => navBar.Select(key));
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(this, ex.Message, "Oktató profilja", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
@@ -131,6 +253,57 @@ namespace TutorConnectApp
             _ = LoadChatAsync(); // a navbár olvasatlan-jelvényéhez
             ScheduleBadges();
             if (Me.Role == "STUDENT") _ = CheckFavoritesAsync(); // az első ellenőrzés csak alapállapotot rögzít
+            _ = CheckRemindersAsync();
+
+            // Windows-indításkor a tálcára kerül (ha a bezárás is tálcára kicsinyít, el is tűnik a tálcáról)
+            if (startInTray && AppSettings.MinimizeToTray) Hide();
+        }
+
+        /// <summary>Az ablak pozíciója és mérete a következő induláshoz.</summary>
+        private void SaveWindowBounds()
+        {
+            var bounds = WindowState == FormWindowState.Normal ? Bounds : RestoreBounds;
+            AppSettings.SaveWindow(bounds, WindowState == FormWindowState.Maximized);
+        }
+
+        private void RestoreWindowBounds()
+        {
+            if (AppSettings.LoadWindow() is not { } saved) return;
+
+            // csak akkor, ha az ablak ma is látszik valamelyik képernyőn (pl. levált monitor után ne maradjon a semmiben)
+            bool visible = Screen.AllScreens.Any(screen =>
+            {
+                var overlap = Rectangle.Intersect(screen.WorkingArea, saved.Bounds);
+                return overlap.Width > 120 && overlap.Height > 80;
+            });
+            if (!visible) return;
+
+            StartPosition = FormStartPosition.Manual;
+            Bounds = saved.Bounds;
+            if (saved.Maximized) WindowState = FormWindowState.Maximized;
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            // a bezárás tálcára kicsinyít (ha be van kapcsolva); a kilépés a tálcaikon menüjéből vagy kijelentkezéskor megy
+            if (!LoggedOut && !quitting && AppSettings.MinimizeToTray && e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                SaveWindowBounds();
+                Hide();
+
+                if (!trayHintShown)
+                {
+                    trayHintShown = true;
+                    tray.ShowBalloonTip(4000, "TutorConnect", "Az app a tálcán fut tovább. A kilépéshez használd a tálcaikon menüjét.", ToolTipIcon.Info);
+                }
+            }
+            else
+            {
+                SaveWindowBounds();
+            }
+
+            base.OnFormClosing(e);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
@@ -144,6 +317,7 @@ namespace TutorConnectApp
             AppEvents.BadgesStale -= ScheduleBadges;
             badgeTimer.Dispose();
             favoriteTimer.Dispose();
+            reminderTimer.Dispose();
             Realtime.Stop();
             ChatState.Clear(); // a következő bejelentkezőnek ne maradjon meg a beszélgetés-lista
 
@@ -151,6 +325,7 @@ namespace TutorConnectApp
             tray.Dispose();
             trayMenu?.Dispose();
             trayIcon?.Dispose();
+            badgedIcon?.Dispose();
             base.OnFormClosed(e);
         }
 
@@ -213,13 +388,67 @@ namespace TutorConnectApp
 
         private void UpdateChatBadge()
         {
-            if (!IsDisposed) navBar.SetBadge("chat", ChatState.TotalUnread);
+            if (IsDisposed) return;
+
+            int unread = ChatState.TotalUnread;
+            navBar.SetBadge("chat", unread);
+            UpdateTitle();
+            UpdateTrayIcon(unread);
+        }
+
+        /// <summary>Az ablak címe: az olvasatlan üzenetek száma a taskbaron is látszik.</summary>
+        private void UpdateTitle()
+        {
+            int unread = ChatState.TotalUnread;
+            Text = (unread > 0 ? $"({unread}) " : "") + $"TutorConnect – {Me.Name}";
+        }
+
+        /// <summary>A tálcaikon piros jelvényt kap az olvasatlan üzenetek számával, a súgószövege is mutatja.</summary>
+        private void UpdateTrayIcon(int unread)
+        {
+            var previous = badgedIcon;
+            badgedIcon = null;
+
+            if (unread > 0)
+            {
+                using var bitmap = new Bitmap(32, 32);
+                using (var g = Graphics.FromImage(bitmap))
+                {
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+                    g.DrawIcon(trayIcon ?? SystemIcons.Application, new Rectangle(0, 0, 32, 32));
+
+                    var dot = new Rectangle(12, 12, 20, 20);
+                    using (var red = new SolidBrush(Theme.Danger))
+                        g.FillEllipse(red, dot);
+                    using var font = new Font("Segoe UI", 11F, FontStyle.Bold, GraphicsUnit.Pixel);
+                    using var white = new SolidBrush(Color.White);
+                    using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                    g.DrawString(unread > 9 ? "9+" : unread.ToString(), font, white, dot, center);
+                }
+
+                IntPtr handle = bitmap.GetHicon();
+                try
+                {
+                    using var temp = Icon.FromHandle(handle);
+                    badgedIcon = (Icon)temp.Clone();
+                }
+                finally
+                {
+                    DestroyIcon(handle);
+                }
+            }
+
+            tray.Icon = badgedIcon ?? trayIcon ?? SystemIcons.Application;
+            tray.Text = unread > 0 ? Shorten($"TutorConnect – {unread} olvasatlan üzenet", 60) : "TutorConnect";
+            previous?.Dispose();
         }
 
         /// <summary>Rövid késleltetéssel frissíti a jelvényeket, így az egymás utáni események egyetlen lekérést adnak.</summary>
         private void ScheduleBadges()
         {
             if (IsDisposed) return;
+            reminders.MarkStale(); // a foglalások változhattak: az emlékeztetők friss listából dolgozzanak
             badgeTimer.Stop();
             badgeTimer.Start();
         }
@@ -261,7 +490,11 @@ namespace TutorConnectApp
 
             trayMenu = new ContextMenuStrip();
             trayMenu.Items.Add("Megnyitás", null, (_, _) => RestoreFromTray("", null));
-            trayMenu.Items.Add("Kilépés", null, (_, _) => Close());
+            trayMenu.Items.Add("Kilépés", null, (_, _) =>
+            {
+                quitting = true;
+                Close();
+            });
             tray.ContextMenuStrip = trayMenu;
             tray.DoubleClick += (_, _) => RestoreFromTray("", null);
             tray.BalloonTipClicked += (_, _) => RestoreFromTray(trayTarget, trayConversationId);
@@ -273,6 +506,7 @@ namespace TutorConnectApp
         {
             if (IsDisposed) return;
 
+            if (!Visible) Show(); // a tálcára rejtett ablak visszahozása
             if (WindowState == FormWindowState.Minimized)
                 WindowState = FormWindowState.Normal;
             Activate();
@@ -361,6 +595,39 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>
+        /// Emlékeztető a közelgő órákra. A lista tíz percenként (és foglalás-változáskor) frissül, az értesítés
+        /// az óra előtt 1 órával és 10 perccel jön, az ablak állapotától függetlenül.
+        /// </summary>
+        private async Task CheckRemindersAsync()
+        {
+            if (reminderChecking || IsDisposed || Me.Role is not ("STUDENT" or "TUTOR")) return;
+
+            reminderChecking = true;
+            try
+            {
+                if (reminders.NeedsRefresh)
+                    await reminders.RefreshAsync();
+                if (IsDisposed || !AppSettings.RemindersEnabled) return;
+
+                foreach (var (booking, minutes, final) in reminders.Due())
+                {
+                    string who = (booking.AsStudent ? "Oktató: " : "Diák: ") + (booking.OtherName ?? "ismeretlen");
+                    string title = final ? "Az órád hamarosan kezdődik" : "Az órád 1 órán belül kezdődik";
+                    string text = $"{booking.SubjectName ?? "Óra"} · {who}\n{Ui.FormatRange(booking.StartTime, booking.EndTime)}  ({minutes} perc múlva)";
+                    ShowToast(title, text, "bookings", always: true);
+                }
+            }
+            catch (ApiException)
+            {
+                // nincs kapcsolat: a következő ellenőrzésnél újra próbálkozik
+            }
+            finally
+            {
+                reminderChecking = false;
+            }
+        }
+
         private void NotifyBookingChange()
         {
             // egymás utáni események (több foglalás) ne záporozzanak értesítésként
@@ -375,7 +642,7 @@ namespace TutorConnectApp
         {
             if (key == "theme")
             {
-                Theme.SetDark(!Theme.Dark);
+                Theme.SetDark(!Theme.DarkSetting);
                 return;
             }
 
@@ -415,7 +682,7 @@ namespace TutorConnectApp
         {
             // a navbár felhasználói blokkja és az ablak címe az új névvel
             navBar.SetUser(Me.Name, Me.Role);
-            Text = $"TutorConnect – {Me.Name}";
+            UpdateTitle();
             if (verifyBanner != null) verifyBanner.Visible = !Me.EmailVerified;
         }
 
@@ -501,7 +768,7 @@ namespace TutorConnectApp
             navBar.ApplyTheme();
 
             // a téma-váltó gomb a következő állapotot mutatja
-            if (Theme.Dark)
+            if (Theme.DarkSetting)
                 navBar.SetItemContent("theme", "Világos mód", "");
             else
                 navBar.SetItemContent("theme", "Sötét mód", "");

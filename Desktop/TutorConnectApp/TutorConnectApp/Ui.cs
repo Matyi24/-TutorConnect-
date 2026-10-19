@@ -286,6 +286,17 @@ namespace TutorConnectApp
             return path;
         }
 
+        /// <summary>Pontozott fókuszkeret a billentyűzettel kijelölt, egyedi rajzolású vezérlőkhöz.</summary>
+        public static void DrawFocusRing(Graphics g, Rectangle bounds, int radius)
+        {
+            var old = g.SmoothingMode;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var pen = new Pen(Theme.HighContrast ? Color.Yellow : Theme.Text, S(2F)) { DashStyle = DashStyle.Dot };
+            using var path = RoundedPath(Rectangle.Inflate(bounds, -S(2), -S(2)), Math.Max(radius - S(2), 2));
+            g.DrawPath(pen, path);
+            g.SmoothingMode = old;
+        }
+
         public static void DrawAvatar(Graphics g, Rectangle bounds, string initials, Color fill, Color text)
         {
             var old = g.SmoothingMode;

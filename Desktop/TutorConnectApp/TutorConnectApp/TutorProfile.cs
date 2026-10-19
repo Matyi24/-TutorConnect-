@@ -1,7 +1,7 @@
 namespace TutorConnectApp
 {
     /// <summary>Mit választott a felhasználó az oktatói profil ablakban.</summary>
-    internal enum ProfileChoice { None, Book, Calendar, Message }
+    internal enum ProfileChoice { None, Book, Calendar, Message, Similar }
 
     /// <summary>
     /// Az oktatóval kapcsolatos közös műveletek (profil, foglalás, üzenet), amelyeket több oldal is használ:
@@ -13,10 +13,19 @@ namespace TutorConnectApp
         public static async Task ShowProfileAsync(IWin32Window? owner, TutorDto tutor, Action<string> navigate)
         {
             ProfileChoice choice;
-            using (var dialog = new TutorProfileDialog(tutor))
+            while (true)
             {
+                using var dialog = new TutorProfileDialog(tutor);
                 if (dialog.ShowDialog(owner) != DialogResult.OK) return;
                 choice = dialog.Choice;
+
+                // egy hasonló oktatóra kattintva annak a profilja nyílik meg
+                if (choice == ProfileChoice.Similar && dialog.SimilarTutor != null)
+                {
+                    tutor = dialog.SimilarTutor;
+                    continue;
+                }
+                break;
             }
 
             switch (choice)
@@ -71,15 +80,22 @@ namespace TutorConnectApp
         private const int ReviewsShownFirst = 6;
 
         private readonly TutorDto tutor;
+        private readonly bool preview;
         private readonly Label availabilityLabel;
         private readonly FlowLayoutPanel reviewsHost;
+        private readonly FlowLayoutPanel similarHost;
 
         public ProfileChoice Choice { get; private set; }
 
-        public TutorProfileDialog(TutorDto tutor)
-            : base(tutor.FullName, SummaryFor(tutor), "Időpont foglalása", Ui.Sz(560, 720), "")
+        /// <summary>A "Hasonló oktatók" közül kiválasztott oktató (Choice == Similar esetén).</summary>
+        public TutorDto? SimilarTutor { get; private set; }
+
+        /// <param name="preview">Igaz: az oktató saját profiljának előnézete (így látják a diákok); műveletek nélkül.</param>
+        public TutorProfileDialog(TutorDto tutor, bool preview = false)
+            : base(tutor.FullName, preview ? "Így látják a diákok a profilodat" : SummaryFor(tutor), preview ? "Bezárás" : "Időpont foglalása", Ui.Sz(560, 720), "\uE77B")
         {
             this.tutor = tutor;
+            this.preview = preview;
 
             Section("Bemutatkozás");
             var bio = Ui.Lbl(string.IsNullOrWhiteSpace(tutor.Bio) ? "Az oktató még nem írt bemutatkozást." : tutor.Bio!.Trim(),
@@ -105,11 +121,14 @@ namespace TutorConnectApp
             AddBody(availabilityLabel);
 
             var quick = Ui.Row();
-            quick.Controls.Add(Ui.Btn("Üzenet küldése", Theme.CardBg, Theme.Text, (_, _) => Finish(ProfileChoice.Message), outline: true));
-            quick.Controls.Add(Ui.Btn("Naptár megnyitása", Theme.CardBg, Theme.Text, (_, _) => Finish(ProfileChoice.Calendar), outline: true));
+            if (!preview)
+            {
+                quick.Controls.Add(Ui.Btn("Üzenet küldése", Theme.CardBg, Theme.Text, (_, _) => Finish(ProfileChoice.Message), outline: true));
+                quick.Controls.Add(Ui.Btn("Naptár megnyitása", Theme.CardBg, Theme.Text, (_, _) => Finish(ProfileChoice.Calendar), outline: true));
+            }
 
             // a diák elmentheti kedvencnek; ha az oktató új időpontot hirdet, az app értesít (amíg fut)
-            if (ApiClient.CurrentUser?.Role == "STUDENT")
+            if (!preview && ApiClient.CurrentUser?.Role == "STUDENT")
             {
                 HoverButton? favorite = null;
                 favorite = Ui.Btn(FavoriteText(tutor.Id), Theme.CardBg, Theme.Text, (_, _) =>
@@ -119,7 +138,7 @@ namespace TutorConnectApp
                 }, outline: true);
                 quick.Controls.Add(favorite);
             }
-            AddBody(quick);
+            if (quick.Controls.Count > 0) AddBody(quick);
 
             Section(tutor.ReviewCount > 0 ? $"Értékelések ({tutor.ReviewCount})" : "Értékelések");
             reviewsHost = new FlowLayoutPanel
@@ -132,6 +151,24 @@ namespace TutorConnectApp
             };
             reviewsHost.Controls.Add(Ui.Loading());
             AddBody(reviewsHost);
+
+            // hasonló oktatók: azonos tantárgyat tanítók (a diáknak segít választani; előnézetben nem kell)
+            similarHost = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                BackColor = Color.Transparent
+            };
+            if (!preview)
+            {
+                Section("Hasonló oktatók");
+                similarHost.Controls.Add(Ui.Loading());
+                AddBody(similarHost);
+            }
+
+            if (preview) DismissButton.Visible = false;
 
             SetFooter(tutor.ReviewCount > 0
                 ? $"Átlagos értékelés: ★ {tutor.AverageRating.ToString("0.0", Ui.Hu)} ({tutor.ReviewCount} értékelés)"
@@ -161,15 +198,67 @@ namespace TutorConnectApp
 
         protected override Task OnActionAsync()
         {
-            Finish(ProfileChoice.Book);
+            if (preview) Close();
+            else Finish(ProfileChoice.Book);
             return Task.CompletedTask;
         }
 
         protected override async void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            await Task.WhenAll(LoadAvailabilityAsync(), LoadReviewsAsync());
+            await Task.WhenAll(LoadAvailabilityAsync(), LoadReviewsAsync(), LoadSimilarAsync());
         }
+
+        private async Task LoadSimilarAsync()
+        {
+            if (preview) return;
+
+            try
+            {
+                var all = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (IsDisposed) return;
+
+                var mine = SubjectSet(tutor);
+                var similar = all
+                    .Where(t => t.Id != tutor.Id)
+                    .Select(t => (Tutor: t, Shared: SubjectSet(t).Count(mine.Contains)))
+                    .Where(x => x.Shared > 0)
+                    .OrderByDescending(x => x.Shared)
+                    .ThenByDescending(x => x.Tutor.AverageRating)
+                    .Take(4)
+                    .ToList();
+
+                Ui.Reset(similarHost);
+                if (similar.Count == 0)
+                {
+                    similarHost.Controls.Add(Ui.Lbl("Nincs másik oktató ugyanezekkel a tantárgyakkal.", 10.5F, Theme.Muted, margin: Ui.Pad(0)));
+                    return;
+                }
+
+                foreach (var (other, _) in similar)
+                {
+                    var item = new TutorPickItem(other, false, ContentWidth);
+                    item.Click += (_, _) =>
+                    {
+                        SimilarTutor = other;
+                        Finish(ProfileChoice.Similar);
+                    };
+                    similarHost.Controls.Add(item);
+                }
+            }
+            catch (ApiException)
+            {
+                if (IsDisposed) return;
+                Ui.Reset(similarHost);
+                similarHost.Controls.Add(Ui.Lbl("A hasonló oktatók most nem érhetők el.", 10.5F, Theme.Muted, margin: Ui.Pad(0)));
+            }
+        }
+
+        private static HashSet<string> SubjectSet(TutorDto t) =>
+            (t.Subjects ?? "")
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.ToLowerInvariant())
+                .ToHashSet();
 
         private async Task LoadAvailabilityAsync()
         {

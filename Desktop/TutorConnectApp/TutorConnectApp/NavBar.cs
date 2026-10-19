@@ -347,7 +347,10 @@ namespace TutorConnectApp
                 Height = Ui.S(58);
                 Cursor = Cursors.Hand;
                 SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-                SetStyle(ControlStyles.Selectable, false);
+                SetStyle(ControlStyles.Selectable, true); // billentyűzettel is bejárható és megnyitható
+                TabStop = true;
+                AccessibleRole = AccessibleRole.PushButton;
+                AccessibleName = text;
             }
 
             public void SetCollapsed(bool value)
@@ -359,15 +362,32 @@ namespace TutorConnectApp
             public void SetBadge(int count)
             {
                 badge = Math.Max(count, 0);
+                AccessibleDescription = badge > 0 ? $"{badge} új" : "";
                 Invalidate();
             }
 
             public void SetContent(string text, string newIcon)
             {
                 Text = text;
+                AccessibleName = text;
                 icon = newIcon;
                 Invalidate();
             }
+
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
 
             public void SetActive(bool value)
             {
@@ -425,6 +445,13 @@ namespace TutorConnectApp
                     g.SetClip(shape);
                     g.FillRectangle(bar, 0, (Height - barHeight) / 2, Ui.S(6), barHeight);
                     g.ResetClip();
+                }
+
+                if (Focused && ShowFocusCues)
+                {
+                    using var focusPen = new Pen(Theme.HighContrast ? Color.Yellow : Color.White, Ui.S(2F)) { DashStyle = DashStyle.Dot };
+                    using var focusPath = Ui.RoundedPath(Rectangle.Inflate(bounds, -Ui.S(3), -Ui.S(3)), Ui.S(11));
+                    g.DrawPath(focusPen, focusPath);
                 }
 
                 Color textColor = Anim.Lerp(Color.FromArgb(215, 255, 255, 255), Color.White, Math.Max(activeT, hoverT));

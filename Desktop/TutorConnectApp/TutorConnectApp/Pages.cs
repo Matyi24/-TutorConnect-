@@ -314,7 +314,8 @@ namespace TutorConnectApp
         {
             var tutorsTask = ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
             var subjectsTask = ApiClient.GetCachedAsync<List<SubjectDto>>("/api/subjects");
-            await Task.WhenAll(tutorsTask, subjectsTask);
+            var accountTask = TryGetAccountAsync(); // az ajánláshoz; hiba esetén nincs ajánlás, az oldal így is működik
+            await Task.WhenAll(tutorsTask, subjectsTask, accountTask);
             if (IsDisposed) return;
 
             tutors = tutorsTask.Result;
@@ -338,6 +339,8 @@ namespace TutorConnectApp
             limit = PageSize;
 
             ClearBody();
+
+            AddRecommendations(accountTask.Result);
 
             search = new SearchBox("Keresés oktató neve vagy tantárgy alapján...");
             if (keep != null) search.SetValue(keep.Query); // még a figyelő bekötése előtt, hogy ne rajzoljon
@@ -374,6 +377,112 @@ namespace TutorConnectApp
             AddRow(countLabel);
 
             RenderList(animate: true);
+        }
+
+        private static async Task<AccountDto?> TryGetAccountAsync()
+        {
+            try
+            {
+                return await ApiClient.GetAsync<AccountDto>("/api/account");
+            }
+            catch (ApiException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Az oktató tantárgyai közül azok, amelyeket a diák tanulni szeretne.</summary>
+        private static List<string> MatchedSubjects(TutorDto tutor, HashSet<string> wanted) =>
+            (tutor.Subjects ?? "")
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Where(name => wanted.Contains(name.ToLowerInvariant()))
+                .ToList();
+
+        /// <summary>
+        /// "Neked ajánljuk": a diák által megadott tanulni kívánt tantárgyak alapján a legjobban illő három oktató
+        /// (több egyező tantárgy, jobb értékelés előrébb). Az oktatóknál nincs évfolyam-adat, ezért az csak tájékoztató.
+        /// </summary>
+        private void AddRecommendations(AccountDto? account)
+        {
+            if (account == null || account.Role != "STUDENT") return;
+
+            AddRow(Ui.Section("Neked ajánljuk"));
+
+            var wanted = (account.LearningSubjects ?? new List<NamedDto>())
+                .Select(subject => subject.Name.Trim().ToLowerInvariant())
+                .Where(name => name.Length > 0)
+                .ToHashSet();
+
+            if (wanted.Count == 0)
+            {
+                var hint = new CardPanel();
+                hint.Controls.Add(Ui.Lbl("Add meg a profilodban, miből kérnél segítséget, és ide a hozzád illő oktatókat tesszük.", 10.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 0, 0, 10)));
+                hint.Controls.Add(Ui.PrimaryBtn("Tanulmányaim megadása", (_, _) => Navigate("profile")));
+                AddRow(hint);
+                AddRow(Ui.Section("Minden oktató"));
+                return;
+            }
+
+            var picks = tutors
+                .Select(t => (Tutor: t, Match: MatchedSubjects(t, wanted)))
+                .Where(x => x.Match.Count > 0)
+                .OrderByDescending(x => x.Match.Count * 10 + (x.Tutor.ReviewCount > 0 ? (double)x.Tutor.AverageRating : 3.0) + Math.Min(x.Tutor.ReviewCount, 20) * 0.05)
+                .Take(3)
+                .ToList();
+
+            if (picks.Count == 0)
+            {
+                AddRow(Ui.MessageCard("Most nincs olyan oktató, aki a megadott tantárgyaidat tanítja. Nézz körül lent!", ""));
+                AddRow(Ui.Section("Minden oktató"));
+                return;
+            }
+
+            string basis = string.Join(" · ", new[] { account.SchoolLevel, account.Grade }.Where(text => !string.IsNullOrWhiteSpace(text)));
+            AddRow(Ui.Lbl("A tanulni kívánt tantárgyaid alapján" + (basis.Length > 0 ? $" ({basis})" : "") + ":", 10F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12)));
+
+            var row = Ui.WrapRow();
+            foreach (var (tutor, match) in picks)
+                row.Controls.Add(BuildRecommendCard(tutor, match));
+            AddRow(row);
+
+            AddRow(Ui.Section("Minden oktató"));
+        }
+
+        private CardPanel BuildRecommendCard(TutorDto tutor, List<string> matches)
+        {
+            var card = new AccentCard(Theme.Success);
+            card.MinimumSize = new Size(Ui.S(350), 0);
+            card.MaximumSize = new Size(Ui.S(350), 0);
+            card.Margin = Ui.Pad(0, 0, 16, 16);
+
+            var head = Ui.Row();
+            head.Controls.Add(new AvatarCircle(tutor.FullName, 52));
+
+            var info = Ui.Row();
+            info.FlowDirection = FlowDirection.TopDown;
+            info.Controls.Add(Ui.Lbl(tutor.FullName, 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 0, 2)));
+            info.Controls.Add(Ui.Lbl(
+                tutor.ReviewCount > 0
+                    ? $"{Stars(tutor.AverageRating)}  {tutor.AverageRating.ToString("0.0", Ui.Hu)} ({tutor.ReviewCount})"
+                    : "Még nincs értékelés",
+                10F, tutor.ReviewCount > 0 ? Theme.Star : Theme.Muted, margin: Ui.Pad(0)));
+            string range = PriceRange(tutor);
+            if (range.Length > 0)
+                info.Controls.Add(Ui.Lbl(range, 10F, Theme.MainBlue, bold: true, margin: Ui.Pad(0, 2, 0, 0)));
+            head.Controls.Add(info);
+            card.Controls.Add(head);
+
+            // az egyező tantárgyak zölden: ezért ajánljuk
+            var chips = Ui.WrapRow();
+            foreach (string match in matches)
+                chips.Controls.Add(Ui.Chip(match, Theme.Success));
+            card.Controls.Add(chips);
+
+            var actions = Ui.Row();
+            actions.Controls.Add(Ui.Btn("Profil", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenProfileAsync(tutor), outline: true));
+            actions.Controls.Add(Ui.PrimaryBtn("Foglalás", (_, _) => OpenBooking(tutor)));
+            card.Controls.Add(actions);
+            return card;
         }
 
         private static string PriceLabel(int value) => value == 0 ? "Bármennyi" : Ui.Money(value);
@@ -1024,6 +1133,8 @@ namespace TutorConnectApp
             top.Controls.Add(names);
             head.Controls.Add(top);
             head.Controls.Add(Ui.PrimaryBtn("Adatok szerkesztése", async (_, _) => await EditAsync(account)));
+            if (account.Role == "TUTOR")
+                head.Controls.Add(Ui.Btn("Így látnak a diákok", Theme.CardBg, Theme.MainBlue, async (_, _) => await PreviewAsync(account), outline: true));
             if (!verified)
                 head.Controls.Add(Ui.Btn("Megerősítő levél újraküldése", Theme.MainBlue, Theme.Text, async (_, _) => await ResendAsync(), outline: true));
             AddRow(head);
@@ -1160,6 +1271,31 @@ namespace TutorConnectApp
                 card.Controls.Add(Ui.Lbl(review.Comment!, 10F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 0, 0, 14)));
         }
 
+        /// <summary>Az oktató saját profilja úgy, ahogy a diákok látják (műveletek nélkül).</summary>
+        private async Task PreviewAsync(AccountDto account)
+        {
+            try
+            {
+                var tutors = await ApiClient.GetCachedAsync<List<TutorDto>>("/api/tutors");
+                if (IsDisposed) return;
+
+                var tutor = tutors.FirstOrDefault(t => t.Id == account.Id);
+                if (tutor == null)
+                {
+                    MessageBox.Show(FindForm(), "A profilod még nem jelenik meg a diákoknak. Add meg a tantárgyaidat és az óradíjaidat az adatok szerkesztésénél.",
+                        "Profil előnézete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                using var dialog = new TutorProfileDialog(tutor, preview: true);
+                dialog.ShowDialog(FindForm());
+            }
+            catch (ApiException ex)
+            {
+                MessageBox.Show(FindForm(), ex.Message, "Nem sikerült megnyitni az előnézetet", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         private async Task ResendAsync()
         {
             await VerifyUi.ResendAsync(FindForm());
@@ -1202,7 +1338,7 @@ namespace TutorConnectApp
 
             var look = new CardPanel();
             look.Controls.Add(Ui.Lbl("Megjelenés", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
-            look.Controls.Add(SwitchRow("Sötét mód", "Kíméletesebb a szemnek, különösen este.", Theme.Dark,
+            look.Controls.Add(SwitchRow("Sötét mód", "Kíméletesebb a szemnek, különösen este.", Theme.DarkSetting,
                 // az oldal újraépül, ezért a váltást a kattintás kezelése után hajtjuk végre
                 on => BeginInvoke(new Action(() => Theme.SetDark(on)))));
             look.Controls.Add(SwitchRow("Animációk", "Finom mozgások és átmenetek a felületen.", Anim.Enabled,
@@ -1213,11 +1349,15 @@ namespace TutorConnectApp
             notifications.Controls.Add(Ui.Lbl("Értesítések", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
             notifications.Controls.Add(SwitchRow("Tálcaértesítések", "Új üzenetről és foglalás-változásról jelez, ha az ablak nincs előtérben.",
                 AppSettings.NotificationsEnabled, on => AppSettings.SetNotifications(on)));
+            if (user.Role is "STUDENT" or "TUTOR")
+                notifications.Controls.Add(SwitchRow("Emlékeztető az órákra", "Az óra előtt 1 órával és 10 perccel értesít (amíg az app fut).",
+                    AppSettings.RemindersEnabled, on => AppSettings.SetReminders(on)));
             if (user.Role == "STUDENT")
                 notifications.Controls.Add(SwitchRow("Kedvenc oktatók új időpontjai", "Jelez, ha egy kedvenc oktatód új szabad időpontot hirdet (amíg az app fut).",
                     AppSettings.FavoriteAlertsEnabled, on => AppSettings.SetFavoriteAlerts(on)));
             AddRow(notifications);
 
+            AddSystemCard();
             AddPrivacyCard();
 
             var account = new CardPanel();
@@ -1239,6 +1379,36 @@ namespace TutorConnectApp
         // ------------------------------------------------------------
         // Adatkezelés: tájékoztatók, adatexport, mentett belépés, fióktörlés
         // ------------------------------------------------------------
+
+        // ------------------------------------------------------------
+        // Rendszer és kisegítő lehetőségek
+        // ------------------------------------------------------------
+
+        private void AddSystemCard()
+        {
+            var card = new CardPanel();
+            card.Controls.Add(Ui.Lbl("Rendszer és kisegítő lehetőségek", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 8)));
+
+            card.Controls.Add(SwitchRow("Magas kontraszt", "Fekete háttér, fehér szöveg és erős keretek a jobb olvashatóságért.", Theme.HighContrast,
+                // az oldal újraépül, ezért a váltást a kattintás kezelése után hajtjuk végre
+                on => BeginInvoke(new Action(() => Theme.SetHighContrast(on)))));
+
+            card.Controls.Add(SwitchRow("Bezáráskor tálcára kicsinyítés", "Az ablak bezárása után az app a tálcán fut tovább, így az értesítések megérkeznek. Kilépés: a tálcaikon menüjében.",
+                AppSettings.MinimizeToTray, on => AppSettings.SetMinimizeToTray(on)));
+
+            card.Controls.Add(SwitchRow("Indítás a Windowsszal", "Bejelentkezés után az app magától elindul a háttérben (a tálcán).",
+                AutoStart.IsEnabled, on =>
+                {
+                    if (AutoStart.SetEnabled(on)) return;
+
+                    MessageBox.Show(FindForm(), "Az automatikus indítás beállítása nem sikerült.", "Indítás a Windowsszal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    BeginInvoke(new Action(() => _ = LoadAsync())); // a kapcsoló visszaáll a tényleges állapotra
+                }));
+
+            card.Controls.Add(Ui.Lbl("Billentyűparancsok:  Ctrl+K gyorskereső  ·  Ctrl+1…9 oldalváltás  ·  Esc ablak bezárása  ·  Tab / Enter: kezelés billentyűzettel",
+                9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 8, 0, 0)));
+            AddRow(card);
+        }
 
         private void AddPrivacyCard()
         {
@@ -1358,7 +1528,7 @@ namespace TutorConnectApp
             text.Controls.Add(Ui.Lbl(title, 11F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 2)));
             text.Controls.Add(Ui.Lbl(description, 9.5F, Theme.Muted, margin: Ui.Pad(0)));
 
-            var toggle = new ToggleSwitch(initial) { Anchor = AnchorStyles.Right, Margin = Ui.Pad(0) };
+            var toggle = new ToggleSwitch(initial) { Anchor = AnchorStyles.Right, Margin = Ui.Pad(0), AccessibleName = title };
             toggle.Toggled += (_, _) => onChanged(toggle.IsOn);
 
             table.Controls.Add(text, 0, 0);

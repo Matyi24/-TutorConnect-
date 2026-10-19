@@ -13,6 +13,9 @@
     <Compile Update="DialogParts.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Emoji.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Form1.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -30,6 +33,9 @@
     </Compile>
     <Compile Update="Pages.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="QuickSwitcher.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="TutorProfile.cs">
       <SubType>Form</SubType>

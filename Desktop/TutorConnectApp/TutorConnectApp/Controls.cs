@@ -106,7 +106,10 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 10, 10);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, true); // billentyűzettel is kijelölhető
+            TabStop = true;
+            AccessibleRole = AccessibleRole.CheckButton;
+            AccessibleName = text;
             UpdateWidth();
         }
 
@@ -115,6 +118,7 @@ namespace TutorConnectApp
         public void SetText(string text)
         {
             Text = text;
+            AccessibleName = text;
             UpdateWidth();
             Invalidate();
         }
@@ -123,6 +127,7 @@ namespace TutorConnectApp
         {
             if (selected == value) return;
             selected = value;
+            AccessibleDescription = value ? "kijelölve" : "nincs kijelölve";
 
             selectTween?.Cancel();
             double from = selectedT;
@@ -150,6 +155,20 @@ namespace TutorConnectApp
         protected override void OnMouseEnter(EventArgs e) { AnimateHover(1); base.OnMouseEnter(e); }
         protected override void OnMouseLeave(EventArgs e) { AnimateHover(0); base.OnMouseLeave(e); }
 
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
         protected override void OnPaint(PaintEventArgs e)
         {
             var g = e.Graphics;
@@ -169,6 +188,8 @@ namespace TutorConnectApp
 
             TextRenderer.DrawText(g, Text, Font, rect, text,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+
+            if (Focused && ShowFocusCues) Ui.DrawFocusRing(g, rect, Height / 2);
         }
 
         protected override void Dispose(bool disposing)
@@ -198,10 +219,26 @@ namespace TutorConnectApp
             Size = Ui.Sz(52, 28);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, true); // billentyűzettel is kapcsolható (szóköz)
+            TabStop = true;
+            AccessibleRole = AccessibleRole.CheckButton;
         }
 
         public bool IsOn => on;
+
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
         protected override void OnClick(EventArgs e)
         {
@@ -236,6 +273,8 @@ namespace TutorConnectApp
             int x = margin + (int)((Width - d - margin * 2) * position);
             using var knob = new SolidBrush(Theme.White);
             g.FillEllipse(knob, x, margin, d, d);
+
+            if (Focused && ShowFocusCues) Ui.DrawFocusRing(g, new Rectangle(0, 0, Width - 1, Height - 1), Height / 2);
         }
 
         protected override void Dispose(bool disposing)
@@ -318,6 +357,8 @@ namespace TutorConnectApp
             this.caption = caption;
             this.glyph = glyph;
             this.accent = accent;
+            AccessibleName = $"{caption}: {value}{suffix}";
+            AccessibleRole = AccessibleRole.StaticText;
             valueFont = Ui.MakeFont(22F, FontStyle.Bold);
             captionFont = Ui.MakeFont(9.5F);
             valueHeight = Ui.LineHeight(valueFont);
@@ -411,15 +452,34 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 16, 16);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, true); // billentyűzettel is megnyitható
+            TabStop = true;
+            AccessibleRole = AccessibleRole.PushButton;
+            AccessibleName = title;
             Click += (_, _) => onClick();
         }
 
         public void SetCount(int value)
         {
             count = value;
+            AccessibleName = $"{title}: {value}";
             Invalidate();
         }
+
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
 
         public void SetSelected(bool value)
         {
@@ -474,6 +534,8 @@ namespace TutorConnectApp
             using var titleBrush = new SolidBrush(selected ? accent : Theme.Muted);
             g.DrawString(count.ToString(), valueFont, valueBrush, new Rectangle(textX, top, textWidth, valueHeight + 2), format);
             g.DrawString(title, titleFont, titleBrush, new Rectangle(textX, top + valueHeight, textWidth, Ui.LineHeight(titleFont) + 2), format);
+
+            if (Focused && ShowFocusCues) Ui.DrawFocusRing(g, new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(14));
         }
 
         protected override void Dispose(bool disposing)

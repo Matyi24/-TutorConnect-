@@ -133,6 +133,46 @@ namespace TutorConnectApp
             public bool Animations { get; set; } = true;
             public bool Notifications { get; set; } = true;
             public bool FavoriteAlerts { get; set; } = true;
+            public bool Reminders { get; set; } = true;
+            public bool HighContrast { get; set; }
+            public bool MinimizeToTray { get; set; }
+            public int WindowX { get; set; }
+            public int WindowY { get; set; }
+            public int WindowWidth { get; set; }
+            public int WindowHeight { get; set; }
+            public bool WindowMaximized { get; set; }
+        }
+
+        /// <summary>Emlékeztető a visszaigazolt órákra (1 órával és 10 perccel előtte).</summary>
+        public static bool RemindersEnabled { get; private set; } = true;
+
+        public static void SetReminders(bool enabled)
+        {
+            RemindersEnabled = enabled;
+            Save();
+        }
+
+        /// <summary>Az ablak bezárása tálcára kicsinyít (a kilépés a tálcaikon menüjéből megy).</summary>
+        public static bool MinimizeToTray { get; private set; }
+
+        public static void SetMinimizeToTray(bool enabled)
+        {
+            MinimizeToTray = enabled;
+            Save();
+        }
+
+        private static Rectangle windowBounds;
+        private static bool windowMaximized;
+
+        /// <summary>A legutóbb mentett ablakpozíció és -méret; null, ha még nincs.</summary>
+        public static (Rectangle Bounds, bool Maximized)? LoadWindow() =>
+            windowBounds.Width > 0 && windowBounds.Height > 0 ? (windowBounds, windowMaximized) : null;
+
+        public static void SaveWindow(Rectangle bounds, bool maximized)
+        {
+            windowBounds = bounds;
+            windowMaximized = maximized;
+            Save();
         }
 
         /// <summary>Értesítés, ha egy kedvenc oktató új szabad időpontot hirdet (amíg az app fut).</summary>
@@ -160,10 +200,20 @@ namespace TutorConnectApp
         {
             try
             {
-                if (!File.Exists(FilePath)) return;
+                if (!File.Exists(FilePath))
+                {
+                    // első indítás: ha a Windows magas kontrasztú módban van, az app is úgy indul
+                    Theme.Init(false, SystemInformation.HighContrast);
+                    return;
+                }
+
                 var data = JsonSerializer.Deserialize<Data>(File.ReadAllText(FilePath));
                 if (data == null) return;
-                Theme.Init(data.Dark);
+                Theme.Init(data.Dark, data.HighContrast);
+                MinimizeToTray = data.MinimizeToTray;
+                RemindersEnabled = data.Reminders;
+                windowBounds = new Rectangle(data.WindowX, data.WindowY, data.WindowWidth, data.WindowHeight);
+                windowMaximized = data.WindowMaximized;
                 Anim.Init(data.Animations);
                 NotificationsEnabled = data.Notifications;
                 FavoriteAlertsEnabled = data.FavoriteAlerts;
@@ -179,7 +229,21 @@ namespace TutorConnectApp
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data { Dark = Theme.Dark, Animations = Anim.Enabled, Notifications = NotificationsEnabled, FavoriteAlerts = FavoriteAlertsEnabled }));
+                File.WriteAllText(FilePath, JsonSerializer.Serialize(new Data
+                {
+                    Dark = Theme.DarkSetting,
+                    Animations = Anim.Enabled,
+                    Notifications = NotificationsEnabled,
+                    FavoriteAlerts = FavoriteAlertsEnabled,
+                    HighContrast = Theme.HighContrast,
+                    Reminders = RemindersEnabled,
+                    MinimizeToTray = MinimizeToTray,
+                    WindowX = windowBounds.X,
+                    WindowY = windowBounds.Y,
+                    WindowWidth = windowBounds.Width,
+                    WindowHeight = windowBounds.Height,
+                    WindowMaximized = windowMaximized
+                }));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
