@@ -39,10 +39,10 @@ namespace TutorConnectApp
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         }
 
-        protected override void OnVisibleChanged(EventArgs e)
+        protected override void OnPaint(PaintEventArgs e)
         {
-            base.OnVisibleChanged(e);
-            if (Visible && !started)
+            // a felszámlálás az első tényleges megjelenéskor indul (a háttérben épülő, még takart oldalon nem)
+            if (!started)
             {
                 started = true;
                 Anim.Run(900, t =>
@@ -51,10 +51,7 @@ namespace TutorConnectApp
                     Invalidate();
                 });
             }
-        }
 
-        protected override void OnPaint(PaintEventArgs e)
-        {
             var g = e.Graphics;
             g.Clear(Ui.EffectiveBack(Parent));
             g.SmoothingMode = SmoothingMode.AntiAlias;

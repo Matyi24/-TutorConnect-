@@ -84,7 +84,7 @@ namespace TutorConnectApp
                     if (AutoStart.SetEnabled(on)) return;
 
                     MessageBox.Show(FindForm(), "Az automatikus indítás beállítása nem sikerült.", "Indítás a Windowsszal", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    BeginInvoke(new Action(() => _ = LoadAsync())); // a kapcsoló visszaáll a tényleges állapotra
+                    BeginInvoke(new Action(() => _ = ReloadAsync())); // a kapcsoló visszaáll a tényleges állapotra
                 }));
 
             card.Controls.Add(Ui.Lbl("Billentyűparancsok:  Ctrl+K gyorskereső  ·  Ctrl+1…9 oldalváltás  ·  Esc ablak bezárása  ·  Tab / Enter: kezelés billentyűzettel",

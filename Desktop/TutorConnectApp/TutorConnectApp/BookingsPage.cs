@@ -11,6 +11,9 @@ namespace TutorConnectApp
         /// <summary>A főoldali gomb ezzel nyit meg egy adott fület (pl. "slots").</summary>
         public static string? RequestedTab;
 
+        public override bool HasPendingRequest => RequestedTab != null;
+        public override bool InvalidatesOthers => true;
+
         private readonly UserInfo user;
         private readonly (string Key, string Label)[] tabs;
         private readonly Dictionary<string, SelectableChip> tabChips = new();
@@ -43,13 +46,10 @@ namespace TutorConnectApp
             summary = await ApiClient.GetAsync<BookingSummaryDto>("/api/bookings/summary");
             if (IsDisposed) return;
 
-            if (filter.Length == 0)
-            {
-                if (RequestedTab != null && tabs.Any(t => t.Key == RequestedTab))
-                    filter = RequestedTab;
-                else
-                    filter = user.Role == "TUTOR" && summary.Pending > 0 ? "pending" : "upcoming";
-            }
+            if (RequestedTab != null && tabs.Any(t => t.Key == RequestedTab))
+                filter = RequestedTab;
+            else if (filter.Length == 0)
+                filter = user.Role == "TUTOR" && summary.Pending > 0 ? "pending" : "upcoming";
             RequestedTab = null;
 
             ClearBody();
@@ -135,8 +135,7 @@ namespace TutorConnectApp
         {
             int myLoad = ++loadId;
             UpdateTabs();
-            RemoveRowsAfter(tabRow);
-            AddRow(Ui.Loading(), animate: false);
+            // a régi lista az új megérkezéséig látszik (nincs üres villanás); az új lista egyben cseréli le
 
             try
             {
@@ -280,14 +279,14 @@ namespace TutorConnectApp
                 MessageBox.Show(FindForm(), ex.Message, "A művelet nem sikerült", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
 
-            if (!IsDisposed) await LoadAsync(); // összesítő és lista frissítése
+            if (!IsDisposed) await ReloadAsync(); // összesítő és lista frissítése
         }
 
         private async Task ReviewAsync(BookingDto booking)
         {
             using var dialog = new ReviewDialog(booking);
             if (dialog.ShowDialog(FindForm()) == DialogResult.OK && !IsDisposed)
-                await LoadAsync();
+                await ReloadAsync();
         }
 
         // ------------------------------------------------------------

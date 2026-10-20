@@ -39,6 +39,9 @@ namespace TutorConnectApp
         /// <summary>A Chat oldalon jelenleg látható (megnyitott) beszélgetés – annak üzenetei nem számítanak olvasatlannak.</summary>
         public static int? OpenConversationId { get; set; }
 
+        /// <summary>Az a Chat oldal, amelyik az OpenConversationId-t beállította (oldalcsere közben két oldal élhet egyszerre).</summary>
+        public static object? OpenOwner { get; set; }
+
         public static event Action? Changed;
 
         public static ConversationDto? Find(int id) => conversations.FirstOrDefault(c => c.Id == id);
@@ -66,6 +69,7 @@ namespace TutorConnectApp
             conversations = new List<ConversationDto>();
             Loaded = false;
             OpenConversationId = null;
+            OpenOwner = null;
             Changed?.Invoke();
         }
 

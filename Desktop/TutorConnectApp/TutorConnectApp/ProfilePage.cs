@@ -9,6 +9,8 @@ namespace TutorConnectApp
     {
         public ProfilePage() : base("Profil", "A fiókod adatai.") { }
 
+        public override bool InvalidatesOthers => true;
+
         protected override async Task BuildAsync()
         {
             var account = await ApiClient.GetAsync<AccountDto>("/api/account");
@@ -221,7 +223,7 @@ namespace TutorConnectApp
         private async Task ResendAsync()
         {
             await VerifyUi.ResendAsync(FindForm());
-            if (!IsDisposed) await LoadAsync();
+            if (!IsDisposed) await ReloadAsync();
         }
 
         private async Task EditAsync(AccountDto account)
@@ -233,7 +235,7 @@ namespace TutorConnectApp
 
                 using var dialog = new EditProfileDialog(account, subjects);
                 if (dialog.ShowDialog(FindForm()) == DialogResult.OK && !IsDisposed)
-                    await LoadAsync();
+                    await ReloadAsync();
             }
             catch (ApiException ex)
             {

@@ -49,6 +49,9 @@ namespace TutorConnectApp
 
         public override void RestoreState(object? state) => restored = state as State;
 
+        public override bool HasPendingRequest => InitialSubject != null;
+        public override bool InvalidatesOthers => true;
+
         public TutorsPage() : base("Oktatók", "Válaszd ki a hozzád illő oktatót, és foglalj időpontot.")
         {
             // a találatok a gépelés szünetében frissülnek, nem minden betűnél

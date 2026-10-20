@@ -335,9 +335,38 @@ namespace TutorConnectApp
         }
 
         /// <summary>Igaz, ha egy beszélgetés üzenetei éppen látszanak a képernyőn.</summary>
-        private bool ThreadVisible => current != null && (Wide || showThread);
+        private bool ThreadVisible => IsActive && current != null && (Wide || showThread);
 
-        private void SyncOpenState() => ChatState.OpenConversationId = ThreadVisible ? current!.Id : null;
+        public override bool HasPendingRequest => PendingConversationId != null;
+        public override bool SelfRefreshing => true; // a valós idejű események naprakészen tartják
+
+        protected override void OnActiveChanged(bool active) => SyncOpenState();
+
+        /// <summary>Visszatéréskor a közben érkezett üzenetek és az olvasottság rendbe kerül.</summary>
+        protected override void OnRevisited()
+        {
+            if (current != null) _ = ResyncAsync();
+        }
+
+        private async Task ResyncAsync()
+        {
+            await ReloadMessagesAsync(scrollToEnd: false);
+            if (!IsDisposed) await MarkReadAsync();
+        }
+
+        private void SyncOpenState()
+        {
+            if (ThreadVisible)
+            {
+                ChatState.OpenConversationId = current!.Id;
+                ChatState.OpenOwner = this;
+            }
+            else if (ReferenceEquals(ChatState.OpenOwner, this))
+            {
+                ChatState.OpenConversationId = null;
+                ChatState.OpenOwner = null;
+            }
+        }
 
         private void LayoutHeader()
         {
@@ -542,7 +571,7 @@ namespace TutorConnectApp
 
             FitMessages(); // még felfüggesztett elrendezésnél: egyszer számolódik újra
             content.ResumeLayout(true);
-            if (scrollToEnd) ScrollToEnd();
+            if (scrollToEnd) ScrollToEnd(animate: false); // megnyitáskor nem görgetünk végig az üzeneteken, egyből a végén vagyunk
         }
 
         /// <summary>Még egy oldalnyi régebbi üzenet; az olvasott rész a képernyőn ugyanott marad.</summary>
@@ -644,8 +673,16 @@ namespace TutorConnectApp
             content.ResumeLayout(true);
         }
 
-        private void ScrollToEnd()
+        private void ScrollToEnd(bool animate = true)
         {
+            if (!animate)
+            {
+                // azonnali ugrás; egy második, késleltetett ugrás a később beálló magasság miatt
+                messageScroll.JumpTo(double.MaxValue);
+                BeginInvoke(new Action(() => messageScroll.JumpTo(double.MaxValue)));
+                return;
+            }
+
             // a magasság a következő elrendezés után áll be, ezért késleltetve görgetünk
             BeginInvoke(new Action(() => messageScroll.ScrollBy(1e9)));
         }
@@ -1135,7 +1172,11 @@ namespace TutorConnectApp
             {
                 Realtime.EventReceived -= OnRealtime;
                 ChatState.Changed -= OnChatStateChanged;
-                ChatState.OpenConversationId = null;
+                if (ReferenceEquals(ChatState.OpenOwner, this))
+                {
+                    ChatState.OpenConversationId = null;
+                    ChatState.OpenOwner = null;
+                }
                 statusTimer.Dispose();
                 receiptTimer.Dispose();
                 filterDebounce.Dispose();

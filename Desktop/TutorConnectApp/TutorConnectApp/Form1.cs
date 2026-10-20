@@ -10,7 +10,12 @@
         private bool quitting;
         private bool trayHintShown;
         private Icon? badgedIcon;
-        private PageBase? currentPage;
+        private readonly Dictionary<string, PageBase> cache = new(); // a már felépített oldalak: váltáskor nem épülnek újra
+        private PageBase? currentPage;       // a látható oldal
+        private PageBase? incomingPage;      // a háttérben, a látható oldal mögött épülő vagy frissülő oldal
+        private PageBase? activePage;        // az oldal, amelyre a felhasználó navigált
+        private readonly System.Windows.Forms.Timer swapTimer = new() { Interval = 600 };
+        private readonly System.Windows.Forms.Timer refreshTimer = new() { Interval = 180 };
 
         /// <summary>A bejelentkezett felhasználó aktuális adatai (a profil mentése után változhatnak).</summary>
         private static UserInfo Me => ApiClient.CurrentUser ?? throw new InvalidOperationException("Nincs bejelentkezett felhasználó.");
@@ -54,6 +59,17 @@
             navBar.ApplyResponsive(ClientSize.Width);
 
             BuildTray();
+
+            swapTimer.Tick += (_, _) =>
+            {
+                swapTimer.Stop();
+                if (incomingPage != null) CompleteSwap(incomingPage);
+            };
+            refreshTimer.Tick += (_, _) =>
+            {
+                refreshTimer.Stop();
+                RefreshCurrentIfStale();
+            };
 
             Theme.Changed += OnThemeChanged;
             ApiClient.CurrentUserChanged += OnUserChanged;
@@ -136,8 +152,7 @@
             navBar.ApplyResponsive(ClientSize.Width);
 
             BuildBanner();
-            if (pages.TryGetValue(currentKey, out var factory))
-                ShowPage(factory(), carryState: true);
+            RebuildAllPages();
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -221,6 +236,8 @@
             ChatState.Changed -= UpdateChatBadge;
             AppEvents.BadgesStale -= ScheduleBadges;
             badgeTimer.Dispose();
+            swapTimer.Dispose();
+            refreshTimer.Dispose();
             favoriteTimer.Dispose();
             reminderTimer.Dispose();
             Realtime.Stop();
@@ -312,6 +329,7 @@
         private void ScheduleBadges()
         {
             if (IsDisposed) return;
+            MarkPagesStale(); // a foglalások változhattak: a háttérben álló oldalak a következő megnyitáskor frissülnek
             reminders.MarkStale(); // a foglalások változhattak: az emlékeztetők friss listából dolgozzanak
             badgeTimer.Stop();
             badgeTimer.Start();
@@ -346,11 +364,14 @@
                 return;
             }
 
-            if (pages.TryGetValue(key, out var factory))
-            {
-                currentKey = key;
-                ShowPage(factory());
-            }
+            if (!pages.ContainsKey(key)) return;
+
+            // ugyanarra a menüpontra újra kattintva az oldal frissül
+            if (key == currentKey && currentPage != null && cache.TryGetValue(key, out var same) && same == currentPage)
+                same.MarkStale();
+
+            currentKey = key;
+            ShowKey(key);
         }
 
         /// <summary>A munkamenet lejárt (7 nap telt el, vagy a szerver újraindult): szólunk, és visszalépünk a belépéshez.</summary>
@@ -383,6 +404,7 @@
             // a navbár felhasználói blokkja és az ablak címe az új névvel
             navBar.SetUser(Me.Name, Me.Role);
             UpdateTitle();
+            MarkPagesStale();
             if (verifyBanner != null) verifyBanner.Visible = !Me.EmailVerified;
         }
 
@@ -394,9 +416,8 @@
         {
             ApplyTheme();
 
-            // az oldal újraépül az új színekkel
-            if (pages.TryGetValue(currentKey, out var factory))
-                ShowPage(factory(), carryState: true);
+            // az oldalak újraépülnek az új színekkel
+            RebuildAllPages();
         }
 
         /// <summary>A főablak keretének színei a téma szerint (az oldalak maguktól újraépülnek).</summary>
@@ -413,29 +434,204 @@
                 navBar.SetItemContent("theme", "Sötét mód", "");
         }
 
-        /// <param name="carryState">Igaz, ha ugyanazt az oldalt építjük újra (téma-, DPI-váltás): a felhasználó beállításai átkerülnek.</param>
-        private void ShowPage(PageBase page, bool carryState = false)
+        // ------------------------------------------------------------
+        // Oldalkezelés: az oldalak a főablakban maradnak (gyorsítótár), váltáskor csak a láthatóság és a sorrend változik.
+        // Így gyors váltogatásnál sincs építés, bontás és újrarajzolás, ami lassítaná vagy villogtatná a felületet.
+        // ------------------------------------------------------------
+
+        private void ShowKey(string key)
         {
-            if (carryState && currentPage != null)
-                page.RestoreState(currentPage.CaptureState());
+            if (!pages.TryGetValue(key, out var factory)) return;
 
-            page.NavigateRequested += key => navBar.Select(key);
-            page.LogoutRequested += () => _ = LogoutAsync();
-
-            contentPanel.SuspendLayout();
-
-            var old = currentPage;
-            currentPage = page;
-            contentPanel.Controls.Add(page);
-            page.BringToFront();
-            if (old != null)
+            if (cache.TryGetValue(key, out var page) && page.IsDisposed)
             {
-                contentPanel.Controls.Remove(old);
-                old.Dispose();
+                cache.Remove(key);
+                page = null;
             }
 
+            if (page == null)
+            {
+                page = factory();
+                AttachPage(key, page);
+            }
+
+            ActivatePage(page);
+            PresentPage(page);
+        }
+
+        /// <summary>Új oldal felvétele: a látható oldal mögé kerül, és a gyorsítótárba.</summary>
+        private void AttachPage(string key, PageBase page)
+        {
+            page.NavigateRequested += navKey => navBar.Select(navKey);
+            page.LogoutRequested += () => _ = LogoutAsync();
+            page.Ready += () =>
+            {
+                if (page == incomingPage) CompleteSwap(page);
+            };
+
+            cache[key] = page;
+
+            contentPanel.SuspendLayout();
+            contentPanel.Controls.Add(page);
+            if (currentPage != null)
+                contentPanel.Controls.SetChildIndex(page, contentPanel.Controls.GetChildIndex(currentPage) + 1);
+            else
+                page.BringToFront();
             contentPanel.ResumeLayout(true);
-            _ = page.LoadAsync();
+        }
+
+        private void ActivatePage(PageBase page)
+        {
+            var previous = activePage;
+            activePage = page;
+            if (previous == page) return;
+
+            if (previous != null && !previous.IsDisposed)
+            {
+                previous.SetActive(false);
+
+                // amit ott a felhasználó megváltoztatott, azt a többi oldal a következő megnyitáskor újratölti
+                if (previous.InvalidatesOthers)
+                    foreach (var other in cache.Values)
+                        if (other != previous) other.MarkStale();
+            }
+            page.SetActive(true);
+        }
+
+        private void PresentPage(PageBase page)
+        {
+            // más oldal még épülő példánya már nem kell a háttérben (a kész része megmarad a gyorsítótárban)
+            if (incomingPage != null && incomingPage != page)
+            {
+                incomingPage.Visible = false;
+                incomingPage = null;
+            }
+
+            if (page == currentPage)
+            {
+                incomingPage = null;
+                swapTimer.Stop();
+                if (page.HasPendingRequest) _ = page.ReloadAsync();
+                else ScheduleRefresh();
+                return;
+            }
+
+            // az első oldal azonnal látszik
+            if (currentPage == null)
+            {
+                SwapTo(page);
+                _ = page.LoadAsync();
+                return;
+            }
+
+            // kész oldal: azonnali váltás, a friss adatok szükség esetén utólag, a helyén érkeznek
+            if (page.Loaded && !page.HasPendingRequest)
+            {
+                incomingPage = null;
+                swapTimer.Stop();
+                SwapTo(page);
+                page.Revisit();
+                ScheduleRefresh();
+                return;
+            }
+
+            // még nem kész (első megnyitás, vagy másik oldal kérésére újra kell építeni): a látható oldal MÖGÖTT épül fel,
+            // és amint kész, egyben váltunk rá; így nincs üres vagy félig felépült kép, és nem villan fel a betöltésjelző
+            incomingPage = page;
+            page.Visible = true;
+            swapTimer.Stop();
+            swapTimer.Start(); // lassú betöltésnél az új oldal betöltésjelzővel látszik, nem várakoztatunk örökké
+            _ = page.Loaded ? page.ReloadAsync() : page.LoadAsync();
+        }
+
+        private void CompleteSwap(PageBase page)
+        {
+            if (IsDisposed || page != incomingPage) return;
+
+            swapTimer.Stop();
+            incomingPage = null;
+            SwapTo(page);
+        }
+
+        /// <summary>A kész oldal előre kerül, az előző eltűnik (a gyorsítótárban marad, vagy megszűnik, ha már nincs benne).</summary>
+        private void SwapTo(PageBase page)
+        {
+            var old = currentPage;
+            currentPage = page;
+
+            contentPanel.SuspendLayout();
+            page.Visible = true;
+            page.BringToFront();
+            if (old != null && old != page)
+            {
+                old.Visible = false;
+                if (!cache.ContainsValue(old))
+                {
+                    contentPanel.Controls.Remove(old);
+                    if (IsHandleCreated) BeginInvoke(new Action(old.Dispose)); // a bontás a rajzolástól külön fusson
+                    else old.Dispose();
+                }
+            }
+            contentPanel.ResumeLayout(true);
+
+            Redraw.PaintNow(page); // az oldal egyetlen menetben festődik ki, nem darabokban
+        }
+
+        private void ScheduleRefresh()
+        {
+            refreshTimer.Stop();
+            refreshTimer.Start(); // gyors váltogatásnál csak az az oldal frissül, amelynél a felhasználó megállt
+        }
+
+        private void RefreshCurrentIfStale()
+        {
+            var page = currentPage;
+            if (IsDisposed || page == null || page != activePage || page.IsDisposed) return;
+            if (page.Loaded && !page.Loading && page.IsStale)
+                _ = page.ReloadAsync();
+        }
+
+        private void MarkPagesStale()
+        {
+            foreach (var page in cache.Values)
+                page.MarkStale();
+        }
+
+        /// <summary>Téma- vagy DPI-váltás után minden oldal újraépül; az éppen látható oldal beállításai megmaradnak.</summary>
+        private void RebuildAllPages()
+        {
+            var state = currentPage?.CaptureState();
+
+            incomingPage = null;
+            swapTimer.Stop();
+            refreshTimer.Stop();
+
+            foreach (var page in cache.Values.Where(p => p != currentPage).ToList())
+            {
+                contentPanel.Controls.Remove(page);
+                page.Dispose();
+            }
+            cache.Clear();
+            activePage = null;
+
+            if (!pages.TryGetValue(currentKey, out var factory)) return;
+
+            // a régi oldal addig látszik, amíg az új, új színű változata el nem készül
+            var fresh = factory();
+            if (state != null) fresh.RestoreState(state);
+            AttachPage(currentKey, fresh);
+            ActivatePage(fresh);
+
+            if (currentPage == null)
+            {
+                SwapTo(fresh);
+                _ = fresh.LoadAsync();
+                return;
+            }
+
+            incomingPage = fresh;
+            swapTimer.Start();
+            _ = fresh.LoadAsync();
         }
     }
 }

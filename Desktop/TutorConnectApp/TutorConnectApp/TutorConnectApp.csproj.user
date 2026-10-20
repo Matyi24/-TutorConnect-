@@ -25,6 +25,9 @@
     <Compile Update="ChatDialogs.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Compositing.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Controls.cs">
       <SubType>Component</SubType>
     </Compile>

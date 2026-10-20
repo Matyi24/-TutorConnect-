@@ -2,8 +2,9 @@ namespace TutorConnectApp
 {
     /// <summary>
     /// Egy oldal alapja: fejléc (cím + alcím) és alatta sima görgetésű tartalom.
-    /// Az utódok a BuildAsync-ben töltik fel a tartalmat (AddRow); a szélességet, a betöltésjelzőt,
-    /// a hibakezelést és a sorok megjelenési animációját ez az osztály kezeli.
+    /// Az utódok a BuildAsync-ben töltik fel a tartalmat (AddRow); a szélességet, a betöltésjelzőt és a hibakezelést
+    /// ez az osztály kezeli. A tartalom egyben jelenik meg (nincs soronkénti animáció), a betöltésjelző csak lassú
+    /// betöltésnél látszik, így gyors betöltésnél nincs villanás.
     /// </summary>
     internal abstract class PageBase : UserControl
     {
@@ -13,8 +14,55 @@ namespace TutorConnectApp
         protected readonly Panel Surface = new() { Dock = DockStyle.Fill };
 
         private readonly SmoothScrollPanel scroll;
+        private readonly Debouncer loaderDelay;
+        private Control? loaderRow;
+        private bool layoutHeld;
+        private bool redrawHeld;
+        private bool loading;
+        private bool staleMarked;
+        private long loadedTick;
+
+        /// <summary>Az oldal tartalma sikeresen betöltődött (az oldal a főablakban megmarad, és újra használható).</summary>
+        public bool Loaded { get; private set; }
+
+        public bool Loading => loading;
+
+        /// <summary>Az a menüpont, amelyre a felhasználó éppen navigált (a betöltés alatt is).</summary>
+        public bool IsActive { get; private set; }
+
+        /// <summary>Igaz, ha egy másik oldal olyan kérést hagyott, amit csak újraépítés teljesít (pl. szűrés egy tantárgyra).</summary>
+        public virtual bool HasPendingRequest => false;
+
+        /// <summary>Igaz, ha az oldal magától frissül (valós idejű események), ezért nem kell időnként újraépíteni.</summary>
+        public virtual bool SelfRefreshing => false;
+
+        /// <summary>Igaz, ha ennek az oldalnak a műveletei más oldalak adatait is megváltoztatják.</summary>
+        public virtual bool InvalidatesOthers => false;
+
+        protected virtual int MaxAgeMs => 45_000;
+
+        /// <summary>Visszatéréskor az oldal tartalma még látszik; ennyi idő után a háttérben frissül.</summary>
+        public bool IsStale => !SelfRefreshing && (staleMarked || Environment.TickCount64 - loadedTick > MaxAgeMs);
+
+        public void MarkStale() => staleMarked = true;
+
+        internal void SetActive(bool active)
+        {
+            if (IsActive == active) return;
+            IsActive = active;
+            OnActiveChanged(active);
+        }
+
+        internal void Revisit() => OnRevisited();
+
+        protected virtual void OnActiveChanged(bool active) { }
+
+        /// <summary>Az oldal a gyorsítótárból került újra elő: a magától frissülő oldalak itt zárkóznak fel.</summary>
+        protected virtual void OnRevisited() { }
         private int lastFitWidth = -1;
-        private int revealIndex;
+
+        /// <summary>Az oldal tartalma elkészült (vagy hibát mutat): a főablak ekkor cseréli le a régi oldalt.</summary>
+        public event Action? Ready;
 
         /// <summary>Az oldal navigációt kér (pl. a főoldali gomb az Oktatók oldalra visz). Paraméter: a menüpont kulcsa.</summary>
         public event Action<string>? NavigateRequested;
@@ -27,6 +75,9 @@ namespace TutorConnectApp
             Dock = DockStyle.Fill;
             BackColor = Theme.PageBg;
             DoubleBuffered = true;
+
+            // a betöltésjelző csak akkor jelenik meg, ha a betöltés érezhetően tart (egyébként csak villanás lenne)
+            loaderDelay = new Debouncer(250, ShowLoader);
 
             scroll = new SmoothScrollPanel { Dock = DockStyle.Fill, BackColor = Theme.PageBg };
             Body = scroll.Content;
@@ -77,11 +128,16 @@ namespace TutorConnectApp
         /// <summary>Betölti az oldal tartalmát; hiba esetén hibakártyát mutat újrapróbálás gombbal.</summary>
         public async Task LoadAsync()
         {
-            ClearBody();
-            AddRow(Ui.Loading(), animate: false);
+            if (loading) return;
+            loading = true;
+            bool ok = false;
+
+            // a meglévő tartalom a betöltés alatt megmarad (újratöltésnél nem tűnik el), a jelző csak késve jelenik meg
+            loaderDelay.Trigger();
             try
             {
                 await BuildAsync();
+                ok = true;
             }
             catch (ApiException ex)
             {
@@ -91,55 +147,118 @@ namespace TutorConnectApp
             {
                 if (!IsDisposed) ShowError("Váratlan hiba: " + ex.Message);
             }
+            finally
+            {
+                loading = false;
+                if (!IsDisposed)
+                {
+                    Loaded = ok;
+                    if (ok)
+                    {
+                        loadedTick = Environment.TickCount64;
+                        staleMarked = false;
+                    }
+                    loaderDelay.Stop();
+                    RemoveLoader();
+                    ResumeBodyLayout(); // a sorok egyetlen elrendezéssel jelenjenek meg, mielőtt az oldal láthatóvá válik
+                    Ready?.Invoke();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Már betöltött oldal újraépítése a helyén: a felhasználó beállításai (szűrők, keresés) és a görgetés megmaradnak.
+        /// </summary>
+        public async Task ReloadAsync()
+        {
+            if (loading) return;
+            if (!Loaded)
+            {
+                await LoadAsync();
+                return;
+            }
+
+            bool keepScroll = !HasPendingRequest;
+            RestoreState(CaptureState());
+            double offset = scroll.Offset;
+
+            await LoadAsync();
+            if (keepScroll && !IsDisposed) scroll.JumpTo(offset);
+        }
+
+        private void ShowLoader()
+        {
+            if (IsDisposed || Body.Controls.Count > 0) return; // van már tartalom: nincs szükség jelzőre
+
+            loaderRow = Ui.Loading();
+            AddRow(loaderRow);
+        }
+
+        private void RemoveLoader()
+        {
+            if (loaderRow == null) return;
+
+            if (!loaderRow.IsDisposed)
+            {
+                Body.Controls.Remove(loaderRow);
+                loaderRow.Dispose();
+            }
+            loaderRow = null;
         }
 
         /// <summary>Az adatok lekérése után hívd a ClearBody()-t, majd add hozzá a sorokat az AddRow-val.</summary>
         protected abstract Task BuildAsync();
 
-        /// <summary>
-        /// Új sor a tartalomhoz. Az animate sorok egymás után "jelennek meg" (a kártyák háttere halványul be);
-        /// a már látható sorok helye közben nem változik, ezért nincs ugrálás.
-        /// </summary>
+        /// <summary>Új sor a tartalomhoz (a szélességét az oldal igazítja a tartalométhoz).</summary>
+        /// <param name="animate">Kompatibilitás miatt marad: a sorok már nem animálva jelennek meg.</param>
         protected void AddRow(Control control, bool animate = true)
         {
             FitWidth(control);
-
-            if (!animate || !Anim.Enabled)
-            {
-                Body.Controls.Add(control);
-                return;
-            }
-
-            int index = revealIndex++;
-            var card = control as CardPanel;
-            card?.SetReveal(0);
-
-            control.Visible = false;
             Body.Controls.Add(control);
-
-            Anim.Delay(Math.Min(index, 8) * 60, () =>
-            {
-                if (control.IsDisposed) return;
-                control.Visible = true;
-                if (card != null)
-                    Anim.Run(320, t => card.SetReveal(t));
-            });
         }
 
+        /// <summary>
+        /// Kiüríti a tartalmat. Az ezután (ugyanabban a szinkron szakaszban) hozzáadott sorok egyetlen
+        /// elrendezéssel jelennek meg, így nincs félig felépült állapot a képernyőn.
+        /// </summary>
         protected void ClearBody()
         {
-            revealIndex = 0;
-            foreach (var control in Body.Controls.Cast<Control>().ToList())
+            var controls = Body.Controls.Cast<Control>().ToArray();
+
+            if (!layoutHeld)
             {
-                Body.Controls.Remove(control);
+                layoutHeld = true;
+                Body.SuspendLayout();
+                if (IsHandleCreated)
+                {
+                    Redraw.Suspend(Body); // a kiürített, még üres tartalom ne villanjon fel az újraépítés előtt
+                    redrawHeld = true;
+                    BeginInvoke(new Action(ResumeBodyLayout));
+                }
+            }
+
+            Body.Controls.Clear();
+            foreach (var control in controls)
                 control.Dispose();
+            loaderRow = null;
+        }
+
+        private void ResumeBodyLayout()
+        {
+            if (!layoutHeld || IsDisposed) return;
+
+            layoutHeld = false;
+            Body.ResumeLayout(true);
+            if (redrawHeld)
+            {
+                redrawHeld = false;
+                Redraw.Resume(Body);
             }
         }
 
         /// <summary>Az anchor utáni összes sor törlése (lista újratöltéséhez).</summary>
         protected void RemoveRowsAfter(Control anchor)
         {
-            revealIndex = 0;
             int index = Body.Controls.IndexOf(anchor);
             if (index < 0) return;
 
@@ -159,6 +278,12 @@ namespace TutorConnectApp
             card.Controls.Add(Ui.Lbl(message, 10.5F, Theme.Muted, wrap: true));
             card.Controls.Add(Ui.PrimaryBtn("Újrapróbálás", (_, _) => BeginInvoke(new Action(() => _ = LoadAsync()))));
             AddRow(card);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) loaderDelay.Dispose();
+            base.Dispose(disposing);
         }
 
         private int ContentWidth => Math.Max(Body.ClientSize.Width - Body.Padding.Horizontal, 120);

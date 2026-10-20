@@ -28,6 +28,15 @@ namespace TutorConnectApp
         private DropdownSelect? tutorBox;
         private int refreshId;
 
+        public override bool HasPendingRequest => InitialTutorId != null;
+        public override bool SelfRefreshing => true; // a hét és a nézet megmarad, az adatok csendben frissülnek
+        public override bool InvalidatesOthers => true;
+
+        protected override void OnRevisited()
+        {
+            if (calendar != null) _ = RefreshDataAsync();
+        }
+
         public CalendarPage(UserInfo me) : base("Naptár",
             me.Role == "TUTOR"
                 ? "Add meg, mikor tartasz órát: húzd végig az egeret a naptár üres részén. A szabad időpontokat áthúzhatod, jobb gombbal másolhatod vagy törölheted."

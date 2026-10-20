@@ -25,6 +25,9 @@ namespace TutorConnectApp
             timer.Start();
         }
 
+        /// <summary>Megszakítja a függőben lévő futtatást.</summary>
+        public void Stop() => timer.Stop();
+
         public void Dispose() => timer.Dispose();
     }
 }

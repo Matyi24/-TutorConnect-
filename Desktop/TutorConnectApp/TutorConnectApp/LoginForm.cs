@@ -15,7 +15,7 @@ namespace TutorConnectApp
         private readonly HoverButton loginButton;
         private readonly Label errorLabel;
         private readonly CheckBox rememberBox;
-        private int slideOffset = Ui.S(36);
+        private readonly int slideOffset = 0;
 
         public LoginForm()
         {
@@ -131,12 +131,7 @@ namespace TutorConnectApp
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            Anim.Run(450, t =>
-            {
-                Opacity = t;
-                slideOffset = (int)(Ui.S(36) * (1 - t));
-                CenterCard();
-            });
+            Anim.Run(250, t => Opacity = t); // csak áttűnés: a kártya mozgatása újrarajzolta volna az egész háttérátmenetet
             emailBox.Focus();
         }
 
