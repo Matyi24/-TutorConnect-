@@ -170,8 +170,11 @@ namespace TutorConnectApp
             if (width == lastFitWidth) return;
             lastFitWidth = width;
 
+            // egyben, felfüggesztett elrendezéssel: így a sok sor nem számolja újra az elrendezést soronként
+            Body.SuspendLayout();
             foreach (Control control in Body.Controls)
                 FitWidth(control);
+            Body.ResumeLayout(true);
         }
 
         private void FitWidth(Control control)

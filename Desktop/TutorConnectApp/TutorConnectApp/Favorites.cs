@@ -20,8 +20,6 @@ namespace TutorConnectApp
         private static Data data = new();
         private static int loadedFor = -1;
 
-        public static event Action? Changed;
-
         private static string FilePath(int userId) => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TutorConnect", $"favorites-{userId}.json");
 
@@ -96,7 +94,6 @@ namespace TutorConnectApp
             }
 
             Save();
-            Changed?.Invoke();
             return nowFavorite;
         }
 

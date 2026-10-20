@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace TutorConnectApp
 {
@@ -36,8 +35,6 @@ namespace TutorConnectApp
     /// <summary>Új fiók létrehozása (diák vagy oktató). A szerver siker esetén be is léptet.</summary>
     internal sealed class RegisterDialog : DialogBase
     {
-        private static readonly Regex EmailPattern = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
-        private static readonly Regex StrongPassword = new(@"^(?=.*[0-9])(?=.*[^a-zA-Z0-9]).{6,}$");
 
         private readonly TextBox nameBox;
         private readonly TextBox emailBox;
@@ -116,10 +113,10 @@ namespace TutorConnectApp
             // ugyanazok a szabályok, mint a szerveren (így azonnal kiderül a hiba)
             if (name.Length < 2 || name.Length > 60)
             { SetFooter("A név 2 és 60 karakter között legyen.", error: true); return; }
-            if (!EmailPattern.IsMatch(email) || email.Length > 100)
+            if (!Validation.IsEmail(email))
             { SetFooter("Adj meg egy érvényes e-mail címet.", error: true); return; }
-            if (!StrongPassword.IsMatch(password))
-            { SetFooter("A jelszó legalább 6 karakter legyen, és tartalmazzon számot és speciális karaktert.", error: true); return; }
+            if (!Validation.IsStrongPassword(password))
+            { SetFooter(Validation.PasswordRule, error: true); return; }
             if (password != confirmBox.Text)
             { SetFooter("A két jelszó nem egyezik.", error: true); return; }
             if (!acceptBox.Checked)
@@ -149,7 +146,6 @@ namespace TutorConnectApp
     /// <summary>Jelszó-visszaállító levél kérése. A levélben lévő linket a böngészőben kell megnyitni.</summary>
     internal sealed class ForgotPasswordDialog : DialogBase
     {
-        private static readonly Regex EmailPattern = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
 
         private readonly TextBox emailBox;
         private bool sent;
@@ -182,7 +178,7 @@ namespace TutorConnectApp
             }
 
             string email = emailBox.Text.Trim();
-            if (!EmailPattern.IsMatch(email) || email.Length > 100)
+            if (!Validation.IsEmail(email))
             {
                 SetFooter("Adj meg egy érvényes e-mail címet.", error: true);
                 return;

@@ -54,7 +54,7 @@ namespace TutorConnectApp
 
         private const int CacheLifetimeMs = 30_000;
 
-        private static readonly Dictionary<string, (long Time, string Body)> Cache = new();
+        private static readonly Dictionary<string, (long Time, string Body, object? Parsed)> Cache = new();
 
         private const string TimeoutMessage = "A szerver nem válaszol (időtúllépés).";
 
@@ -295,10 +295,17 @@ namespace TutorConnectApp
             long now = Environment.TickCount64;
             if (!Cache.TryGetValue(path, out var hit) || now - hit.Time > CacheLifetimeMs)
             {
-                hit = (now, await SendAsync(HttpMethod.Get, path, null));
+                hit = (now, await SendAsync(HttpMethod.Get, path, null), null);
                 Cache[path] = hit;
             }
-            return Deserialize<T>(hit.Body);
+
+            // a feldolgozott eredményt is megtartjuk, így az oldalak nem dolgozzák fel újra ugyanazt a JSON-t.
+            // A visszaadott listát és elemeit ezért nem szabad módosítani (csak olvasásra használjuk őket).
+            if (hit.Parsed is T parsed) return parsed;
+
+            var value = Deserialize<T>(hit.Body);
+            Cache[path] = (hit.Time, hit.Body, value);
+            return value;
         }
 
         public static Task PostAsync(string path, object? payload = null) =>
