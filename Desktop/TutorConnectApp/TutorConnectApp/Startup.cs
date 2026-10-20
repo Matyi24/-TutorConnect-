@@ -45,4 +45,40 @@ namespace TutorConnectApp
             }
         }
     }
+
+    /// <summary>
+    /// Ideiglenes fájlok takarítása: a chatből megnyitott csatolmányok és a beillesztett képek a
+    /// %TEMP%\TutorConnect mappába kerülnek. Induláskor törli az egy napnál régebbieket, hogy ne halmozódjanak,
+    /// és ne maradjon ott felesleges személyes tartalom.
+    /// </summary>
+    internal static class TempFiles
+    {
+        public static void CleanOld(TimeSpan olderThan)
+        {
+            try
+            {
+                string root = Path.Combine(Path.GetTempPath(), "TutorConnect");
+                if (!Directory.Exists(root)) return;
+
+                foreach (var entry in new DirectoryInfo(root).EnumerateFileSystemInfos())
+                {
+                    if (DateTime.UtcNow - entry.LastWriteTimeUtc < olderThan) continue;
+
+                    try
+                    {
+                        if (entry is DirectoryInfo directory) directory.Delete(recursive: true);
+                        else entry.Delete();
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        // használatban van (pl. nyitva egy program): a következő induláskor újra próbáljuk
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // a takarítás nem kritikus
+            }
+        }
+    }
 }

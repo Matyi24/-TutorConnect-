@@ -1,8 +1,26 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Compile Update="AvailabilityDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="BookDialog.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="BookingsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Calendar.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Cards.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Chat.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="ChatControls.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="ChatDialogs.cs">
       <SubType>Component</SubType>
@@ -10,13 +28,28 @@
     <Compile Update="Controls.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="DialogBase.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="DialogParts.cs">
       <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="EditProfileDialog.cs">
+      <SubType>Form</SubType>
     </Compile>
     <Compile Update="Emoji.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Form1.Banner.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Form1.QuickSwitch.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Form1.Tray.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Inputs.cs">
@@ -34,11 +67,26 @@
     <Compile Update="Pages.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="ProfilePage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="QuickSwitcher.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="ReviewDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="SettingsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="SubjectsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="TutorProfile.cs">
       <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="TutorsPage.cs">
+      <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>
 </Project>

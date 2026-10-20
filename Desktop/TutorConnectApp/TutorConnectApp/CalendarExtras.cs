@@ -21,8 +21,6 @@ namespace TutorConnectApp
         private static List<Range> ranges = new();
         private static int loadedFor = -1;
 
-        public static event Action? Changed;
-
         private static string FilePath(int userId) => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "TutorConnect", $"timeoff-{userId}.json");
 
@@ -87,7 +85,6 @@ namespace TutorConnectApp
             EnsureLoaded();
             ranges.Add(new Range { Start = start.Date, End = end.Date });
             Save();
-            Changed?.Invoke();
         }
 
         public static void Remove(Range range)
@@ -95,7 +92,6 @@ namespace TutorConnectApp
             EnsureLoaded();
             ranges.Remove(range);
             Save();
-            Changed?.Invoke();
         }
     }
 
@@ -261,7 +257,7 @@ namespace TutorConnectApp
         private static readonly string[] ShortNames = { "H", "K", "Sze", "Cs", "P", "Szo", "V" };
 
         private DateTime month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
-        private List<CalEvent> events = new();
+        private Dictionary<DateTime, List<CalEvent>> byDay = new();
         private int hoverCell = -1;
 
         public event Action<DateTime>? DayClicked;
@@ -288,7 +284,10 @@ namespace TutorConnectApp
 
         public void SetEvents(IEnumerable<CalEvent> items)
         {
-            events = items.ToList();
+            // a napi csoportosítás itt készül el egyszer, nem minden újrafestéskor (egérmozgatásnál is rajzol)
+            byDay = items
+                .GroupBy(ev => ev.Start.Date)
+                .ToDictionary(group => group.Key, group => group.ToList());
             Invalidate();
         }
 
@@ -401,10 +400,6 @@ namespace TutorConnectApp
                 g.DrawLine(line, x, HeaderHeight, x, HeaderHeight + rows * RowHeight);
             }
 
-            var grouped = events
-                .GroupBy(ev => ev.Start.Date)
-                .ToDictionary(group => group.Key, group => group.ToList());
-
             var today = DateTime.Today;
             for (int index = 0; index < rows * 7; index++)
             {
@@ -436,7 +431,7 @@ namespace TutorConnectApp
                     date == today ? Theme.White : inMonth ? Theme.Text : Theme.Muted,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
 
-                if (!grouped.TryGetValue(date, out var dayEvents)) continue;
+                if (!byDay.TryGetValue(date, out var dayEvents)) continue;
 
                 int y = rect.Y + Ui.S(38);
                 int shown = 0;

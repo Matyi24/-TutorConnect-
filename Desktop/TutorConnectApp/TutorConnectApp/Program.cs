@@ -24,6 +24,7 @@ namespace TutorConnectApp
 
             AppSettings.Load(); // mentett téma és animáció-beállítás
             Ui.InitDpi();       // a képernyő nagyítása szerinti méretezéshez
+            _ = Task.Run(() => TempFiles.CleanOld(TimeSpan.FromDays(1))); // a régi ideiglenes fájlok törlése a háttérben
 
             // Belépés nélkül nem nyílik meg a főablak. Kijelentkezés után újra a belépő jön.
             // Induláskor (ha az "Emlékezz rám" be volt jelölve) a mentett munkamenettel próbálkozunk.

@@ -120,8 +120,8 @@ namespace TutorConnectApp
             string query = searchBox.Text.Trim();
             var matches = tutors
                 .Where(t => query.Length == 0
-                            || Contains(t.FullName, query)
-                            || Contains(t.Subjects ?? "", query))
+                            || Ui.ContainsText(t.FullName, query)
+                            || Ui.ContainsText(t.Subjects ?? "", query))
                 .ToList();
 
             list.SuspendLayout();
@@ -148,11 +148,6 @@ namespace TutorConnectApp
             }
             list.ResumeLayout(true);
         }
-
-        /// <summary>Kis- és nagybetűre, ékezetre érzéketlen keresés ("o" megtalálja az "ő"-t is).</summary>
-        private static bool Contains(string text, string query) =>
-            System.Globalization.CultureInfo.CurrentCulture.CompareInfo.IndexOf(
-                text, query, System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace) >= 0;
 
         private void Choose(TutorDto tutor)
         {

@@ -1,6 +1,5 @@
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
-using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -127,14 +126,11 @@ namespace TutorConnectApp
             searchBox.Focus();
         }
 
-        private static bool Matches(string text, string query) =>
-            CultureInfo.CurrentCulture.CompareInfo.IndexOf(text, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
-
         private void Render()
         {
             string query = searchBox.Text.Trim();
             var matches = all
-                .Where(entry => query.Length == 0 ? entry.Kind is "page" or "action" : Matches(entry.Title, query) || Matches(entry.Subtitle, query))
+                .Where(entry => query.Length == 0 ? entry.Kind is "page" or "action" : Ui.ContainsText(entry.Title, query) || Ui.ContainsText(entry.Subtitle, query))
                 .Take(MaxShown)
                 .ToList();
 

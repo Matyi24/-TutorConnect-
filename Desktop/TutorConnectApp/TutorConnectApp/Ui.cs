@@ -40,12 +40,6 @@ namespace TutorConnectApp
 
         public static Rectangle Rc(int x, int y, int width, int height) => new(S(x), S(y), S(width), S(height));
 
-        // a téma szerint változó színek rövid nevei
-        public static Color Muted => Theme.Muted;
-        public static Color Success => Theme.Success;
-        public static Color Warning => Theme.Warning;
-        public static Color Danger => Theme.Danger;
-
         // A betűtípusok drága GDI-erőforrások: egyszer jönnek létre, és megosztva használjuk őket
         // (rajzoláskor nem szabad megsemmisíteni, ezért nincs `using` mellettük).
         private static readonly Dictionary<(string Family, float Size, FontStyle Style), Font> FontCache = new();
@@ -127,6 +121,18 @@ namespace TutorConnectApp
         });
 
         public static string Money(decimal value) => value.ToString("N0", Hu) + " Ft";
+
+        /// <summary>Fájlméret olvasható alakban (B, KB, MB).</summary>
+        public static string FormatBytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes} B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+            return $"{bytes / (1024.0 * 1024):0.#} MB";
+        }
+
+        /// <summary>Kis- és nagybetűre, ékezetre érzéketlen "tartalmazza" ("o" megtalálja az "ő"-t is).</summary>
+        public static bool ContainsText(string text, string query) =>
+            CultureInfo.CurrentCulture.CompareInfo.IndexOf(text, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
 
         public static string FormatDay(DateTime value) => value.ToLocalTime().ToString("yyyy. MM. dd., dddd", Hu);
 
@@ -213,11 +219,15 @@ namespace TutorConnectApp
         /// <summary>A konténer összes gyerekének eltávolítása és megsemmisítése.</summary>
         public static void Reset(Control host)
         {
-            foreach (var child in host.Controls.Cast<Control>().ToList())
-            {
-                host.Controls.Remove(child);
+            // egyben ürítjük ki (nem darabonként), így az elrendezés csak egyszer számolódik újra
+            var children = host.Controls.Cast<Control>().ToArray();
+            if (children.Length == 0) return;
+
+            host.SuspendLayout();
+            host.Controls.Clear();
+            foreach (var child in children)
                 child.Dispose();
-            }
+            host.ResumeLayout(true);
         }
 
         public static Control Loading(string text = "Betöltés...")
@@ -225,7 +235,7 @@ namespace TutorConnectApp
             var row = Row();
             row.Margin = Ui.Pad(0, 8, 0, 8);
             row.Controls.Add(new Spinner());
-            row.Controls.Add(Lbl(text, 10.5F, Muted, margin: Ui.Pad(10, 5, 0, 0)));
+            row.Controls.Add(Lbl(text, 10.5F, Theme.Muted, margin: Ui.Pad(10, 5, 0, 0)));
             return row;
         }
 
@@ -243,7 +253,7 @@ namespace TutorConnectApp
                 Margin = Ui.Pad(0, 0, 14, 0)
             };
             row.Controls.Add(icon);
-            row.Controls.Add(Lbl(text, 10.5F, Muted, margin: Ui.Pad(0, 4, 0, 0)));
+            row.Controls.Add(Lbl(text, 10.5F, Theme.Muted, margin: Ui.Pad(0, 4, 0, 0)));
             card.Controls.Add(row);
             return card;
         }
@@ -251,7 +261,7 @@ namespace TutorConnectApp
         public static Control KeyValue(string key, string value)
         {
             var row = Row();
-            var k = Lbl(key, 10F, Muted, margin: Ui.Pad(0, 0, 0, 0));
+            var k = Lbl(key, 10F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 0));
             k.AutoSize = false;
             k.Size = Ui.Sz(150, 24);
             row.Controls.Add(k);
@@ -297,6 +307,9 @@ namespace TutorConnectApp
             g.SmoothingMode = old;
         }
 
+        // közös, középre igazító szövegformátum (megosztva, rajzoláskor nem kell újat létrehozni)
+        private static readonly StringFormat CenterFormat = new() { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+
         public static void DrawAvatar(Graphics g, Rectangle bounds, string initials, Color fill, Color text)
         {
             var old = g.SmoothingMode;
@@ -306,8 +319,7 @@ namespace TutorConnectApp
 
             var font = MakeFont(MathF.Round(Math.Max(bounds.Width / Scale * 0.3F, 8F) * 2) / 2, FontStyle.Bold); // fél pontra kerekítve, hogy kevés változat jöjjön létre
             using var textBrush = new SolidBrush(text);
-            using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(initials, font, textBrush, bounds, format);
+            g.DrawString(initials, font, textBrush, bounds, CenterFormat);
             g.SmoothingMode = old;
         }
     }
