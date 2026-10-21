@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 15, 2026 at 12:40 PM
+-- Generation Time: Oct 21, 2026 at 10:32 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -20,6 +20,29 @@ SET time_zone = "+00:00";
 --
 -- Database: `zsamo`
 --
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `admin_log`
+--
+
+CREATE TABLE `admin_log` (
+  `id` int(11) NOT NULL,
+  `admin_id` int(11) NOT NULL,
+  `action` varchar(40) NOT NULL,
+  `target_type` varchar(20) DEFAULT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `details` varchar(500) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `admin_log`
+--
+
+INSERT INTO `admin_log` (`id`, `admin_id`, `action`, `target_type`, `target_id`, `details`, `created_at`) VALUES
+(18, 69, 'user_unsuspended', 'user', 14, NULL, '2026-10-21 08:30:04');
 
 -- --------------------------------------------------------
 
@@ -42,7 +65,7 @@ CREATE TABLE `auth_tokens` (
 --
 
 INSERT INTO `auth_tokens` (`id`, `user_id`, `type`, `token_hash`, `email`, `expires_at`, `created_at`) VALUES
-(17, 52, 'RESET', '1d2d5dece21af2a4a5e412e97a98cfab2e2a7f5e5565a80365deddd3b7a2c6f4', 'stickelzsombor1@gmail.com', '2026-10-15 10:24:41', '2026-10-15 07:24:41');
+(22, 13, 'RESET', 'c8787c3f8ee428e39cc31d36414de3c2a87bbf3b893a2e4ac659d030ba746a25', 'test@gmail.com', '2026-10-20 13:30:43', '2026-10-20 10:30:43');
 
 -- --------------------------------------------------------
 
@@ -116,11 +139,11 @@ INSERT INTO `bookings` (`id`, `student_id`, `tutor_id`, `subject_id`, `start_tim
 (13, 13, 14, 7, '2026-10-12 11:00:00', '2026-10-12 12:00:00', 'COMPLETED', '2026-10-08 10:01:46', 4600, 'asd'),
 (14, 13, 14, 7, '2026-10-07 11:00:00', '2026-10-07 12:00:00', 'COMPLETED', '2026-10-06 10:07:07', 4600, 'Tesztfoglalás (teljesített óra)'),
 (27, 13, 14, 7, '2026-10-12 12:00:00', '2026-10-12 13:00:00', 'COMPLETED', '2026-10-08 10:18:39', 4600, 'szija, pliz fogadd el'),
-(28, 13, 14, 7, '2026-10-19 12:00:00', '2026-10-19 13:00:00', 'CONFIRMED', '2026-10-08 10:29:03', 4600, 'utfu'),
+(28, 13, 14, 7, '2026-10-19 12:00:00', '2026-10-19 13:00:00', 'COMPLETED', '2026-10-08 10:29:03', 4600, 'utfu'),
 (29, 13, 14, 7, '2026-10-16 07:00:00', '2026-10-16 07:30:00', 'REJECTED', '2026-10-08 10:30:25', 2300, 'kérlek'),
-(36, 13, 14, 7, '2026-10-15 14:00:00', '2026-10-15 15:00:00', 'CONFIRMED', '2026-10-14 08:44:00', 4600, NULL),
-(37, 13, 14, 15, '2026-10-16 14:00:00', '2026-10-16 15:00:00', 'CONFIRMED', '2026-10-15 07:22:37', 3000, 'csá kuvasz'),
-(38, 13, 14, 15, '2026-10-16 07:00:00', '2026-10-16 07:30:00', 'CONFIRMED', '2026-10-15 07:35:32', 1500, 'ugu');
+(36, 13, 14, 7, '2026-10-15 14:00:00', '2026-10-15 15:00:00', 'COMPLETED', '2026-10-14 08:44:00', 4600, NULL),
+(37, 13, 14, 15, '2026-10-16 14:00:00', '2026-10-16 15:00:00', 'COMPLETED', '2026-10-15 07:22:37', 3000, 'csá kuvasz'),
+(38, 13, 14, 15, '2026-10-16 07:00:00', '2026-10-16 07:30:00', 'COMPLETED', '2026-10-15 07:35:32', 1500, 'ugu');
 
 -- --------------------------------------------------------
 
@@ -142,10 +165,8 @@ CREATE TABLE `conversations` (
 INSERT INTO `conversations` (`id`, `student_id`, `tutor_id`, `created_at`) VALUES
 (1, 1, 3, '2026-09-24 07:38:40'),
 (2, 13, 14, '2026-09-25 09:15:47'),
-(3, 13, 15, '2026-09-29 07:21:52'),
 (4, 13, 8, '2026-10-02 08:16:37'),
-(6, 13, 3, '2026-10-08 09:54:13'),
-(8, 52, 8, '2026-10-14 10:38:36');
+(6, 13, 3, '2026-10-08 09:54:13');
 
 -- --------------------------------------------------------
 
@@ -168,26 +189,27 @@ CREATE TABLE `messages` (
   `edited_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `messages`
+-- Table structure for table `reports`
 --
 
-INSERT INTO `messages` (`id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at`, `attachment_name`, `attachment_path`, `attachment_type`, `attachment_size`, `deleted_at`, `edited_at`) VALUES
-(1, 2, 13, 'Szia! Tudnál segíteni matematikából?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(2, 2, 14, 'Szia! Persze, szívesen segítek. Melyik témakörrel van problémád?', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(3, 2, 13, 'Főleg a másodfokú egyenletekkel.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(4, 2, 14, 'Rendben, akkor ezt át tudjuk venni az órán.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(5, 2, 13, 'Szuper! A pénteki 16 órás időpont nekem megfelel.', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(6, 2, 14, 'Tökéletes, akkor találkozunk pénteken 16:00-kor!', 1, '2026-09-24 09:18:29', NULL, NULL, NULL, NULL, NULL, NULL),
-(37, 3, 13, 'meow', 1, '2026-10-08 09:27:42', NULL, NULL, NULL, NULL, NULL, NULL),
-(38, 4, 13, 'pupel.png', 0, '2026-10-08 09:39:29', 'pupel.png', 'dcc7d5f781562ddf7ee0af2c561033a5.png', 'image/png', 1437658, NULL, NULL),
-(39, 6, 13, 'szeretnék időpontot foglalni', 0, '2026-10-08 09:54:21', NULL, NULL, NULL, NULL, NULL, NULL),
-(40, 2, 13, 'szeretnék foglalni 1 órát', 1, '2026-10-08 09:55:16', NULL, NULL, NULL, NULL, NULL, NULL),
-(41, 2, 14, 'rendben, csinálok 1 szabad időpontot', 1, '2026-10-08 09:55:35', NULL, NULL, NULL, NULL, NULL, NULL),
-(42, 2, 13, 'Lefoglaltam, legyen szíves elfogadni!', 1, '2026-10-08 09:57:10', NULL, NULL, NULL, NULL, NULL, NULL),
-(43, 2, 14, 'Jóváhagytam, a megbeszélt időpontban várlak!', 1, '2026-10-08 09:57:43', NULL, NULL, NULL, NULL, NULL, NULL),
-(44, 2, 13, 'sajnálom, mégsem fogok tudni menni. dolgom akadt..', 1, '2026-10-08 09:58:22', NULL, NULL, NULL, NULL, NULL, '2026-10-13 10:52:31'),
-(45, 2, 14, 'rendben, ha szeretnéd máskor esetleg bepótolhatjuk!', 1, '2026-10-08 09:58:45', NULL, NULL, NULL, NULL, NULL, NULL);
+CREATE TABLE `reports` (
+  `id` int(11) NOT NULL,
+  `reporter_id` int(11) NOT NULL,
+  `reported_user_id` int(11) NOT NULL,
+  `conversation_id` int(11) DEFAULT NULL,
+  `message_id` int(11) DEFAULT NULL,
+  `reason` varchar(20) NOT NULL,
+  `details` varchar(500) DEFAULT NULL,
+  `context_json` mediumtext DEFAULT NULL,
+  `status` varchar(12) NOT NULL DEFAULT 'OPEN',
+  `admin_note` varchar(500) DEFAULT NULL,
+  `handled_by` int(11) DEFAULT NULL,
+  `handled_at` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -210,7 +232,6 @@ CREATE TABLE `reviews` (
 INSERT INTO `reviews` (`id`, `booking_id`, `rating`, `comment_`, `crated_at`) VALUES
 (2, 3, '5', 'Nagyon érthetően magyarázott, sokat segített a feladatokban.', NULL),
 (3, 1, '5', 'Nagyon jó óra volt, végre megértettem mindent amiről kérdezni szerettem volna akkoriban.', NULL),
-(4, 6, '4', 'Kuvaszcraft lyo volt de nem pörfekt', NULL),
 (9, 14, '5', 'Teljes mértékben megértettem a témakört, mivel nehézségeim voltak!', '2026-10-08 10:13:38');
 
 -- --------------------------------------------------------
@@ -325,8 +346,7 @@ INSERT INTO `tutor_subjects` (`tutor_id`, `subject_id`, `hourly_rate`) VALUES
 (8, 18, 3200),
 (14, 7, 4600),
 (14, 8, 1),
-(14, 15, 3000),
-(53, 13, 3000);
+(14, 15, 3000);
 
 -- --------------------------------------------------------
 
@@ -342,39 +362,47 @@ CREATE TABLE `users` (
   `role` enum('STUDENT','TUTOR','ADMIN','') NOT NULL,
   `bio` text NOT NULL,
   `hourly_rate` decimal(65,0) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `school_level` varchar(30) DEFAULT NULL,
   `grade` varchar(30) DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
-  `email_verified_at` timestamp NULL DEFAULT NULL
+  `email_verified_at` timestamp NULL DEFAULT NULL,
+  `suspended_at` timestamp NULL DEFAULT NULL,
+  `suspended_reason` varchar(200) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_hungarian_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`, `school_level`, `grade`, `deleted_at`, `email_verified_at`) VALUES
-(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', 3500, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', 3000, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(5, 'Horváth Dávid', 'david.horvath@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Programozás, algoritmusok és adatstruktúrák oktatása.', 4000, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(6, 'Varga Eszter', 'eszter.varga@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Egyetemi hallgató, jelenleg webfejlesztést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', 2800, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', 3200, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', 3500, '2026-09-25 08:15:14', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', 3000, '2026-09-25 08:15:14', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(13, 'test', 'test@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$X401oEo08mY6fHy5P0htpA$gTwWRwTVZnEY9OuY40QR9JlknDDdMIQ5pU643f1gO+E', 'STUDENT', '', 0, '2026-10-08 09:53:51', 'Általános iskola', '8. osztály', NULL, '2026-10-14 08:59:12'),
-(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', 'kuvaszológia professzor', 6700, '2026-09-29 07:17:01', NULL, NULL, NULL, '2026-10-14 08:59:12'),
-(15, 'Törölt felhasználó', 'deleted-15@deleted.invalid', '!deleted', 'TUTOR', '', 4000, '2026-10-08 09:27:57', NULL, NULL, '2026-10-08 09:27:57', '2026-10-14 08:59:12'),
-(52, 'Stickel Zsombor', 'stickelzsombor1@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$CZ6q/Qe/xxJpFvxSHi8+ZA$GhZpGUlCoHjbcc8Qy7kebtOKfasoFmYSeoI19oF3Zk8', 'STUDENT', '', 0, '2026-10-14 09:07:14', NULL, NULL, NULL, '2026-10-15 06:30:00'),
-(53, 'combos', 'comboscraft@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$gnOBjdpg5t233yj9DXosgA$rl3X7EcDLthpA22Fkyl41DQSEw7yp3e+fSABiGP0wTg', 'TUTOR', 'Humbulumbu', 0, '2026-10-15 10:38:30', NULL, NULL, NULL, '2026-10-15 10:37:59');
+INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`, `school_level`, `grade`, `deleted_at`, `email_verified_at`, `suspended_at`, `suspended_reason`) VALUES
+(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', 3500, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', 3000, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(5, 'Horváth Dávid', 'david.horvath@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Programozás, algoritmusok és adatstruktúrák oktatása.', 4000, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(6, 'Varga Eszter', 'eszter.varga@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Egyetemi hallgató, jelenleg webfejlesztést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(7, 'Kiss Gergő', 'gergo.kiss@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Angol nyelv és kommunikáció korrepetálást vállalok.', 2800, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(8, 'Farkas Lilla', 'lilla.farkas@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Középiskolai matematika és fizika oktatás.', 3200, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(9, 'Molnár Ádám', 'adam.molnar@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Informatika szakos hallgató vagyok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(10, 'Balogh Zoltán', 'zoltan.balogh@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'ADMIN', 'TutorConnect rendszergazda.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(11, 'Molnár Bence', 'molnar.bence@example.com', '$2b$10$fakehashbence', 'TUTOR', 'Matematika és fizika korrepetálást vállalok középiskolásoknak.', 3500, '2026-09-25 08:15:14', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(12, 'Kovács Réka', 'kovacs.reka@example.com', '$2b$10$fakehashreka', 'TUTOR', 'Angol és német nyelvből vállalok korrepetálást kezdő és haladó szinten.', 3000, '2026-09-25 08:15:14', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(13, 'test', 'test@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$X401oEo08mY6fHy5P0htpA$gTwWRwTVZnEY9OuY40QR9JlknDDdMIQ5pU643f1gO+E', 'STUDENT', '', 0, '2026-10-08 09:53:51', 'Általános iskola', '8. osztály', NULL, '2026-10-14 08:59:12', NULL, NULL),
+(14, 'test2', 'test2@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$QInUdviilpceEDBys2Xp6A$udWd3gCpgQB/qer9ZAamYAFKEPgAZYEGaDbWxsISv6g', 'TUTOR', 'kuvaszológia professzor', 6700, '2026-09-29 07:17:01', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(69, 'MM Food', 'mfdoom@gmail.com', '$argon2id$v=19$m=32768,p=1,t=4$SfHmW8jqJj54pY4Kw73q6w$okk8VRBoktPbPquhxBTuJUJsOZDPiTfE0wG6/7JoeMo', 'ADMIN', '', 0, '2026-10-21 08:28:52', NULL, NULL, NULL, '2026-10-21 08:28:58', NULL, NULL);
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `admin_log`
+--
+ALTER TABLE `admin_log`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_admin_log_created` (`created_at`),
+  ADD KEY `fk_admin_log_admin` (`admin_id`);
 
 --
 -- Indexes for table `auth_tokens`
@@ -417,6 +445,15 @@ ALTER TABLE `messages`
   ADD KEY `fk_message_sender` (`sender_id`);
 
 --
+-- Indexes for table `reports`
+--
+ALTER TABLE `reports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_reports_status` (`status`,`created_at`),
+  ADD KEY `idx_reports_reported` (`reported_user_id`),
+  ADD KEY `fk_reports_reporter` (`reporter_id`);
+
+--
 -- Indexes for table `reviews`
 --
 ALTER TABLE `reviews`
@@ -455,10 +492,16 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `admin_log`
+--
+ALTER TABLE `admin_log`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
 -- AUTO_INCREMENT for table `auth_tokens`
 --
 ALTER TABLE `auth_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `availabilities`
@@ -476,13 +519,19 @@ ALTER TABLE `bookings`
 -- AUTO_INCREMENT for table `conversations`
 --
 ALTER TABLE `conversations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `messages`
 --
 ALTER TABLE `messages`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+
+--
+-- AUTO_INCREMENT for table `reports`
+--
+ALTER TABLE `reports`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `reviews`
@@ -500,11 +549,17 @@ ALTER TABLE `subjects`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
+  MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `admin_log`
+--
+ALTER TABLE `admin_log`
+  ADD CONSTRAINT `fk_admin_log_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `auth_tokens`
@@ -539,6 +594,13 @@ ALTER TABLE `conversations`
 ALTER TABLE `messages`
   ADD CONSTRAINT `fk_message_conversation` FOREIGN KEY (`conversation_id`) REFERENCES `conversations` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_message_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `reports`
+--
+ALTER TABLE `reports`
+  ADD CONSTRAINT `fk_reports_reported` FOREIGN KEY (`reported_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_reports_reporter` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `reviews`
