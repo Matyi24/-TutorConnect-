@@ -1,4 +1,4 @@
-﻿namespace TutorConnectApp
+namespace TutorConnectApp
 {
     public partial class TutorMain : Form
     {
@@ -26,6 +26,8 @@
         private readonly LessonReminders reminders = new();
         private readonly System.Windows.Forms.Timer reminderTimer = new() { Interval = 30_000 };
         private bool reminderChecking;
+        private long lastReviewCheck;
+        private bool themePending;
         private readonly NotifyIcon tray = new();
         private ContextMenuStrip? trayMenu;
         private Icon? trayIcon;
@@ -111,24 +113,25 @@
         /// </summary>
         private void BuildMenu(UserInfo user)
         {
-            AddPage("home", "Főoldal", "", () => new HomePage(Me));
-            AddPage("chat", "Chat", "", () => new ChatPage(Me));
-            AddPage("subjects", "Tantárgyak", "", () => new SubjectsPage(Me));
+            AddPage("home", "Főoldal", "\uE80F", () => new HomePage(Me));
+            AddPage("chat", "Chat", "\uE8BD", () => new ChatPage(Me));
+            AddPage("subjects", "Tantárgyak", "\uE8F1", () => new SubjectsPage(Me));
 
             if (user.Role == "STUDENT")
-                AddPage("tutors", "Oktatók", "", () => new TutorsPage());
+                AddPage("tutors", "Oktatók", "\uE716", () => new TutorsPage());
 
             if (user.Role == "STUDENT" || user.Role == "TUTOR")
             {
                 AddPage("calendar", "Naptár", "\uE787", () => new CalendarPage(Me));
                 AddPage("bookings", "Foglalás", "\uE81C", () => new BookingsPage(Me));
+                AddPage("stats", "Statisztika", "\uE9D2", () => new StatsPage(Me));
             }
 
-            AddPage("profile", "Profil", "", () => new ProfilePage());
-            AddPage("settings", "Beállítások", "", () => new SettingsPage(Me));
+            AddPage("profile", "Profil", "\uE77B", () => new ProfilePage());
+            AddPage("settings", "Beállítások", "\uE713", () => new SettingsPage(Me));
 
             // művelet: nem kijelölhető gomb (a kijelentkezés a Profil oldalon van)
-            navBar.AddAction("theme", "Sötét mód", "");
+            navBar.AddAction("theme", "Sötét mód", "\uE708");
         }
 
         private void AddPage(string key, string text, string icon, Func<PageBase> factory)
@@ -414,10 +417,21 @@
 
         private void OnThemeChanged()
         {
-            ApplyTheme();
-
-            // az oldalak újraépülnek az új színekkel
+            // az oldalak az új színekkel épülnek újra; a keret (menü, háttér) az új oldallal egyszerre vált,
+            // így nincs olyan pillanat, amikor új színű menü mellett még a régi színű oldal látszik
+            themePending = true;
             RebuildAllPages();
+
+            if (themePending && incomingPage == null) ApplyThemeNow(); // nincs mire várni (pl. ismeretlen oldal)
+        }
+
+        /// <summary>A keret színeit egyetlen lépésben, rajzolás-szünettel váltja.</summary>
+        private void ApplyThemeNow()
+        {
+            themePending = false;
+            Redraw.Suspend(this);
+            ApplyTheme();
+            Redraw.Resume(this);
         }
 
         /// <summary>A főablak keretének színei a téma szerint (az oldalak maguktól újraépülnek).</summary>
@@ -429,9 +443,9 @@
 
             // a téma-váltó gomb a következő állapotot mutatja
             if (Theme.DarkSetting)
-                navBar.SetItemContent("theme", "Világos mód", "");
+                navBar.SetItemContent("theme", "Világos mód", "\uE706");
             else
-                navBar.SetItemContent("theme", "Sötét mód", "");
+                navBar.SetItemContent("theme", "Sötét mód", "\uE708");
         }
 
         // ------------------------------------------------------------
@@ -559,6 +573,10 @@
             var old = currentPage;
             currentPage = page;
 
+            bool restyle = themePending; // témaváltás: a keret az oldalcserével egy lépésben vált
+            themePending = false;
+            if (restyle) Redraw.Suspend(this);
+
             contentPanel.SuspendLayout();
             page.Visible = true;
             page.BringToFront();
@@ -572,9 +590,11 @@
                     else old.Dispose();
                 }
             }
+            if (restyle) ApplyTheme();
             contentPanel.ResumeLayout(true);
 
-            Redraw.PaintNow(page); // az oldal egyetlen menetben festődik ki, nem darabokban
+            if (restyle) Redraw.Resume(this);
+            else Redraw.PaintNow(page); // az oldal egyetlen menetben festődik ki, nem darabokban
         }
 
         private void ScheduleRefresh()

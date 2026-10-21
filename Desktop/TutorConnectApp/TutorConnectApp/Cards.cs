@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
 namespace TutorConnectApp
@@ -15,17 +15,20 @@ namespace TutorConnectApp
         private readonly Font captionFont;
         private readonly int valueHeight;
         private readonly int captionHeight;
+        private readonly bool group;
         private double progress;
         private bool started;
 
-        public StatTile(int value, string suffix, string caption, string glyph, Color accent)
+        /// <param name="group">Igaz: ezres tagolással jelenik meg a szám (pl. összegeknél).</param>
+        public StatTile(int value, string suffix, string caption, string glyph, Color accent, bool group = false)
         {
+            this.group = group;
             target = value;
             this.suffix = suffix;
             this.caption = caption;
             this.glyph = glyph;
             this.accent = accent;
-            AccessibleName = $"{caption}: {value}{suffix}";
+            AccessibleName = $"{caption}: {(group ? value.ToString("N0", Ui.Hu) : value.ToString())}{suffix}";
             AccessibleRole = AccessibleRole.StaticText;
             valueFont = Ui.MakeFont(22F, FontStyle.Bold);
             captionFont = Ui.MakeFont(9.5F);
@@ -85,7 +88,7 @@ namespace TutorConnectApp
 
             // a két sor együtt függőlegesen középre kerül
             int top = (Height - valueHeight - captionHeight) / 2;
-            g.DrawString(shown + suffix, valueFont, valueBrush, new Rectangle(textX, top, textWidth, valueHeight + 2), format);
+            g.DrawString((group ? shown.ToString("N0", Ui.Hu) : shown.ToString()) + suffix, valueFont, valueBrush, new Rectangle(textX, top, textWidth, valueHeight + 2), format);
             g.DrawString(caption, captionFont, captionBrush, new Rectangle(textX, top + valueHeight, textWidth, captionHeight + 2), format);
         }
     }
@@ -227,6 +230,8 @@ namespace TutorConnectApp
         {
             this.title = title;
             this.subtitle = subtitle;
+            AccessibleName = title + ". " + subtitle;
+            AccessibleRole = AccessibleRole.StaticText;
             Margin = Ui.Pad(0, 0, 0, 20);
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
@@ -451,8 +456,26 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 18, 18);
             Cursor = clickable ? Cursors.Hand : Cursors.Default;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, clickable); // a megnyitható kártya billentyűzettel is elérhető
+            TabStop = clickable;
+            AccessibleName = $"{subject.Name}, {category}, {tutorText}";
+            AccessibleRole = clickable ? AccessibleRole.PushButton : AccessibleRole.StaticText;
         }
+
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
 
         /// <summary>A weboldal szimbólumai (vsc/js/index.js getSubjectIcon); ismeretlen tárgynál könyv-ikon.</summary>
         private static string SubjectGlyph(string subjectName)
@@ -517,6 +540,7 @@ namespace TutorConnectApp
                 g.FillPath(fill, path);
                 g.DrawPath(border, path);
             }
+            if (clickable && Focused && ShowFocusCues) Ui.DrawFocusRing(g, new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(18));
 
             // kategória-színű szimbólum-négyzet
             var badge = Ui.Rc(20, 20, 56, 56);

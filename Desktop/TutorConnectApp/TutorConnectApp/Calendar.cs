@@ -61,11 +61,11 @@ namespace TutorConnectApp
             var toolbar = Ui.WrapRow();
             var previous = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => Shift(-1), outline: true);
             previous.Font = Ui.IconFont(11F);
-            previous.Text = "";
+            previous.Text = "\uE76B";
             var today = Ui.Btn("Ma", Theme.CardBg, Theme.Text, (_, _) => GoToday(), outline: true);
             var next = Ui.Btn("", Theme.CardBg, Theme.Text, (_, _) => Shift(1), outline: true);
             next.Font = Ui.IconFont(11F);
-            next.Text = "";
+            next.Text = "\uE76C";
             foreach (var button in new[] { previous, today, next })
                 button.Margin = Ui.Pad(0, 0, 8, 12);
 

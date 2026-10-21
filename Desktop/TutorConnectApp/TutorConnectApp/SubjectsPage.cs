@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -35,6 +35,13 @@ namespace TutorConnectApp
         private sealed record State(string Query, string Category);
 
         public override object? CaptureState() => search == null ? null : new State(search.Value, selectedCategory);
+
+        public override bool FocusSearch()
+        {
+            if (search == null) return false;
+            search.FocusInput();
+            return true;
+        }
 
         public override void RestoreState(object? state) => restored = state as State;
 

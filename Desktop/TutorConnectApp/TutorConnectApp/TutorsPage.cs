@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -50,6 +50,13 @@ namespace TutorConnectApp
         public override void RestoreState(object? state) => restored = state as State;
 
         public override bool HasPendingRequest => InitialSubject != null;
+
+        public override bool FocusSearch()
+        {
+            if (search == null) return false;
+            search.FocusInput();
+            return true;
+        }
         public override bool InvalidatesOthers => true;
 
         public TutorsPage() : base("Oktatók", "Válaszd ki a hozzád illő oktatót, és foglalj időpontot.")
@@ -265,8 +272,8 @@ namespace TutorConnectApp
 
             IEnumerable<TutorDto> filtered = tutors.Where(t =>
                 (query.Length == 0
-                    || t.FullName.Contains(query, StringComparison.CurrentCultureIgnoreCase)
-                    || (t.Subjects ?? "").Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                    || TextSearch.Contains(t.FullName, query)
+                    || TextSearch.Contains(t.Subjects ?? "", query))
                 && (subject == null || HasSubject(t, subject))
                 && t.AverageRating >= minRating
                 && (!onlyFavorites || Favorites.IsFavorite(t.Id))
@@ -289,13 +296,14 @@ namespace TutorConnectApp
                 _ => $"{shown.Count} oktató"
             };
 
-            Body.SuspendLayout();
-            RemoveRowsAfter(countLabel);
-
-            if (shown.Count == 0)
-                AddRow(Ui.MessageCard("Nincs a szűrőknek megfelelő oktató.", "\uE721"), animate);
-            else
+            ReplaceRowsAfter(countLabel, () =>
             {
+                if (shown.Count == 0)
+                {
+                    AddRow(Ui.MessageCard("Nincs a szűrőknek megfelelő oktató.", "\uE721"), animate);
+                    return;
+                }
+
                 foreach (var tutor in shown.Take(limit))
                     AddRow(BuildCard(tutor), animate);
 
@@ -313,9 +321,7 @@ namespace TutorConnectApp
                     }, outline: true));
                     AddRow(more, animate: false);
                 }
-            }
-
-            Body.ResumeLayout(true);
+            });
         }
 
         /// <summary>Az óradíj-tartomány átfedi a szűrő sávját? Óradíj nélküli oktató csak akkor jelenik meg, ha nincs ár-szűrő.</summary>

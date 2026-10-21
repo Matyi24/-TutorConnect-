@@ -322,6 +322,13 @@ namespace TutorConnectApp
 
         public void SetValue(string text) => input.Text = text;
 
+        /// <summary>A kurzor a mezőbe kerül (Ctrl+F), a meglévő keresőszöveg kijelölve.</summary>
+        public void FocusInput()
+        {
+            input.Focus();
+            input.SelectAll();
+        }
+
         private Rectangle ClearRect => new(Width - Ui.S(44), (Height - Ui.S(30)) / 2, Ui.S(30), Ui.S(30));
 
         private void LayoutInput()
@@ -400,7 +407,7 @@ namespace TutorConnectApp
 
             var iconFont = Ui.IconFont(13F);
             using (var iconBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, focusT)))
-                g.DrawString("", iconFont, iconBrush, new Rectangle(Ui.S(14), 0, Ui.S(34), Height), format);
+                g.DrawString("\uE721", iconFont, iconBrush, new Rectangle(Ui.S(14), 0, Ui.S(34), Height), format);
 
             if (input.TextLength > 0)
             {
@@ -411,7 +418,7 @@ namespace TutorConnectApp
                 }
                 var clearFont = Ui.IconFont(9F);
                 using var clearBrush = new SolidBrush(hoverClear ? Theme.Text : Theme.Muted);
-                g.DrawString("", clearFont, clearBrush, ClearRect, format);
+                g.DrawString("\uE711", clearFont, clearBrush, ClearRect, format);
             }
         }
 
@@ -589,7 +596,7 @@ namespace TutorConnectApp
             var chevronFont = Ui.IconFont(9F);
             using var chevronBrush = new SolidBrush(Anim.Lerp(Theme.Muted, Theme.MainBlue, highlight));
             using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(IsOpen ? "" : "", chevronFont, chevronBrush, new Rectangle(Width - Ui.S(40), 0, Ui.S(30), Height), center);
+            g.DrawString(IsOpen ? "\uE70E" : "\uE70D", chevronFont, chevronBrush, new Rectangle(Width - Ui.S(40), 0, Ui.S(30), Height), center);
         }
 
         protected override void Dispose(bool disposing)
@@ -707,7 +714,7 @@ namespace TutorConnectApp
                     if (isSelected)
                     {
                         using var checkBrush = new SolidBrush(Theme.MainBlue);
-                        g.DrawString("", checkFont, checkBrush, new Rectangle(row.Right - Ui.S(30), row.Y, Ui.S(24), row.Height), format);
+                        g.DrawString("\uE73E", checkFont, checkBrush, new Rectangle(row.Right - Ui.S(30), row.Y, Ui.S(24), row.Height), format);
                     }
                 }
                 g.ResetClip();

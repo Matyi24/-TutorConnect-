@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -35,6 +35,9 @@ namespace TutorConnectApp
                 notifications.Controls.Add(SwitchRow("Emlékeztető az órákra", "Az óra előtt 1 órával és 10 perccel értesít (amíg az app fut).",
                     AppSettings.RemindersEnabled, on => AppSettings.SetReminders(on)));
             if (user.Role == "STUDENT")
+                notifications.Controls.Add(SwitchRow("Értékelés az óra után", "Értesít, ha egy lezajlott órát még nem értékeltél (amíg az app fut).",
+                    AppSettings.ReviewPromptsEnabled, on => AppSettings.SetReviewPrompts(on)));
+            if (user.Role == "STUDENT")
                 notifications.Controls.Add(SwitchRow("Kedvenc oktatók új időpontjai", "Jelez, ha egy kedvenc oktatód új szabad időpontot hirdet (amíg az app fut).",
                     AppSettings.FavoriteAlertsEnabled, on => AppSettings.SetFavoriteAlerts(on)));
             AddRow(notifications);
@@ -52,7 +55,12 @@ namespace TutorConnectApp
             var app = new CardPanel();
             app.Controls.Add(Ui.Lbl("Alkalmazás", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 0, 10)));
             app.Controls.Add(Ui.KeyValue("Szerver", ApiClient.BaseUrl));
-            app.Controls.Add(Ui.Lbl("A szerver címét a TUTORCONNECT_URL környezeti változóval lehet módosítani.", 9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 6, 0, 0)));
+            app.Controls.Add(Ui.Lbl("A szerver címét a TUTORCONNECT_URL környezeti változóval lehet módosítani.", 9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 6, 0, 10)));
+            app.Controls.Add(Ui.Btn("Billentyűparancsok (F1)", Theme.CardBg, Theme.Text, (_, _) =>
+            {
+                using var dialog = new ShortcutsDialog(user.Role);
+                dialog.ShowDialog(FindForm());
+            }, outline: true));
             AddRow(app);
 
             return Task.CompletedTask;

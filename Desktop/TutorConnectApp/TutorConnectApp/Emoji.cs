@@ -33,6 +33,8 @@ namespace TutorConnectApp
             Size = new Size(cell * Columns + Ui.S(16), cell * rows + Ui.S(16));
             BackColor = Theme.CardBg;
             Cursor = Cursors.Hand;
+            AccessibleName = "Emoji-választó (emojit a Windows + . billentyűkkel is beszúrhatsz)";
+            AccessibleRole = AccessibleRole.List;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         }
 

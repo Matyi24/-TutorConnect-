@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -56,13 +56,15 @@ namespace TutorConnectApp
             tabChips.Clear();
             countCards.Clear();
 
+            var top = Ui.Row();
+            top.Margin = Ui.Pad(0, 0, 0, 12);
             if (user.Role == "STUDENT")
-            {
-                var top = Ui.Row();
-                top.Margin = Ui.Pad(0, 0, 0, 12);
                 top.Controls.Add(Ui.PrimaryBtn("+  Új foglalás", (_, _) => Navigate("tutors")));
-                AddRow(top);
-            }
+            top.Controls.Add(Ui.Btn("Exportálás (CSV)", Theme.CardBg, Theme.Text,
+                async (_, _) => await BookingExport.ExportAllAsync(FindForm(), user.Role), outline: true));
+            top.Controls.Add(Ui.Btn("Órarend nyomtatása", Theme.CardBg, Theme.Text,
+                async (_, _) => await BookingExport.PrintTimetableAsync(FindForm(), user.Name), outline: true));
+            AddRow(top);
 
             // áttekintő: számlálókártyák, amelyekre kattintva az adott lista nyílik meg
             var overview = Ui.WrapRow();
@@ -156,7 +158,7 @@ namespace TutorConnectApp
             {
                 if (IsDisposed || myLoad != loadId) return;
                 RemoveRowsAfter(tabRow);
-                AddRow(Ui.MessageCard(ex.Message, ""));
+                AddRow(Ui.MessageCard(ex.Message, "\uE783"));
             }
         }
 
@@ -166,16 +168,14 @@ namespace TutorConnectApp
 
         private void ShowBookings(List<BookingDto> bookings)
         {
-            Body.SuspendLayout();
-            RemoveRowsAfter(tabRow);
-
-            if (bookings.Count == 0)
-                AddRow(Ui.MessageCard("Ebben a kategóriában nincs foglalás.", ""));
-            else
-                foreach (var booking in bookings)
-                    AddRow(BuildBookingCard(booking));
-
-            Body.ResumeLayout(true);
+            ReplaceRowsAfter(tabRow, () =>
+            {
+                if (bookings.Count == 0)
+                    AddRow(Ui.MessageCard("Ebben a kategóriában nincs foglalás.", "\uE787"));
+                else
+                    foreach (var booking in bookings)
+                        AddRow(BuildBookingCard(booking));
+            });
         }
 
         private CardPanel BuildBookingCard(BookingDto b)
@@ -203,6 +203,9 @@ namespace TutorConnectApp
                 if (!string.IsNullOrWhiteSpace(b.Review.Comment)) text += "\n" + b.Review.Comment;
                 card.Controls.Add(Ui.Lbl(text, 10F, Theme.Muted, wrap: true));
             }
+
+            if (b.Status is "PENDING" or "CONFIRMED" or "COMPLETED")
+                card.Controls.Add(new LessonNoteRow(b));
 
             bool canReview = b.AsStudent && b.Status == "COMPLETED" && b.Review == null;
             if (b.CanConfirm || b.CanReject || b.CanCancel || canReview)
@@ -295,8 +298,8 @@ namespace TutorConnectApp
 
         private void ShowSlots(List<SlotItemDto> slots)
         {
-            Body.SuspendLayout();
-            RemoveRowsAfter(tabRow);
+            ReplaceRowsAfter(tabRow, () =>
+            {
 
             var top = Ui.Row();
             top.Margin = Ui.Pad(0, 0, 0, 12);
@@ -305,7 +308,7 @@ namespace TutorConnectApp
 
             if (slots.Count == 0)
             {
-                AddRow(Ui.MessageCard("Még nem adtál meg szabad időpontot. A diákok csak ezek közül foglalhatnak.", ""));
+                AddRow(Ui.MessageCard("Még nem adtál meg szabad időpontot. A diákok csak ezek közül foglalhatnak.", "\uE787"));
             }
             else
             {
@@ -334,7 +337,7 @@ namespace TutorConnectApp
                 }
             }
 
-            Body.ResumeLayout(true);
+            });
         }
 
         private async Task AddSlotAsync()

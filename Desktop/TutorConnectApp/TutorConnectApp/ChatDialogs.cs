@@ -19,8 +19,27 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 0, 6);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.Selectable, false);
+            SetStyle(ControlStyles.Selectable, true); // billentyűzettel is kiválasztható
+            TabStop = true;
+            AccessibleName = tutor.FullName + (string.IsNullOrWhiteSpace(tutor.Subjects) ? "" : ", " + tutor.Subjects)
+                + (hasConversation ? ", már van beszélgetésetek" : "");
+            AccessibleRole = AccessibleRole.ListItem;
         }
+
+        /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            if (e.KeyCode is Keys.Enter or Keys.Space)
+            {
+                e.Handled = true;
+                OnClick(EventArgs.Empty);
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
 
         public void SetSelected(bool value)
         {
@@ -69,6 +88,8 @@ namespace TutorConnectApp
                 : (string.IsNullOrWhiteSpace(Tutor.Subjects) ? "Nincs megadott tantárgy" : Tutor.Subjects!);
             TextRenderer.DrawText(g, subtitle, Ui.MakeFont(9.5F),
                 new Rectangle(textX, Ui.S(36), Math.Max(right - textX, 0), Ui.S(22)), hasConversation ? Theme.MainBlue : Theme.Muted, flags);
+
+            if (Focused && ShowFocusCues) Ui.DrawFocusRing(g, card, Ui.S(12));
         }
     }
 
@@ -88,7 +109,7 @@ namespace TutorConnectApp
         public int ConversationId { get; private set; }
 
         public NewConversationDialog(List<TutorDto> tutors, IEnumerable<int> existingTutorIds)
-            : base("Új beszélgetés", "Válaszd ki az oktatót, akinek üzenni szeretnél.", "Beszélgetés indítása", Ui.Sz(560, 700), "")
+            : base("Új beszélgetés", "Válaszd ki az oktatót, akinek üzenni szeretnél.", "Beszélgetés indítása", Ui.Sz(560, 700), "\uE715")
         {
             this.tutors = tutors.OrderBy(t => t.FullName, StringComparer.CurrentCultureIgnoreCase).ToList();
             existing = existingTutorIds.ToHashSet();
@@ -187,7 +208,7 @@ namespace TutorConnectApp
     internal sealed class StudentProfileDialog : DialogBase
     {
         public StudentProfileDialog(StudentProfileDto student)
-            : base(string.IsNullOrWhiteSpace(student.Name) ? "Diák" : student.Name, "Diák profilja", "Bezárás", Ui.Sz(560, 420), "")
+            : base(string.IsNullOrWhiteSpace(student.Name) ? "Diák" : student.Name, "Diák profilja", "Bezárás", Ui.Sz(560, 420), "\uE77B")
         {
             Section("Tanulmányok");
             AddBody(Ui.KeyValue("Iskolai szint", string.IsNullOrWhiteSpace(student.SchoolLevel) ? "Nincs megadva" : student.SchoolLevel!));

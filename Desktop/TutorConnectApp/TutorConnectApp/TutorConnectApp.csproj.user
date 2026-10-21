@@ -16,7 +16,22 @@
     <Compile Update="Cards.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Charts.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="Chat.Actions.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="Chat.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Chat.Events.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Chat.List.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Chat.Messages.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="ChatControls.cs">
@@ -80,6 +95,12 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="SettingsPage.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="ShortcutsDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="StatsPage.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="SubjectsPage.cs">

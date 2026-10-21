@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -19,7 +19,8 @@ namespace TutorConnectApp
             var statsTask = ApiClient.GetAsync<StatsDto>("/api/stats");
             var summaryTask = ApiClient.GetAsync<BookingSummaryDto>("/api/bookings/summary");
             var upcomingTask = ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=upcoming");
-            await Task.WhenAll(statsTask, summaryTask, upcomingTask);
+            var unratedTask = LoadUnratedAsync();
+            await Task.WhenAll(statsTask, summaryTask, upcomingTask, unratedTask);
             if (IsDisposed) return;
 
             var stats = statsTask.Result;
@@ -44,12 +45,14 @@ namespace TutorConnectApp
                 }
             }));
 
+            AddUnratedLessons(unratedTask.Result);
+
             AddRow(Ui.Section("Foglalásaid"));
             var mine = Ui.WrapRow();
-            mine.Controls.Add(new StatTile(summary.Pending, "", tutor ? "Jóváhagyásra vár" : "Függőben", "", Theme.Warning));
-            mine.Controls.Add(new StatTile(summary.Upcoming, "", "Közelgő óra", "", Theme.Success));
-            mine.Controls.Add(new StatTile(summary.Past, "", "Lezajlott óra", "", Theme.MainBlue));
-            mine.Controls.Add(new StatTile(summary.Cancelled, "", "Lemondott", "", Theme.Muted));
+            mine.Controls.Add(new StatTile(summary.Pending, "", tutor ? "Jóváhagyásra vár" : "Függőben", "\uE823", Theme.Warning));
+            mine.Controls.Add(new StatTile(summary.Upcoming, "", "Közelgő óra", "\uE787", Theme.Success));
+            mine.Controls.Add(new StatTile(summary.Past, "", "Lezajlott óra", "\uE73E", Theme.MainBlue));
+            mine.Controls.Add(new StatTile(summary.Cancelled, "", "Lemondott", "\uE711", Theme.Muted));
             AddRow(mine);
 
             AddRow(Ui.Section("Következő óráid"));
@@ -57,7 +60,7 @@ namespace TutorConnectApp
             {
                 AddRow(Ui.MessageCard(
                     student ? "Nincs közelgő órád. Foglalj időpontot az Oktatók menüpontban." : "Nincs közelgő órád.",
-                    ""));
+                    "\uE787"));
             }
             else
             {
@@ -67,10 +70,62 @@ namespace TutorConnectApp
 
             AddRow(Ui.Section("A TutorConnect számokban"));
             var site = Ui.WrapRow();
-            site.Controls.Add(new StatTile(stats.Tutors, "", "Oktató", "", Theme.MainBlueDark));
-            site.Controls.Add(new StatTile(stats.Bookings, "", "Foglalás", "", Theme.MainBlueDark));
-            site.Controls.Add(new StatTile(stats.Satisfaction, "%", "Elégedettség", "", Theme.MainBlueDark));
+            site.Controls.Add(new StatTile(stats.Tutors, "", "Oktató", "\uE716", Theme.MainBlueDark));
+            site.Controls.Add(new StatTile(stats.Bookings, "", "Foglalás", "\uE787", Theme.MainBlueDark));
+            site.Controls.Add(new StatTile(stats.Satisfaction, "%", "Elégedettség", "\uE734", Theme.MainBlueDark));
             AddRow(site);
+        }
+
+        /// <summary>A diák lezajlott, még nem értékelt órái (csak emlékeztető, ezért hiba esetén nincs kártya).</summary>
+        private async Task<List<BookingDto>> LoadUnratedAsync()
+        {
+            if (user.Role != "STUDENT" || !AppSettings.ReviewPromptsEnabled) return new List<BookingDto>();
+
+            try
+            {
+                var completed = await ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=past");
+                return ReviewPrompts.Pending(completed, DateTime.UtcNow);
+            }
+            catch (ApiException)
+            {
+                return new List<BookingDto>();
+            }
+        }
+
+        private void AddUnratedLessons(List<BookingDto> unrated)
+        {
+            if (unrated.Count == 0) return;
+
+            AddRow(Ui.Section("Értékeld az óráidat"));
+            foreach (var booking in unrated.Take(3))
+            {
+                var card = new AccentCard(Theme.Warning);
+
+                var head = Ui.Row();
+                head.Controls.Add(Ui.Lbl(booking.SubjectName ?? "Óra", 12F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 12, 0)));
+                head.Controls.Add(Ui.Chip("Értékelésre vár", Theme.Warning));
+                card.Controls.Add(head);
+                card.Controls.Add(Ui.Lbl("Oktató: " + (booking.OtherName ?? "ismeretlen"), 10.5F, Theme.Text));
+                card.Controls.Add(Ui.Lbl(Ui.FormatRange(booking.StartTime, booking.EndTime), 10F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 8)));
+
+                var captured = booking;
+                var actions = Ui.Row();
+                actions.Controls.Add(Ui.PrimaryBtn("Értékelés írása", async (_, _) => await ReviewAsync(captured)));
+                card.Controls.Add(actions);
+                AddRow(card);
+            }
+
+            if (unrated.Count > 3)
+                AddRow(Ui.Lbl($"Még {unrated.Count - 3} óra vár értékelésre a Foglalás oldalon.", 9.5F, Theme.Muted));
+        }
+
+        private async Task ReviewAsync(BookingDto booking)
+        {
+            using var dialog = new ReviewDialog(booking);
+            if (dialog.ShowDialog(FindForm()) != DialogResult.OK || IsDisposed) return;
+
+            AppEvents.RaiseBadgesStale(); // a foglalások oldal és az oktatók értékelései a következő megnyitáskor frissülnek
+            await ReloadAsync();
         }
 
         private static CardPanel UpcomingCard(BookingDto b)
@@ -81,7 +136,8 @@ namespace TutorConnectApp
             head.Controls.Add(Ui.Chip("Visszaigazolva", Theme.Success));
             card.Controls.Add(head);
             card.Controls.Add(Ui.Lbl((b.AsStudent ? "Oktató: " : "Diák: ") + (b.OtherName ?? "ismeretlen"), 10.5F, Theme.Text));
-            card.Controls.Add(Ui.Lbl(Ui.FormatRange(b.StartTime, b.EndTime), 10F, Theme.Muted, margin: Ui.Pad(0)));
+            card.Controls.Add(Ui.Lbl(Ui.FormatRange(b.StartTime, b.EndTime), 10F, Theme.Muted, margin: Ui.Pad(0, 0, 0, 8)));
+            card.Controls.Add(new LessonNoteRow(b));
             return card;
         }
     }

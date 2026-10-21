@@ -134,6 +134,7 @@ namespace TutorConnectApp
             public bool Notifications { get; set; } = true;
             public bool FavoriteAlerts { get; set; } = true;
             public bool Reminders { get; set; } = true;
+            public bool ReviewPrompts { get; set; } = true;
             public bool HighContrast { get; set; }
             public bool MinimizeToTray { get; set; }
             public int WindowX { get; set; }
@@ -145,6 +146,15 @@ namespace TutorConnectApp
 
         /// <summary>Emlékeztető a visszaigazolt órákra (1 órával és 10 perccel előtte).</summary>
         public static bool RemindersEnabled { get; private set; } = true;
+
+        /// <summary>Értesítés a lezajlott, még nem értékelt óráról (diákoknak).</summary>
+        public static bool ReviewPromptsEnabled { get; private set; } = true;
+
+        public static void SetReviewPrompts(bool enabled)
+        {
+            ReviewPromptsEnabled = enabled;
+            Save();
+        }
 
         public static void SetReminders(bool enabled)
         {
@@ -212,6 +222,7 @@ namespace TutorConnectApp
                 Theme.Init(data.Dark, data.HighContrast);
                 MinimizeToTray = data.MinimizeToTray;
                 RemindersEnabled = data.Reminders;
+                ReviewPromptsEnabled = data.ReviewPrompts;
                 windowBounds = new Rectangle(data.WindowX, data.WindowY, data.WindowWidth, data.WindowHeight);
                 windowMaximized = data.WindowMaximized;
                 Anim.Init(data.Animations);
@@ -237,6 +248,7 @@ namespace TutorConnectApp
                     FavoriteAlerts = FavoriteAlertsEnabled,
                     HighContrast = Theme.HighContrast,
                     Reminders = RemindersEnabled,
+                    ReviewPrompts = ReviewPromptsEnabled,
                     MinimizeToTray = MinimizeToTray,
                     WindowX = windowBounds.X,
                     WindowY = windowBounds.Y,

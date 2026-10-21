@@ -4,7 +4,7 @@ using System.Drawing.Text;
 namespace TutorConnectApp
 {
     /// <summary>
-    /// Bal oldali navigációs sáv. Menüpont (kijelölhető oldal): AddItem("kulcs", "Felirat", "").
+    /// Bal oldali navigációs sáv. Menüpont (kijelölhető oldal): AddItem("kulcs", "Felirat", "\uE80F").
     /// Művelet-gomb (nem kerül kijelölésre, pl. kijelentkezés): AddAction(...).
     /// Az ikon a Segoe MDL2 Assets betűkészlet egy karaktere (opcionális).
     /// Keskeny ablaknál animáltan összecsukódik, és csak az ikonok látszanak.

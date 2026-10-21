@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 
 namespace TutorConnectApp
 {
@@ -177,6 +177,7 @@ namespace TutorConnectApp
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            Update(); // előbb a teljes tartalom kifestődik, csak utána kezd beúszni (nem látszik félkész állapot)
             Anim.Run(220, t => Opacity = t);
         }
     }

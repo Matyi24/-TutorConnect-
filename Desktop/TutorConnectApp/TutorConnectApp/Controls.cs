@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
 namespace TutorConnectApp
@@ -224,6 +224,22 @@ namespace TutorConnectApp
 
         public bool IsOn => on;
 
+        protected override AccessibleObject CreateAccessibilityInstance() => new SwitchAccessibility(this);
+
+        /// <summary>A képernyőolvasó a kapcsoló állapotát (be / ki) is bemondja.</summary>
+        private sealed class SwitchAccessibility : ControlAccessibleObject
+        {
+            private readonly ToggleSwitch owner;
+
+            public SwitchAccessibility(ToggleSwitch owner) : base(owner) => this.owner = owner;
+
+            public override AccessibleStates State => base.State | (owner.on ? AccessibleStates.Checked : AccessibleStates.None);
+
+            public override string DefaultAction => owner.on ? "Kikapcsolás" : "Bekapcsolás";
+
+            public override void DoDefaultAction() => owner.OnClick(EventArgs.Empty);
+        }
+
         /// <summary>Billentyűzetes használat: Enter vagy szóköz kattintásnak számít.</summary>
         protected override void OnKeyDown(KeyEventArgs e)
         {
@@ -242,6 +258,7 @@ namespace TutorConnectApp
         {
             base.OnClick(e);
             on = !on;
+            AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
 
             tween?.Cancel();
             double from = position;
@@ -292,6 +309,8 @@ namespace TutorConnectApp
         {
             Size = Ui.Sz(26, 26);
             Margin = Ui.Pad(0);
+            AccessibleName = "Betöltés";
+            AccessibleRole = AccessibleRole.Animation;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
             timer.Tick += (_, _) =>
@@ -347,9 +366,65 @@ namespace TutorConnectApp
             Size = new Size(StarSize * 5, StarSize);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.Selectable, true); // nyilakkal vagy 1–5 számmal is állítható
+            TabStop = true;
+            AccessibleName = "Értékelés csillagokban";
+            AccessibleRole = AccessibleRole.Slider;
         }
 
         public int Value => value;
+
+        private void SetValue(int stars)
+        {
+            stars = Math.Clamp(stars, 1, 5);
+            if (stars == value) return;
+
+            value = stars;
+            Invalidate();
+            ValueChanged?.Invoke(this, EventArgs.Empty);
+            AccessibilityNotifyClients(AccessibleEvents.ValueChange, -1);
+        }
+
+        protected override AccessibleObject CreateAccessibilityInstance() => new StarAccessibility(this);
+
+        private sealed class StarAccessibility : ControlAccessibleObject
+        {
+            private readonly StarRating owner;
+
+            public StarAccessibility(StarRating owner) : base(owner) => this.owner = owner;
+
+            public override string Value => owner.value == 0 ? "nincs kiválasztva" : $"{owner.value} csillag az ötből";
+        }
+
+        protected override bool IsInputKey(Keys keyData) =>
+            keyData is Keys.Left or Keys.Right or Keys.Up or Keys.Down || base.IsInputKey(keyData);
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            switch (e.KeyCode)
+            {
+                case Keys.Right or Keys.Up:
+                    SetValue(value + 1);
+                    e.Handled = true;
+                    break;
+                case Keys.Left or Keys.Down:
+                    SetValue(value - 1);
+                    e.Handled = true;
+                    break;
+                case >= Keys.D1 and <= Keys.D5:
+                    SetValue(e.KeyCode - Keys.D0);
+                    e.Handled = true;
+                    break;
+                case >= Keys.NumPad1 and <= Keys.NumPad5:
+                    SetValue(e.KeyCode - Keys.NumPad0);
+                    e.Handled = true;
+                    break;
+            }
+            base.OnKeyDown(e);
+        }
+
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 
         private static int StarAt(int x) => Math.Clamp(x / StarSize + 1, 1, 5);
 
@@ -369,9 +444,7 @@ namespace TutorConnectApp
 
         protected override void OnMouseClick(MouseEventArgs e)
         {
-            value = StarAt(e.X);
-            Invalidate();
-            ValueChanged?.Invoke(this, EventArgs.Empty);
+            SetValue(StarAt(e.X));
             base.OnMouseClick(e);
         }
 
@@ -390,6 +463,8 @@ namespace TutorConnectApp
                 using var brush = new SolidBrush(color);
                 g.DrawString("★", font, brush, new Rectangle((i - 1) * StarSize, 0, StarSize, StarSize), format);
             }
+
+            if (Focused && ShowFocusCues) Ui.DrawFocusRing(g, new Rectangle(0, 0, Width - 1, Height - 1), Ui.S(10));
         }
     }
 

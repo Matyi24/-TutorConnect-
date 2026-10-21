@@ -24,6 +24,8 @@ namespace TutorConnectApp
             this.title = title;
             this.subtitle = subtitle;
             this.glyph = glyph;
+            AccessibleName = title + ". " + subtitle;
+            AccessibleRole = AccessibleRole.StaticText;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
 
             int padX = Ui.S(28);
@@ -76,7 +78,7 @@ namespace TutorConnectApp
                 using var ring = new Pen(Color.FromArgb(110, Color.White), Ui.S(1.5F));
                 g.DrawEllipse(ring, iconRect);
 
-                bool symbol = glyph[0] < ''; // a Segoe MDL2 ikonok a privát Unicode-tartományban vannak
+                bool symbol = glyph[0] < '\uE000'; // a Segoe MDL2 ikonok a privát Unicode-tartományban vannak
                 var font = symbol ? Ui.MakeFont(18F, FontStyle.Bold) : Ui.IconFont(20F);
                 using var iconBrush = new SolidBrush(Color.White);
                 using var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
@@ -107,6 +109,8 @@ namespace TutorConnectApp
             var match = Numbered.Match(raw);
             number = match.Success ? match.Groups[1].Value : "";
             text = match.Success ? match.Groups[2].Value : raw;
+            AccessibleName = text;
+            AccessibleRole = AccessibleRole.StaticText;
 
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             Margin = Ui.Pad(0, 12, 0, 6);

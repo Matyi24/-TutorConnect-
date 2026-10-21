@@ -207,6 +207,17 @@ namespace TutorConnectApp
         [JsonIgnore] public bool IsRead => IsReadValue == 1;
         [JsonIgnore] public bool IsRetracted => DeletedAt != null;
         [JsonIgnore] public bool HasAttachment => !string.IsNullOrEmpty(AttachmentName);
+
+        /// <summary>Csak az appban él: a küldés állapota (a szerver üzenetei mind elküldöttek).</summary>
+        [JsonIgnore] public SendState Send { get; set; } = SendState.Sent;
+    }
+
+    /// <summary>Az üzenet küldésének állapota: a saját üzenet azonnal megjelenik, a szerver válaszáig "küldés alatt" áll.</summary>
+    internal enum SendState
+    {
+        Sent,
+        Sending,
+        Failed
     }
 }
 

@@ -108,7 +108,7 @@ namespace TutorConnectApp
         public string ResultMessage { get; private set; } = "";
 
         public TimeOffDialog()
-            : base("Szabadság", "Jelöld meg azokat a napokat, amikor nem tanítasz.", "Szabadság rögzítése", Ui.Sz(560, 640), "")
+            : base("Szabadság", "Jelöld meg azokat a napokat, amikor nem tanítasz.", "Szabadság rögzítése", Ui.Sz(560, 640), "\uE787")
         {
             Section("1   Mettől meddig?");
             var days = new List<DateTime>();

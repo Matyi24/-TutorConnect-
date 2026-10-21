@@ -50,7 +50,7 @@ namespace TutorConnectApp
             using (var fill = new SolidBrush(Anim.Lerp(Theme.CardBg, Theme.MainBlue, Theme.Dark ? 0.35 : 0.16)))
                 g.FillEllipse(fill, circle);
 
-            bool symbol = Entry.Glyph.Length > 0 && Entry.Glyph[0] < '';
+            bool symbol = Entry.Glyph.Length > 0 && Entry.Glyph[0] < '\uE000';
             using (var iconBrush = new SolidBrush(Theme.MainBlue))
             using (var center = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 g.DrawString(Entry.Glyph, symbol ? Ui.MakeFont(11F, FontStyle.Bold) : Ui.IconFont(12F), iconBrush, circle, center);
@@ -81,11 +81,11 @@ namespace TutorConnectApp
         public QuickEntry? Chosen { get; private set; }
 
         public QuickSwitcherDialog(IEnumerable<QuickEntry> baseEntries)
-            : base("Gyorskereső", "Ugorj bárhova: oldalra, beszélgetésre vagy oktatóra.", "Megnyitás", Ui.Sz(560, 640), "")
+            : base("Gyorskereső", "Ugorj bárhova: oldalra, beszélgetésre vagy oktatóra.", "Megnyitás", Ui.Sz(560, 640), "\uE721")
         {
             all.AddRange(baseEntries);
             all.AddRange(ChatState.Conversations.Select(c =>
-                new QuickEntry("chat", "chat", c.Id, c.OtherUserName, "Beszélgetés", "")));
+                new QuickEntry("chat", "chat", c.Id, c.OtherUserName, "Beszélgetés", "\uE715")));
 
             Section("Mit keresel?");
             searchBox = NewInput("", 60);

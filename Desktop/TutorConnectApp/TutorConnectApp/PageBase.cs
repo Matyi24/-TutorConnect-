@@ -57,6 +57,9 @@ namespace TutorConnectApp
 
         protected virtual void OnActiveChanged(bool active) { }
 
+        /// <summary>Ctrl+F: az oldal keresőmezőjére ugrik. Igaz, ha az oldalnak van ilyen.</summary>
+        public virtual bool FocusSearch() => false;
+
         /// <summary>Az oldal a gyorsítótárból került újra elő: a magától frissülő oldalak itt zárkóznak fel.</summary>
         protected virtual void OnRevisited() { }
         private int lastFitWidth = -1;
@@ -252,6 +255,26 @@ namespace TutorConnectApp
             if (redrawHeld)
             {
                 redrawHeld = false;
+                Redraw.Resume(Body);
+            }
+        }
+
+        /// <summary>
+        /// Az anchor utáni sorok cseréje egyetlen lépésben: közben nincs újrarajzolás és újraelrendezés, ezért a szűrés, fülváltás
+        /// vagy lista-frissítés közben nincs villanás (üres vagy félig felépült lista).
+        /// </summary>
+        protected void ReplaceRowsAfter(Control anchor, Action build)
+        {
+            Redraw.Suspend(Body);
+            Body.SuspendLayout();
+            try
+            {
+                RemoveRowsAfter(anchor);
+                build();
+            }
+            finally
+            {
+                Body.ResumeLayout(true);
                 Redraw.Resume(Body);
             }
         }

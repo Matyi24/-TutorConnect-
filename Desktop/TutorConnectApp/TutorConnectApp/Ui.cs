@@ -131,8 +131,7 @@ namespace TutorConnectApp
         }
 
         /// <summary>Kis- és nagybetűre, ékezetre érzéketlen "tartalmazza" ("o" megtalálja az "ő"-t is).</summary>
-        public static bool ContainsText(string text, string query) =>
-            CultureInfo.CurrentCulture.CompareInfo.IndexOf(text, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
+        public static bool ContainsText(string text, string query) => TextSearch.Contains(text, query);
 
         public static string FormatDay(DateTime value) => value.ToLocalTime().ToString("yyyy. MM. dd., dddd", Hu);
 
@@ -239,7 +238,7 @@ namespace TutorConnectApp
             return row;
         }
 
-        public static CardPanel MessageCard(string text, string glyph = "")
+        public static CardPanel MessageCard(string text, string glyph = "\uE946")
         {
             var card = new CardPanel();
             var row = Row();

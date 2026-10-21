@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 
@@ -93,6 +93,11 @@ namespace TutorConnectApp
                 ChatPage.PendingConversationId = conversationId;
             if (target == "calendar" && targetId is int tutorId)
                 CalendarPage.InitialTutorId = tutorId;
+            if (target == "reviews")
+            {
+                BookingsPage.RequestedTab = "past";
+                target = "bookings";
+            }
             navBar.Select(target);
         }
 
@@ -185,15 +190,20 @@ namespace TutorConnectApp
             {
                 if (reminders.NeedsRefresh)
                     await reminders.RefreshAsync();
-                if (IsDisposed || !AppSettings.RemindersEnabled) return;
+                if (IsDisposed) return;
 
-                foreach (var (booking, minutes, final) in reminders.Due())
+                if (AppSettings.RemindersEnabled)
                 {
-                    string who = (booking.AsStudent ? "Oktató: " : "Diák: ") + (booking.OtherName ?? "ismeretlen");
-                    string title = final ? "Az órád hamarosan kezdődik" : "Az órád 1 órán belül kezdődik";
-                    string text = $"{booking.SubjectName ?? "Óra"} · {who}\n{Ui.FormatRange(booking.StartTime, booking.EndTime)}  ({minutes} perc múlva)";
-                    ShowToast(title, text, "bookings", always: true);
+                    foreach (var (booking, minutes, final) in reminders.Due())
+                    {
+                        string who = (booking.AsStudent ? "Oktató: " : "Diák: ") + (booking.OtherName ?? "ismeretlen");
+                        string title = final ? "Az órád hamarosan kezdődik" : "Az órád 1 órán belül kezdődik";
+                        string text = $"{booking.SubjectName ?? "Óra"} · {who}\n{Ui.FormatRange(booking.StartTime, booking.EndTime)}  ({minutes} perc múlva)";
+                        ShowToast(title, text, "bookings", always: true);
+                    }
                 }
+
+                await CheckReviewPromptsAsync();
             }
             catch (ApiException)
             {
@@ -203,6 +213,30 @@ namespace TutorConnectApp
             {
                 reminderChecking = false;
             }
+        }
+
+        /// <summary>
+        /// A diák értesítést kap a lezajlott, még nem értékelt óráiról (tíz percenként ellenőrizzük; óránként legfeljebb egy értesítés,
+        /// ugyanarról az óráról csak egyszer). A főoldalon az emlékeztető addig látszik, amíg az értékelés meg nem születik.
+        /// </summary>
+        private async Task CheckReviewPromptsAsync()
+        {
+            if (Me.Role != "STUDENT" || !AppSettings.ReviewPromptsEnabled) return;
+            if (lastReviewCheck != 0 && Environment.TickCount64 - lastReviewCheck < 10 * 60_000L) return;
+            lastReviewCheck = Environment.TickCount64;
+
+            var completed = await ApiClient.GetAsync<List<BookingDto>>("/api/bookings?status=past");
+            if (IsDisposed) return;
+
+            var fresh = ReviewPrompts.NotNotified(ReviewPrompts.Pending(completed, DateTime.UtcNow));
+            if (fresh.Count == 0) return;
+
+            var first = fresh[0];
+            string text = fresh.Count == 1
+                ? $"{first.SubjectName ?? "Óra"} · {first.OtherName ?? "oktató"}: hogy sikerült az óra?"
+                : $"{fresh.Count} lezajlott órát még nem értékeltél. Segítesz másoknak a választásban!";
+            ShowToast(fresh.Count == 1 ? "Értékeld az órát" : "Értékeld az óráidat", text, "reviews", always: true);
+            ReviewPrompts.MarkNotified(fresh);
         }
 
         private void NotifyBookingChange()

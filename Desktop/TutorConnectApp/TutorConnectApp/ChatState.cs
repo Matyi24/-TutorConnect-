@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
@@ -67,6 +67,7 @@ namespace TutorConnectApp
             requestCounter++;
             appliedRequest = requestCounter;
             conversations = new List<ConversationDto>();
+            ChatMessages.Clear();
             Loaded = false;
             OpenConversationId = null;
             OpenOwner = null;
@@ -106,6 +107,8 @@ namespace TutorConnectApp
         /// <summary>Új beérkező üzenet: olvasatlan számláló és előnézet. Ismeretlen beszélgetésnél letölti a listát.</summary>
         public static async Task OnNewMessageAsync(MessageDto message, int myId)
         {
+            ChatMessages.Add(message); // a beszélgetés a Chat oldal nélkül is naprakész marad
+
             var conversation = Find(message.ConversationId);
             if (conversation == null)
             {
@@ -125,6 +128,8 @@ namespace TutorConnectApp
         public static async Task OnMessageChangedAsync(int conversationId)
         {
             if (OpenConversationId == conversationId) return;
+
+            ChatMessages.Remove(conversationId); // a szerkesztett / visszavont üzenet miatt a tárolt példány elavult
             await LoadAsync();
         }
     }

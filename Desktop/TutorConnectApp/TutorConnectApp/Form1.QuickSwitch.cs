@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Runtime.InteropServices;
 
@@ -15,6 +15,15 @@ namespace TutorConnectApp
                 return true;
             }
 
+            if (keyData == Keys.F1)
+            {
+                ShowShortcuts();
+                return true;
+            }
+
+            if (keyData == (Keys.Control | Keys.F) && ActiveForm == this && currentPage?.FocusSearch() == true)
+                return true;
+
             for (int i = 0; i < pageOrder.Count && i < 9; i++)
             {
                 if (keyData == (Keys.Control | (Keys.D1 + i)) || keyData == (Keys.Control | (Keys.NumPad1 + i)))
@@ -25,6 +34,14 @@ namespace TutorConnectApp
             }
 
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void ShowShortcuts()
+        {
+            if (IsDisposed || ActiveForm != this) return; // másik ablak (dialógus) fölött nem nyílik
+
+            using var dialog = new ShortcutsDialog(Me.Role);
+            dialog.ShowDialog(this);
         }
 
         private async Task OpenQuickSwitcherAsync()
@@ -38,6 +55,7 @@ namespace TutorConnectApp
                 entries.Add(new QuickEntry("page", key, 0, pageTitles[key], i < 9 ? $"Oldal · Ctrl+{i + 1}" : "Oldal", "→"));
             }
             entries.Add(new QuickEntry("action", "theme", 0, "Téma váltása", "Sötét / világos mód", "◐"));
+            entries.Add(new QuickEntry("action", "shortcuts", 0, "Billentyűparancsok", "Súgó · F1", "⌨"));
             entries.Add(new QuickEntry("action", "logout", 0, "Kijelentkezés", "Vissza a belépőhöz", "↩"));
 
             using var dialog = new QuickSwitcherDialog(entries);
@@ -52,6 +70,9 @@ namespace TutorConnectApp
                     break;
                 case "action" when chosen.Key == "theme":
                     Theme.SetDark(!Theme.DarkSetting);
+                    break;
+                case "action" when chosen.Key == "shortcuts":
+                    ShowShortcuts();
                     break;
                 case "action" when chosen.Key == "logout":
                     _ = LogoutAsync();
