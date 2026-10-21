@@ -376,7 +376,7 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `bio`, `hourly_rate`, `created_at`, `school_level`, `grade`, `deleted_at`, `email_verified_at`, `suspended_at`, `suspended_reason`) VALUES
-(1, 'Kovács Bence', 'bence.kovacs@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
+(1, 'Kovács Bence', 'bence.kovacs@example.com', '$argon2id$v=19$m=15,t=4,p=1$eEQ0d09kYURrVGh1MnNWeg$zA6uO5BCB1bE1CPOGyIUHw', 'STUDENT', 'Programozást és adatbázis-kezelést tanulok.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
 (2, 'Nagy Anna', 'anna.nagy@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'STUDENT', 'Matematika és informatika iránt érdeklődöm.', 0, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
 (3, 'Tóth Márk', 'mark.toth@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Tapasztalt programozó vagyok, főleg JavaScript és Python területén.', 3500, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
 (4, 'Szabó Petra', 'petra.szabo@example.com', '$2b$10$abcdefghijklmnopqrstuu1234567890abcdefghi', 'TUTOR', 'Matematika korrepetálást vállalok középiskolásoknak.', 3000, '2026-09-24 07:34:13', NULL, NULL, NULL, '2026-10-14 08:59:12', NULL, NULL),
