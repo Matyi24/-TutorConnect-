@@ -35,6 +35,7 @@ namespace TutorConnectApp
                 Dock = DockStyle.Fill,
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
+                AutoScroll = true, // ha az ablak annyira alacsony, hogy a gombok akkor sem férnek el, görgethető marad (semmi sem vész el)
                 Padding = Ui.Pad(14, 14, 14, 0),
                 BackColor = Theme.NavBg
             };
@@ -141,10 +142,7 @@ namespace TutorConnectApp
             userChip.Height = Ui.S(96);
             itemsPanel.Padding = Ui.Pad(14, 14, 14, 0);
             foreach (var button in buttons.Values)
-            {
-                button.Height = Ui.S(58);
                 button.Margin = Ui.Pad(0, 0, 0, 8);
-            }
             ResizeButtons();
             header.Invalidate();
             userChip.Invalidate();
@@ -162,11 +160,30 @@ namespace TutorConnectApp
             ResizeButtons();
         }
 
+        /// <summary>
+        /// A gombok szélessége a sávhoz igazodik, a magasságuk az elérhető helyhez: sok menüpontnál (pl. diáknál tíz) alacsonyabbak lesznek,
+        /// hogy mind látsszon, a Beállítások és a téma-váltó is.
+        /// </summary>
         private void ResizeButtons()
         {
             int width = itemsPanel.ClientSize.Width - itemsPanel.Padding.Horizontal;
+
+            int ideal = Ui.S(58);
+            int minimum = Ui.S(40);
+            int margin = Ui.S(8);
+            int height = ideal;
+            if (buttons.Count > 0 && itemsPanel.ClientSize.Height > 0)
+            {
+                // a görgetősáv megjelenése nem szűkíti a számítást: a teljes magasságból indulunk ki
+                int available = Height - header.Height - userChip.Height - itemsPanel.Padding.Vertical;
+                height = Math.Clamp(available / buttons.Count - margin, minimum, ideal);
+            }
+
             foreach (var button in buttons.Values)
+            {
                 button.Width = Math.Max(width, 0);
+                if (button.Height != height) button.Height = height;
+            }
         }
 
         protected override void Dispose(bool disposing)
