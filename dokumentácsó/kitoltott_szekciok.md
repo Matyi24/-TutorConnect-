@@ -389,10 +389,9 @@ GitHub: https://github.com/Matyi24/-TutorConnect- (főág: `main`).
 - Marián Máté
 
 ### 11.2 Feladatmegosztás
-`[ELLENŐRIZD – a git előzményekből csak a GitHub-fiókok látszanak (Aggrroo, Matt, Pelion0), nem tudom, melyik név melyik fiók. Javítsd a neveket.]`
-- **Szerveroldal és biztonság** (Aggrroo): API végpontok, profil bővítés, foglalás és értékelés, biztonsági javítások (forráskód- és feltöltésvédelem, e-mail elrejtése).
-- **Felület, sötét mód, dokumentáció, tesztek** (Matt): sötét mód az oldalakon, a profil-menü, tesztek, telepítő (`installer.bat`), dokumentáció.
-- **Alap stílus, asztali alkalmazás** (Pelion0): alap stílusok, a beállítások/profil menü alapja, a Windows Forms alkalmazás váza.
+- **Szerveroldal és biztonság** (Stickel Zsombor): API végpontok, profil bővítés, foglalás és értékelés, biztonsági javítások (forráskód- és feltöltésvédelem, e-mail elrejtése).
+- **Felület, sötét mód, dokumentáció, tesztek** (Porkoláb Mátyás Attila): sötét mód az oldalakon, a profil-menü, tesztek, telepítő (`installer.bat`), dokumentáció.
+- **Alap stílus, asztali alkalmazás** (Marián Máté): alap stílusok, a beállítások/profil menü alapja, a Windows Forms alkalmazás váza.
 
 ### 11.3 Használt projektmenedzsment eszközök
 - GitHub (verziókezelés, közös repository, ágak egyesítése)
