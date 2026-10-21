@@ -27,6 +27,64 @@
 //
 // Élesben (NODE_ENV=production) beállítás nélkül hibát naplóz.
 
+// ------------------------------------------------------------
+// .env FÁJL BETÖLTÉSE
+// ------------------------------------------------------------
+//
+// A beállításokat (MAILTRAP_TOKEN, SMTP_HOST, ...) nem kell minden
+// terminálban kézzel beírni: elég egy ".env" nevű fájlt tenni a PROJEKT
+// FŐMAPPÁJÁBA (ugyanoda, ahol a package.json van), soronként
+//
+//     MAILTRAP_TOKEN=ide_a_token
+//     MAIL_FROM=TutorConnect <hello@demomailtrap.co>
+//
+// A fájl titkokat tartalmaz, ezért a .gitignore-ban kell lennie, hogy ne
+// kerüljön fel a GitHubra! Ha egy változó már be van állítva a
+// terminálban, az erősebb, mint a fájl.
+
+const fs = require("fs");
+const path = require("path");
+
+(function loadEnvFile() {
+
+    let text;
+
+    try {
+        text = fs.readFileSync(path.join(__dirname, "../../.env"), "utf8");
+    } catch (error) {
+        return;     // nincs .env fájl: semmi baj
+    }
+
+    text.split(/\r?\n/).forEach((line) => {
+
+        if (line.trim().startsWith("#")) {
+            return;
+        }
+
+        const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+
+        if (!match) {
+            return;
+        }
+
+        let value = match[2];
+
+        const quoted =
+            (value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"));
+
+        if (quoted && value.length >= 2) {
+            value = value.slice(1, -1);
+        }
+
+        if (process.env[match[1]] === undefined) {
+            process.env[match[1]] = value;
+        }
+    });
+
+})();
+
+
 const APP_URL = (process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 const MAIL_FROM = process.env.MAIL_FROM || "TutorConnect <noreply@tutorconnect.local>";

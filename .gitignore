@@ -1,2 +1,3 @@
 # Feltöltött chat-fájlok (felhasználói adat, nem verziókezelendő)
 /uploads/
+.env
