@@ -536,7 +536,7 @@
         if (!user) {
 
             container.innerHTML = `
-                <a class="bk-open-button" href="/login">Jelentkezz be a foglaláshoz</a>
+                <a class="bk-open-button" href="/login?next=${encodeURIComponent(location.pathname + location.search)}">Jelentkezz be a foglaláshoz</a>
             `;
 
             return;

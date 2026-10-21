@@ -27,6 +27,9 @@
 
     <form action="/login" method="POST">
 
+        <!-- Az oldal, ahová belépés után vissza kell jutni (a script tölti ki) -->
+        <input type="hidden" name="next" id="loginNext" value="">
+
         <div class="field">
             <label for="email">Email</label>
 
@@ -74,6 +77,15 @@
 
 <script src="/js/creator.js"></script>
 <script>
+  // Ha egy belépést igénylő oldalról jöttünk, belépés után oda térünk vissza.
+  // (A szerver is ellenőrzi, itt csak a saját oldalunkra mutató címet vesszük át.)
+  (function () {
+    const next = new URLSearchParams(location.search).get('next') || '';
+    if (next.startsWith('/') && !next.startsWith('//')) {
+      document.getElementById('loginNext').value = next;
+    }
+  })();
+
   // Üzenet a jelszó-visszaállítás után
   if (new URLSearchParams(location.search).get('reset') === '1') {
     const notice = document.getElementById('loginNotice');

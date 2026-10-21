@@ -91,10 +91,20 @@
         }
 
         const isTutor = user.role === "TUTOR";
+        const isAdmin = user.role === "ADMIN";
+
+        // A "Hogyan működik" lépések linkjei (oktatók keresése, foglalás) a
+        // diáknak szólnak: az oktatónak és az adminnak nem vezetnek sehová.
+        if (user.role !== "STUDENT") {
+            document.querySelectorAll(".home-step-link").forEach((link) => link.remove());
+        }
 
         if (actions) {
 
-            actions.innerHTML = isTutor
+            actions.innerHTML = isAdmin
+                ? button("/admin", "Admin felület", "primary") +
+                  button("/subs", "Tantárgyak", "ghost")
+                : isTutor
                 ? button("/foglalas", "Foglalásaim és időpontjaim", "primary") +
                   button("/chat", "Üzenetek", "ghost")
                 : button("/oktatok", "Oktatók böngészése", "primary") +
@@ -103,7 +113,15 @@
 
         if (cta) {
 
-            cta.innerHTML = isTutor
+            cta.innerHTML = isAdmin
+                ? `
+                    <h2>Admin felület</h2>
+                    <p>Nézd át a jelentéseket, kezeld a felhasználókat és az értékeléseket.</p>
+                    <div class="home-cta-actions">
+                        ${button("/admin", "Megnyitás", "light")}
+                    </div>
+                `
+                : isTutor
                 ? `
                     <h2>Hirdesd meg az időpontjaidat</h2>
                     <p>Add meg, mikor érsz rá, és a diákok közvetlenül foglalhatnak nálad.</p>
