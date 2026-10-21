@@ -168,6 +168,18 @@ namespace TutorConnectApp
             Margin = Ui.Pad(0, 0, 16, 0)
         };
 
+        /// <summary>Az Esc a "Mégse" gomb elrejtése esetén is bezárja az ablakot.</summary>
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape)
+            {
+                DialogResult = DialogResult.Cancel;
+                Close();
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);

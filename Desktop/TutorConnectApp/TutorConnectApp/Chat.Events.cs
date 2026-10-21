@@ -60,7 +60,10 @@ namespace TutorConnectApp
 
             // csak akkor olvasott, ha a beszélgetés tényleg látszik (keskeny ablaknál a lista mögött nem)
             if (ThreadVisible)
+            {
+                message.IsReadValue = 1; // a gyorsítótárban is olvasottként marad (nincs téves "Új üzenetek" jelző újranyitáskor)
                 await ApiClient.PostAsync($"/api/conversations/{message.ConversationId}/read");
+            }
         }
 
         // ------------------------------------------------------------

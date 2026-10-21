@@ -31,7 +31,8 @@ namespace TutorConnectApp
         /// </summary>
         public static (string Text, int MatchStart, int MatchLength) Snippet(string text, int matchIndex, int matchLength, int radius = 28)
         {
-            string flat = text.Replace("\r\n", " ").Replace('\n', ' ').Replace('\r', ' ');
+            // karakterenként cserélünk (a hossz nem változik), így a találat helye a szövegben ugyanaz marad
+            string flat = text.Replace('\r', ' ').Replace('\n', ' ');
 
             int start = Math.Max(0, matchIndex - radius);
             int end = Math.Min(flat.Length, matchIndex + matchLength + radius * 2);

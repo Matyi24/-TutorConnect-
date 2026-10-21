@@ -96,6 +96,13 @@ namespace TutorConnectApp
             int next = 0;
             int page = 0;
 
+            // minden nyomtatás (az előnézet és a Nyomtatás gomb is) az elejéről indul
+            document.BeginPrint += (_, _) =>
+            {
+                next = 0;
+                page = 0;
+            };
+
             document.PrintPage += (_, e) =>
             {
                 var g = e.Graphics!;
@@ -170,7 +177,15 @@ namespace TutorConnectApp
                 StartPosition = FormStartPosition.CenterParent,
                 Text = "Órarend – nyomtatási kép"
             };
-            preview.ShowDialog(owner);
+            try
+            {
+                preview.ShowDialog(owner);
+            }
+            catch (InvalidPrinterException)
+            {
+                MessageBox.Show(owner, "Nincs elérhető nyomtató. Telepíts egyet, vagy válaszd a \"Microsoft Print to PDF\" nyomtatót.",
+                    "Órarend", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
     }
 }

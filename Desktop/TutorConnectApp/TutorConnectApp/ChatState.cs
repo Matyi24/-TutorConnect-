@@ -42,6 +42,9 @@ namespace TutorConnectApp
         /// <summary>Az a Chat oldal, amelyik az OpenConversationId-t beállította (oldalcsere közben két oldal élhet egyszerre).</summary>
         public static object? OpenOwner { get; set; }
 
+        /// <summary>Igaz, ha a főablak látszik (nincs lekicsinyítve vagy tálcára rejtve): csak ekkor számít olvasottnak a megnyitott beszélgetés.</summary>
+        public static bool WindowVisible { get; set; } = true;
+
         public static event Action? Changed;
 
         public static ConversationDto? Find(int id) => conversations.FirstOrDefault(c => c.Id == id);
@@ -116,7 +119,7 @@ namespace TutorConnectApp
                 return;
             }
 
-            if (message.SenderId != myId && OpenConversationId != conversation.Id)
+            if (message.SenderId != myId && (OpenConversationId != conversation.Id || !WindowVisible))
                 conversation.UnreadCount++;
             Bump(conversation, message.Content, message.CreatedAt);
         }

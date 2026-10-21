@@ -235,6 +235,7 @@ namespace TutorConnectApp
             string text = fresh.Count == 1
                 ? $"{first.SubjectName ?? "Óra"} · {first.OtherName ?? "oktató"}: hogy sikerült az óra?"
                 : $"{fresh.Count} lezajlott órát még nem értékeltél. Segítesz másoknak a választásban!";
+            if (!AppSettings.NotificationsEnabled) return; // kikapcsolt értesítésnél nem "használjuk el" az emlékeztetőt
             ShowToast(fresh.Count == 1 ? "Értékeld az órát" : "Értékeld az óráidat", text, "reviews", always: true);
             ReviewPrompts.MarkNotified(fresh);
         }

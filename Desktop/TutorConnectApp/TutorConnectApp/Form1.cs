@@ -58,6 +58,8 @@ namespace TutorConnectApp
             navBar.SetUser(user.Name, user.Role);
             navBar.ItemClicked += NavBar_ItemClicked;
             ClientSizeChanged += (_, _) => navBar.ApplyResponsive(ClientSize.Width);
+            Resize += (_, _) => UpdateWindowVisibility();
+            VisibleChanged += (_, _) => UpdateWindowVisibility();
             navBar.ApplyResponsive(ClientSize.Width);
 
             BuildTray();
@@ -245,6 +247,7 @@ namespace TutorConnectApp
             reminderTimer.Dispose();
             Realtime.Stop();
             ChatState.Clear(); // a következő bejelentkezőnek ne maradjon meg a beszélgetés-lista
+            ChatPage.ClearDrafts();
 
             tray.Visible = false;
             tray.Dispose();
@@ -279,6 +282,7 @@ namespace TutorConnectApp
 
                     case "booking_update":
                         ScheduleBadges();
+                        ScheduleRefresh(); // a látható oldal (pl. Foglalások) rövid késéssel frissül
                         NotifyBookingChange();
                         break;
                 }
@@ -289,9 +293,23 @@ namespace TutorConnectApp
             }
         }
 
+        /// <summary>Lekicsinyítve vagy tálcára rejtve a beérkező üzenetek olvasatlanok maradnak; visszaállításkor a megnyitott beszélgetés olvasottá válik.</summary>
+        private void UpdateWindowVisibility()
+        {
+            bool visible = Visible && WindowState != FormWindowState.Minimized;
+            if (ChatState.WindowVisible == visible) return;
+
+            ChatState.WindowVisible = visible;
+            if (visible) currentPage?.Revisit();
+        }
+
         private void OnConnectionChanged(bool connected)
         {
             if (!connected || IsDisposed) return;
+
+            // az összeköttetés megszakadása alatt lemaradhattunk üzenetekről: a tárolt üzenetek elavultak, a megnyitott beszélgetés frissül
+            ChatMessages.Clear();
+            currentPage?.Revisit();
 
             // újracsatlakozás után lehet, hogy lemaradtunk eseményekről: a számlálókat újra lekérjük
             if (Environment.TickCount64 - ChatState.LastLoadedTick > 3000)
@@ -430,8 +448,8 @@ namespace TutorConnectApp
         {
             themePending = false;
             Redraw.Suspend(this);
-            ApplyTheme();
-            Redraw.Resume(this);
+            try { ApplyTheme(); }
+            finally { Redraw.Resume(this); }
         }
 
         /// <summary>A főablak keretének színei a téma szerint (az oldalak maguktól újraépülnek).</summary>
