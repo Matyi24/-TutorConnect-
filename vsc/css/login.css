@@ -1352,3 +1352,139 @@ html[data-theme="dark"] .toggle-password:hover {
     color: #8aa0ff;
     background: rgba(138, 160, 255, 0.12);
 }
+
+
+/* =========================================================
+   ELFELEJTETT JELSZÓ / MEGERŐSÍTÉS
+   ========================================================= */
+
+.form-ok {
+    margin: -5px 0 15px;
+    padding: 11px 14px;
+
+    border: 1px solid rgba(34, 160, 107, 0.35);
+    border-radius: 11px;
+
+    background: rgba(34, 160, 107, 0.1);
+    color: #167a50;
+
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.45;
+
+    animation: errorIn 0.25s ease-out;
+}
+
+.form-ok[hidden],
+.status-card[hidden],
+form[hidden] {
+    display: none;
+}
+
+.notice-top {
+    position: relative;
+    z-index: 2;
+
+    width: calc(100% - 40px);
+    max-width: 500px;
+
+    margin: 0 auto 18px;
+    box-sizing: border-box;
+}
+
+.forgot-row {
+    margin: 8px 0 0;
+    text-align: right;
+    font-size: 0.82rem;
+}
+
+.forgot-row a,
+.auth-back a {
+    color: var(--auth-blue);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.forgot-row a:hover,
+.auth-back a:hover {
+    text-decoration: underline;
+}
+
+.auth-back {
+    margin: 18px 0 0;
+    text-align: center;
+    font-size: 0.86rem;
+}
+
+.status-card {
+    align-items: center;
+    text-align: center;
+}
+
+.status-card h2 {
+    margin: 0 0 8px;
+    color: var(--auth-text);
+    font-size: 1.25rem;
+}
+
+.status-card p {
+    margin: 0 0 22px;
+    color: var(--auth-muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 58px;
+    height: 58px;
+    margin-bottom: 16px;
+
+    border-radius: 50%;
+
+    background: rgba(76, 110, 245, 0.12);
+    color: var(--auth-blue);
+
+    font-size: 1.7rem;
+    font-weight: 800;
+}
+
+.status-icon.good {
+    background: rgba(34, 160, 107, 0.14);
+    color: #1a9a68;
+}
+
+.status-icon.bad {
+    background: rgba(220, 76, 100, 0.13);
+    color: var(--auth-danger);
+}
+
+.status-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+.status-btn[hidden] {
+    display: none;
+}
+
+html[data-theme="dark"] .form-ok {
+    border-color: rgba(63, 213, 154, 0.35);
+    background: rgba(63, 213, 154, 0.1);
+    color: #6fe0b0;
+}
+
+html[data-theme="dark"] .status-icon.good {
+    background: rgba(63, 213, 154, 0.14);
+    color: #6fe0b0;
+}
+
+html[data-theme="dark"] .forgot-row a,
+html[data-theme="dark"] .auth-back a {
+    color: #8aa0ff;
+}

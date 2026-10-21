@@ -1,24 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\felhasznalo\\Desktop\\Tutorconnect\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {}
+    "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {}
   },
   "projects": {
-    "C:\\Users\\felhasznalo\\Desktop\\Tutorconnect\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {
+    "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\felhasznalo\\Desktop\\Tutorconnect\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
+        "projectUniqueName": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
         "projectName": "TutorConnectApp",
-        "projectPath": "C:\\Users\\felhasznalo\\Desktop\\Tutorconnect\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
-        "packagesPath": "C:\\Users\\felhasznalo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\felhasznalo\\Desktop\\Tutorconnect\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\obj\\",
+        "projectPath": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\TutorConnectApp.csproj",
+        "packagesPath": "C:\\Users\\csabi\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\csabi\\OneDrive\\Asztali gép\\-TutorConnect-\\Desktop\\TutorConnectApp\\TutorConnectApp\\obj\\",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\felhasznalo\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Users\\csabi\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -26,7 +22,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -71,7 +66,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.CSharp": "(,4.7.32767]",
             "Microsoft.VisualBasic": "(,10.4.32767]",

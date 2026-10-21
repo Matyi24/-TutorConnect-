@@ -302,6 +302,22 @@ async function createNavbar() {
 
 
         // ====================================================
+        // ADMIN
+        // ====================================================
+
+        if (user.role === "ADMIN") {
+
+            navLinks += `
+
+                <a href="/admin">
+                    <li>Admin</li>
+                </a>
+
+            `;
+        }
+
+
+        // ====================================================
         // STUDENT
         // ====================================================
 
@@ -419,6 +435,10 @@ async function createNavbar() {
     if (isLoggedIn) {
         setupAccountModal(user);
 
+        // Aki még nem erősítette meg az e-mail címét, azt figyelmeztetjük
+        // (a függvény akkor is figyel, ha a címet később módosítja)
+        setupVerifyReminder(user);
+
         // Az oktatónak szólunk, ha a profilja még hiányos
         if (user.role === "TUTOR") {
             setupProfileReminder();
@@ -523,7 +543,7 @@ function injectAccountStyles() {
         .user-chip:focus-visible { outline: 2px solid #5b4de0; outline-offset: 2px; }
 
         .user-name { cursor: pointer; transition: color .2s; }
-        .user-chip:hover .user-name { color: #4de0a3; }
+        .user-chip:hover .user-name { color: #bfd0ff; }
 
         .nav-avatar {
             flex: none; box-sizing: border-box; width: 36px; height: 36px; border-radius: 50%;
@@ -725,6 +745,7 @@ function injectAccountStyles() {
         html[data-theme="dark"] .cta-buttons .register:hover { background: #a5b5ff; }
 
         html[data-theme="dark"] .user-chip:hover { background: rgba(138, 160, 255, .12); }
+        html[data-theme="dark"] .user-chip:hover .user-name { color: #8aa0ff; }
 
         html[data-theme="dark"] .theme-toggle {
             background: #1f2640;
@@ -811,6 +832,62 @@ function injectAccountStyles() {
             .acc-subj-select { grid-column: 1 / -1; }
         }
 
+        /* ---------- sötét mód: fiók-ablak ---------- */
+        html[data-theme="dark"] .acc-overlay { background: rgba(5, 8, 18, .65); }
+        html[data-theme="dark"] .acc-window {
+            background: #171c2e; color: #eef0f8;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, .6); color-scheme: dark;
+        }
+        html[data-theme="dark"] .acc-close { background: #232a42; color: #aebcff; }
+        html[data-theme="dark"] .acc-close:hover { background: #2f3860; }
+        html[data-theme="dark"] .acc-label,
+        html[data-theme="dark"] .acc-section:first-child { color: #8aa0ff; }
+        html[data-theme="dark"] .acc-header h2,
+        html[data-theme="dark"] .acc-field label,
+        html[data-theme="dark"] .acc-subj-head { color: #eef0f8; }
+        html[data-theme="dark"] .acc-field input,
+        html[data-theme="dark"] .acc-field textarea,
+        html[data-theme="dark"] .acc-subj-select,
+        html[data-theme="dark"] .acc-subj-price,
+        html[data-theme="dark"] .acc-student-grid select {
+            background: #1d2338; border-color: #2f3860; color: #eef0f8;
+        }
+        html[data-theme="dark"] .acc-field input:focus,
+        html[data-theme="dark"] .acc-field textarea:focus,
+        html[data-theme="dark"] .acc-subj-select:focus,
+        html[data-theme="dark"] .acc-subj-price:focus {
+            border-color: #8aa0ff; box-shadow: 0 0 0 3px rgba(138, 160, 255, .18);
+        }
+        html[data-theme="dark"] .acc-col-password,
+        html[data-theme="dark"] .acc-subjects { background: #1d2338; border-color: #2a3150; }
+        html[data-theme="dark"] .acc-section { border-top-color: #2a3150; color: #a3a7c4; }
+        html[data-theme="dark"] .acc-hint,
+        html[data-theme="dark"] .acc-counter { color: #a3a7c4; }
+        html[data-theme="dark"] .acc-message.error { color: #ff8fab; }
+        html[data-theme="dark"] .acc-message.success { color: #5fd3a0; }
+        html[data-theme="dark"] .acc-cancel { background: #232a42; color: #aebcff; }
+        html[data-theme="dark"] .acc-save { background: #6c82f5; color: #fff; }
+        html[data-theme="dark"] .acc-save:hover { background: #8aa0ff; color: #0f1320; }
+        html[data-theme="dark"] .acc-actions .logout { background: rgba(255, 90, 130, .14); color: #ff8fab; }
+        html[data-theme="dark"] .acc-actions .logout:hover { background: rgba(255, 90, 130, .24); }
+        html[data-theme="dark"] .acc-subj-remove { background: rgba(255, 90, 130, .14); color: #ff8fab; }
+        html[data-theme="dark"] .acc-subj-remove:hover { background: rgba(255, 90, 130, .26); }
+        html[data-theme="dark"] .acc-add-row { border-color: #3f4a7a; color: #aebcff; }
+        html[data-theme="dark"] .acc-add-row:hover { background: #232a42; }
+        html[data-theme="dark"] .acc-danger { border-top-color: #2a3150; }
+        html[data-theme="dark"] .acc-danger-link { color: #ff8fab; }
+        html[data-theme="dark"] .acc-danger-box {
+            background: rgba(255, 90, 130, .1); border-color: rgba(255, 90, 130, .35); color: #ffc2d1;
+        }
+        html[data-theme="dark"] .acc-danger-box input {
+            background: #1d2338; border-color: rgba(255, 90, 130, .4); color: #eef0f8;
+        }
+        html[data-theme="dark"] .acc-danger-confirm { background: #e0456f; }
+        html[data-theme="dark"] .acc-danger-confirm:hover { background: #c93861; }
+        @media (max-width: 520px) {
+            html[data-theme="dark"] .acc-subj-row { border-bottom-color: #2a3150; }
+        }
+
     `;
 
     document.head.appendChild(style);
@@ -825,6 +902,119 @@ function injectAccountStyles() {
 // látnak róla semmit. A navbar alatt egy sáv szól, amíg valamelyik
 // hiányzik. A gombja megnyitja a fiókablakot. A ×-szel az adott
 // böngészőmunkamenetre elrejthető. Mentés után újra ellenőrzi magát.
+
+// ============================================================
+// E-MAIL MEGERŐSÍTÉSE FIGYELMEZTETÉS
+// ============================================================
+//
+// Amíg a felhasználó nem kattintott a megerősítő levélben lévő linkre,
+// a navbar alatt egy sáv szól erről, és onnan új levelet is kérhet.
+// (Foglalni és időpontot kiírni csak megerősített címmel lehet.)
+// A sáv nem zárható be, mert nem kényelmi, hanem fontos információ.
+// Ha a fiókablakban megváltozik az e-mail cím, a sáv újra megjelenik.
+
+function setupVerifyReminder(user) {
+
+    let banner = null;
+
+    function removeBanner() {
+        if (banner) {
+            banner.remove();
+            banner = null;
+        }
+    }
+
+    function showBanner() {
+
+        if (banner) {
+            return;
+        }
+
+        const navbar = document.querySelector(".navbar");
+
+        if (!navbar) {
+            return;
+        }
+
+        banner = document.createElement("div");
+        banner.className = "tc-reminder tc-verify";
+        banner.setAttribute("role", "status");
+
+        banner.innerHTML = `
+            <span class="tc-reminder-text">Erősítsd meg az e-mail címed: a levelet ide küldtük: <strong></strong>. Amíg ez nem történik meg, nem tudsz időpontot foglalni vagy kiírni.</span>
+            <button type="button" class="tc-reminder-button">Levél újraküldése</button>
+        `;
+
+        banner.querySelector("strong").textContent = user.email;
+
+        const button = banner.querySelector(".tc-reminder-button");
+        const text = banner.querySelector(".tc-reminder-text");
+
+        button.addEventListener("click", async () => {
+
+            button.disabled = true;
+
+            try {
+
+                const response = await fetch("/api/resend-verification", {
+                    method: "POST",
+                    credentials: "include"
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (response.ok) {
+                    text.textContent = data.alreadyVerified
+                        ? "Az e-mail címed már meg van erősítve."
+                        : "Elküldtük az új levelet. Nézd meg a bejövő és a spam mappát is.";
+
+                    if (data.alreadyVerified) {
+                        button.remove();
+                    }
+
+                    return;
+                }
+
+                text.textContent = data.error || "Nem sikerült elküldeni a levelet.";
+
+            } catch (error) {
+
+                text.textContent = "Nem sikerült elküldeni a levelet. Próbáld újra később.";
+            }
+
+            button.disabled = false;
+        });
+
+        navbar.insertAdjacentElement("afterend", banner);
+    }
+
+    async function check() {
+
+        try {
+
+            const response = await fetch("/api/me", { credentials: "include" });
+            const data = await response.json();
+
+            if (data.loggedIn && data.user.emailVerified === false) {
+                user.email = data.user.email;
+                removeBanner();
+                showBanner();
+            } else {
+                removeBanner();
+            }
+
+        } catch (error) {
+            // a sáv marad, ahogy volt
+        }
+    }
+
+    document.addEventListener("tc:account-saved", check);
+
+    if (user.emailVerified === false) {
+        showBanner();
+    }
+}
+
 
 function setupProfileReminder() {
 
@@ -1667,7 +1857,13 @@ function setupAccountModal(user) {
             setHeader(data.user.name);
 
             clearPasswords();
-            showMessage("Sikeresen mentve.", "success");
+
+            showMessage(
+                data.emailVerificationSent
+                    ? "Mentve. Az új e-mail címedre megerősítő levelet küldtünk."
+                    : "Sikeresen mentve.",
+                "success"
+            );
 
             // A hiányos profilra figyelmeztető sáv ebből tudja, hogy újra kell nézni
             document.dispatchEvent(new CustomEvent("tc:account-saved"));

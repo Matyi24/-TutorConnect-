@@ -53,7 +53,12 @@ app.use(express.json());
 //
 // ============================================================
 
+// A munkamenetek tárolója (memóriában). Külön változóban van, hogy a
+// jelszó-visszaállítás ki tudja léptetni egy felhasználó összes munkamenetét.
+const sessionStore = new session.MemoryStore();
+
 const sessionMiddleware = session({
+        store: sessionStore,
         // Secret used to sign the session cookie so it can't be forged.
         // In production set the SESSION_SECRET environment variable
         // and don't rely on the fallback value.
@@ -88,12 +93,20 @@ app.use(sessionMiddleware);
 // kijelentkeztetjük. Induláskor az adatbázisból töltődik fel.
 const deletedUserIds = new Set();
 
+// A felfüggesztett (admin által kitiltott) felhasználók azonosítói. Ugyanúgy
+// működik, mint a törölteké: ha egy ilyen felhasználónak még él egy
+// munkamenete, a következő kérésnél kijelentkeztetjük.
+const suspendedUserIds = new Set();
+
 app.use((req, res, next) => {
 
     if (
         req.session &&
         req.session.user &&
-        deletedUserIds.has(Number(req.session.user.id))
+        (
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
+        )
     ) {
         delete req.session.user;
     }
@@ -124,7 +137,8 @@ const PUBLIC_JS_FILES = new Set([
     "foglalas.js",
     "foglalasutan.js",
     "home.js",
-    "selectmenu.js"
+    "selectmenu.js",
+    "admin.js"
 ]);
 
 // Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
@@ -183,6 +197,9 @@ const db = mysql.createConnection({
     database: "zsamo"
 });
 
+// E-mail megerősítés és elfelejtett jelszó (lásd authflow.js)
+const authflow = require("./authflow").setup({ app, db, sessionStore });
+
 // ============================================================
 // BASIC PAGES
 // ============================================================
@@ -195,6 +212,25 @@ app.get("/", (req, res) => {
     );
 });
 
+app.get("/adatvedelem", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/adatvedelem.html")
+    );
+});
+
+
+app.get("/felhasz_feltetelek", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/felhasz_feltetelek.html")
+    );
+});
+
+
+app.get("/felhasz_feltetelek", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/felhasz_feltetelek.html")
+    );
+});
 
 app.get("/index", (req, res) => {
     console.log("🌐 GET /index");
@@ -283,7 +319,7 @@ app.get("/foglalasutan", (req, res) => {
 //
 // ============================================================
 
-app.get("/api/me", (req, res) => {
+app.get("/api/me", async (req, res) => {
 
     // No user stored in the session => nobody is logged in
     // (no cookie, expired cookie, or the session was destroyed).
@@ -292,6 +328,17 @@ app.get("/api/me", (req, res) => {
         return res.json({
             loggedIn: false
         });
+    }
+
+
+    // Megerősítette-e már az e-mail címét? (A creator.js ebből tudja,
+    // kell-e a figyelmeztető sáv.)
+    let emailVerified = true;
+
+    try {
+        emailVerified = await authflow.isVerified(req.session.user.id);
+    } catch (error) {
+        console.error("❌ /api/me (emailVerified):", error);
     }
 
 
@@ -305,7 +352,8 @@ app.get("/api/me", (req, res) => {
             id: req.session.user.id,
             name: req.session.user.name,
             email: req.session.user.email,
-            role: req.session.user.role
+            role: req.session.user.role,
+            emailVerified
         }
     });
 });
@@ -523,6 +571,11 @@ app.post("/register", async (req, res) => {
             );
 
 
+            // Megerősítő levél (nem várjuk meg: a regisztráció nem függ tőle)
+            authflow.issueVerification(result.insertId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
+
+
             // ------------------------------------------------
             // AUTOMATIC LOGIN AFTER REGISTRATION
             // ------------------------------------------------
@@ -624,7 +677,9 @@ app.post("/login", async (req, res) => {
             full_name,
             email,
             password_hash,
-            role
+            role,
+            suspended_at,
+            suspended_reason
         FROM users
         WHERE email = ?
         LIMIT 1
@@ -711,6 +766,18 @@ app.post("/login", async (req, res) => {
                 // ------------------------------------------------
                 // LOGIN SUCCESSFUL
                 // ------------------------------------------------
+
+                // Felfüggesztett fiók: a jelszó jó, de nem léphet be
+                if (user.suspended_at) {
+
+                    console.log("⛔ LOGIN BLOCKED (suspended):", user.id);
+
+                    return res.status(403).send(
+                        "A fiókod fel van függesztve." +
+                        (user.suspended_reason ? " Indoklás: " + user.suspended_reason : "") +
+                        " Ha tévedésnek tartod, írj az oldal üzemeltetőjének."
+                    );
+                }
 
                 console.log(
                     "✅ LOGIN SUCCESSFUL"
@@ -874,6 +941,8 @@ db.connect(
         ensureUserEmailLength();
         ensureProfileSchema();
         ensureBookingSchema();
+        authflow.ensureSchema();
+        moderation.ensureSchema();
 
         console.log(
             "🖥️ Host: localhost"
@@ -952,6 +1021,7 @@ app.get("/api/tutors", (req, res) => {
 
         WHERE u.role = 'TUTOR'
           AND u.deleted_at IS NULL
+          AND u.suspended_at IS NULL
 
         GROUP BY
             u.id,
@@ -1086,7 +1156,7 @@ app.get("/api/stats", (req, res) => {
 
     const sql = `
         SELECT
-            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL) AS tutor_count,
+            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL) AS tutor_count,
             -- csak a lezajlott (teljesített) órák számítanak
             (SELECT COUNT(*) FROM bookings WHERE status_ = 'COMPLETED') AS booking_count,
             (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
@@ -1306,7 +1376,7 @@ app.post("/api/conversations", (req, res) => {
 
     // 3. Létezik ez az oktató?
     db.query(
-        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
         [tutorId],
         (err, tutors) => {
 
@@ -2418,7 +2488,8 @@ server.on("upgrade", (req, socket, head) => {
         if (
             !req.session ||
             !req.session.user ||
-            deletedUserIds.has(Number(req.session.user.id))
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
         ) {
             socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
             socket.destroy();
@@ -2884,6 +2955,16 @@ app.put("/api/account", async (req, res) => {
         }
 
 
+        // Új e-mail cím: újra meg kell erősíteni
+        if (emailChanged) {
+
+            await authflow.markUnverified(userId);
+
+            authflow.issueVerification(userId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
+        }
+
+
         // Keep the session in sync so the navbar shows the new data
         req.session.user.name = name;
         req.session.user.email = email;
@@ -2895,7 +2976,8 @@ app.put("/api/account", async (req, res) => {
                 name: name,
                 email: email,
                 role: current.role
-            }
+            },
+            emailVerificationSent: emailChanged
         });
 
     } catch (err) {
@@ -3004,7 +3086,7 @@ app.get("/api/availability", async (req, res) => {
 
 app.post("/api/availability", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "TUTOR") {
         return res.status(403).json({ error: "Csak oktató adhat meg időpontot." });
@@ -3169,7 +3251,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
         const pool = db.promise();
 
         const [tutor] = await pool.query(
-            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
             [tutorId]
         );
 
@@ -3208,7 +3290,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
 
 app.post("/api/bookings", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "STUDENT") {
         return res.status(403).json({ error: "Csak diák foglalhat időpontot." });
@@ -3242,7 +3324,7 @@ app.post("/api/bookings", async (req, res) => {
             `SELECT a.id, a.tutor_id, a.start_time, a.end_time
              FROM availabilities a
              INNER JOIN users u ON u.id = a.tutor_id
-             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL`,
+             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
             [slotId]
         );
 
@@ -3836,6 +3918,16 @@ app.delete("/api/account", async (req, res) => {
 // ============================================================
 // START SERVER
 // ============================================================
+
+// Jelentések és admin felület (lásd moderation.js)
+const moderation = require("./moderation").setup({
+    app,
+    db,
+    suspendedUserIds,
+    clients,
+    endSessionsOf: authflow.endSessionsOf,
+    allow: authflow.allow
+});
 
 server.listen(3000, () => {
     console.log("\n==========================================");
