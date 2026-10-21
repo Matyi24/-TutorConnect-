@@ -77,7 +77,10 @@ namespace TutorConnectApp
         /// <summary>Találatra kattintás: megnyitja a beszélgetést, és az üzenethez görget.</summary>
         private async Task OpenHitAsync(MessageHit hit)
         {
-            if (current?.Id == hit.Conversation.Id)
+            // a találat a keresés idejéből való példányt tárolja: a lista közben cserélődhetett
+            var conversation = ChatState.Find(hit.Conversation.Id) ?? hit.Conversation;
+
+            if (current?.Id == conversation.Id)
             {
                 showThread = true;
                 UpdateLayout();
@@ -86,7 +89,7 @@ namespace TutorConnectApp
             }
 
             scrollToMessageId = hit.Message.Id;
-            await SelectAsync(hit.Conversation);
+            await SelectAsync(conversation);
         }
 
         public override bool FocusSearch()

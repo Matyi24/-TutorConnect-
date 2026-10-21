@@ -30,7 +30,8 @@ namespace TutorConnectApp
         /// <summary>Eltárolja a beszélgetés üzeneteit (a még úton lévő, szerver által nem ismert üzenetek nélkül).</summary>
         public static void Set(int conversationId, IEnumerable<MessageDto> messages)
         {
-            Cache[conversationId] = messages.Where(m => m.Id > 0).ToList();
+            // a szerver által még nem ismert üzenetek nem kerülnek be, kivéve a sikertelenek (azok a visszatéréskor is újrapróbálhatók)
+            Cache[conversationId] = messages.Where(m => m.Id > 0 || m.Send == SendState.Failed).ToList();
             Touch(conversationId);
 
             while (Usage.Count > MaxConversations)

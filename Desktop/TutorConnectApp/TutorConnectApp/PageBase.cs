@@ -133,6 +133,7 @@ namespace TutorConnectApp
         {
             if (loading) return;
             loading = true;
+            staleMarked = false; // a betöltés közben érkező újabb jelölés megmarad
             bool ok = false;
 
             // a meglévő tartalom a betöltés alatt megmarad (újratöltésnél nem tűnik el), a jelző csak késve jelenik meg
@@ -146,7 +147,11 @@ namespace TutorConnectApp
             {
                 if (!IsDisposed) ShowError(ex.Message);
             }
-            catch (Exception ex) when (ex is not ObjectDisposedException)
+            catch (ObjectDisposedException)
+            {
+                // az oldal közben megszűnt (pl. témaváltás): nincs mit mutatni
+            }
+            catch (Exception ex)
             {
                 if (!IsDisposed) ShowError("Váratlan hiba: " + ex.Message);
             }
@@ -159,7 +164,6 @@ namespace TutorConnectApp
                     if (ok)
                     {
                         loadedTick = Environment.TickCount64;
-                        staleMarked = false;
                     }
                     loaderDelay.Stop();
                     RemoveLoader();

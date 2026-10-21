@@ -32,6 +32,7 @@ namespace TutorConnectApp
 
             current = conversation;
             showThread = true;
+            ResetReceiptPolling();
             int unread = conversation.UnreadCount; // az olvasottnak jelölés előtt: ebből látszik, hol kezdődnek az új üzenetek
 
             foreach (var item in listScroll.Content.Controls.OfType<ConversationItem>())
@@ -332,8 +333,19 @@ namespace TutorConnectApp
 
             if (bubbles.Remove(message.Id, out var bubble))
             {
-                messageScroll.Content.Controls.Remove(bubble);
+                var content = messageScroll.Content;
+                int index = content.Controls.GetChildIndex(bubble);
+                content.Controls.Remove(bubble);
                 bubble.Dispose();
+
+                // a nap-elválasztó, amely után már nem áll üzenet, árva marad: eltávolítjuk
+                if (index > 0 && index - 1 < content.Controls.Count && content.Controls[index - 1] is DaySeparator { } orphan
+                    && !ReferenceEquals(orphan, unreadSeparator)
+                    && (index >= content.Controls.Count || content.Controls[index] is DaySeparator))
+                {
+                    content.Controls.Remove(orphan);
+                    orphan.Dispose();
+                }
             }
             UpdateScrollDownButton();
         }

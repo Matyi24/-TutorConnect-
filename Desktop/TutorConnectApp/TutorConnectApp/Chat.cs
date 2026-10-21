@@ -1,4 +1,4 @@
-﻿namespace TutorConnectApp
+namespace TutorConnectApp
 {
     // ================================================================
     // CHAT: kétpaneles felület (beszélgetések + üzenetek), valós idejű frissítéssel.
@@ -39,6 +39,9 @@
 
         /// <summary>Az el nem küldött üzenetek beszélgetésenként: oldalváltás vagy témaváltás után sem vesznek el.</summary>
         private static readonly Dictionary<int, string> Drafts = new();
+
+        /// <summary>Kijelentkezéskor: a következő felhasználónak ne maradjanak meg az el nem küldött szövegek.</summary>
+        public static void ClearDrafts() => Drafts.Clear();
 
         private static readonly Font EmojiButtonFont = new("Segoe UI Emoji", 14F, FontStyle.Regular, GraphicsUnit.Point);
 
@@ -257,10 +260,13 @@
             e.Effect = current != null && e.Data?.GetDataPresent(DataFormats.FileDrop) == true ? DragDropEffects.Copy : DragDropEffects.None;
         }
 
-        private async void HandleDragDrop(object? sender, DragEventArgs e)
+        private void HandleDragDrop(object? sender, DragEventArgs e)
         {
-            if (current != null && e.Data?.GetData(DataFormats.FileDrop) is string[] { Length: > 0 } files)
-                await UploadFileAsync(files[0], confirm: true);
+            if (current == null || e.Data?.GetData(DataFormats.FileDrop) is not string[] { Length: > 0 } files) return;
+
+            // a megerősítő ablak ne a húzás (OLE) hívásán belül fusson, különben a fájlkezelő megfagy, amíg válaszolsz
+            string path = files[0];
+            BeginInvoke(new Action(async () => await UploadFileAsync(path, confirm: true)));
         }
 
         private void ShowEmojiPicker() =>
@@ -326,7 +332,7 @@
         }
 
         /// <summary>Igaz, ha egy beszélgetés üzenetei éppen látszanak a képernyőn.</summary>
-        private bool ThreadVisible => IsActive && current != null && (Wide || showThread);
+        private bool ThreadVisible => IsActive && ChatState.WindowVisible && current != null && (Wide || showThread);
 
         public override bool HasPendingRequest => PendingConversationId != null;
         public override bool SelfRefreshing => true; // a valós idejű események naprakészen tartják
@@ -345,7 +351,7 @@
             if (open == null) return;
 
             await FetchMessagesAsync(open, firstLoad: false, scrollToEnd: false);
-            if (!IsDisposed) await MarkReadAsync();
+            if (!IsDisposed && ThreadVisible) await MarkReadAsync();
         }
 
         private void SyncOpenState()
@@ -438,7 +444,8 @@
         {
             if (disposing)
             {
-                StoreMessages(); // újraépítés (pl. témaváltás) után az üzenetek azonnal újra látszanak
+                if (ApiClient.CurrentUser != null)
+                    StoreMessages(); // újraépítés (pl. témaváltás) után az üzenetek azonnal újra látszanak
                 Realtime.EventReceived -= OnRealtime;
                 ChatState.Changed -= OnChatStateChanged;
                 if (ReferenceEquals(ChatState.OpenOwner, this))
