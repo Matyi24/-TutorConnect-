@@ -93,12 +93,20 @@ app.use(sessionMiddleware);
 // kijelentkeztetjük. Induláskor az adatbázisból töltődik fel.
 const deletedUserIds = new Set();
 
+// A felfüggesztett (admin által kitiltott) felhasználók azonosítói. Ugyanúgy
+// működik, mint a törölteké: ha egy ilyen felhasználónak még él egy
+// munkamenete, a következő kérésnél kijelentkeztetjük.
+const suspendedUserIds = new Set();
+
 app.use((req, res, next) => {
 
     if (
         req.session &&
         req.session.user &&
-        deletedUserIds.has(Number(req.session.user.id))
+        (
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
+        )
     ) {
         delete req.session.user;
     }
@@ -129,7 +137,8 @@ const PUBLIC_JS_FILES = new Set([
     "foglalas.js",
     "foglalasutan.js",
     "home.js",
-    "selectmenu.js"
+    "selectmenu.js",
+    "admin.js"
 ]);
 
 // Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
@@ -668,7 +677,9 @@ app.post("/login", async (req, res) => {
             full_name,
             email,
             password_hash,
-            role
+            role,
+            suspended_at,
+            suspended_reason
         FROM users
         WHERE email = ?
         LIMIT 1
@@ -755,6 +766,18 @@ app.post("/login", async (req, res) => {
                 // ------------------------------------------------
                 // LOGIN SUCCESSFUL
                 // ------------------------------------------------
+
+                // Felfüggesztett fiók: a jelszó jó, de nem léphet be
+                if (user.suspended_at) {
+
+                    console.log("⛔ LOGIN BLOCKED (suspended):", user.id);
+
+                    return res.status(403).send(
+                        "A fiókod fel van függesztve." +
+                        (user.suspended_reason ? " Indoklás: " + user.suspended_reason : "") +
+                        " Ha tévedésnek tartod, írj az oldal üzemeltetőjének."
+                    );
+                }
 
                 console.log(
                     "✅ LOGIN SUCCESSFUL"
@@ -919,6 +942,7 @@ db.connect(
         ensureProfileSchema();
         ensureBookingSchema();
         authflow.ensureSchema();
+        moderation.ensureSchema();
 
         console.log(
             "🖥️ Host: localhost"
@@ -997,6 +1021,7 @@ app.get("/api/tutors", (req, res) => {
 
         WHERE u.role = 'TUTOR'
           AND u.deleted_at IS NULL
+          AND u.suspended_at IS NULL
 
         GROUP BY
             u.id,
@@ -1131,7 +1156,7 @@ app.get("/api/stats", (req, res) => {
 
     const sql = `
         SELECT
-            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL) AS tutor_count,
+            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL) AS tutor_count,
             -- csak a lezajlott (teljesített) órák számítanak
             (SELECT COUNT(*) FROM bookings WHERE status_ = 'COMPLETED') AS booking_count,
             (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
@@ -1351,7 +1376,7 @@ app.post("/api/conversations", (req, res) => {
 
     // 3. Létezik ez az oktató?
     db.query(
-        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
         [tutorId],
         (err, tutors) => {
 
@@ -2463,7 +2488,8 @@ server.on("upgrade", (req, socket, head) => {
         if (
             !req.session ||
             !req.session.user ||
-            deletedUserIds.has(Number(req.session.user.id))
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
         ) {
             socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
             socket.destroy();
@@ -3225,7 +3251,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
         const pool = db.promise();
 
         const [tutor] = await pool.query(
-            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
             [tutorId]
         );
 
@@ -3298,7 +3324,7 @@ app.post("/api/bookings", async (req, res) => {
             `SELECT a.id, a.tutor_id, a.start_time, a.end_time
              FROM availabilities a
              INNER JOIN users u ON u.id = a.tutor_id
-             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL`,
+             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
             [slotId]
         );
 
@@ -3892,6 +3918,16 @@ app.delete("/api/account", async (req, res) => {
 // ============================================================
 // START SERVER
 // ============================================================
+
+// Jelentések és admin felület (lásd moderation.js)
+const moderation = require("./moderation").setup({
+    app,
+    db,
+    suspendedUserIds,
+    clients,
+    endSessionsOf: authflow.endSessionsOf,
+    allow: authflow.allow
+});
 
 server.listen(3000, () => {
     console.log("\n==========================================");

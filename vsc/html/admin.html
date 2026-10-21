@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    <title>Admin | TutorConnect</title>
+</head>
+
+<body>
+<main class="adm">
+
+    <header class="adm-head">
+        <div>
+            <span class="adm-eyebrow">ADMINISZTRÁCIÓ</span>
+            <h1>Admin felület</h1>
+        </div>
+    </header>
+
+    <nav class="adm-tabs" id="admTabs" aria-label="Admin menü">
+        <button type="button" class="adm-tab active" data-tab="overview">Áttekintés</button>
+        <button type="button" class="adm-tab" data-tab="reports">Jelentések <span class="adm-count" id="reportsBadge" hidden></span></button>
+        <button type="button" class="adm-tab" data-tab="users">Felhasználók</button>
+        <button type="button" class="adm-tab" data-tab="reviews">Értékelések</button>
+        <button type="button" class="adm-tab" data-tab="bookings">Foglalások</button>
+    </nav>
+
+    <section id="admRoot" class="adm-root" aria-live="polite">
+        <p class="adm-empty">Betöltés...</p>
+    </section>
+
+</main>
+</body>
+
+<script src="/js/creator.js"></script>
+<script src="/js/selectmenu.js"></script>
+<script src="/js/admin.js"></script>
+
+</html>

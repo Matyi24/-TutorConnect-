@@ -759,6 +759,15 @@ function renderMessages(
                             aria-label="Üzenet szerkesztése">✎</button>`
                     : "";
 
+            // A másik fél üzenete jelenthető
+            const reportButton =
+                !isOwnMessage && !isRetracted
+                    ? `<button type="button" class="report-button"
+                            data-message-id="${escapeAttribute(message.id)}"
+                            title="Üzenet jelentése"
+                            aria-label="Üzenet jelentése">⚑</button>`
+                    : "";
+
             const editedLabel =
                 message.edited_at && !isRetracted
                     ? " · szerkesztve"
@@ -802,6 +811,7 @@ function renderMessages(
                     <span class="message-actions">
                         ${editButton}
                         ${retractButton}
+                        ${reportButton}
                     </span>
                     ${bubble}
                 </div>
@@ -2040,6 +2050,29 @@ function openChatMenu() {
         chatMenu.appendChild(empty);
     }
 
+    // Bármelyik beszélgetésben jelenthető a másik fél
+    if (currentConversationId) {
+
+        const reportItem = document.createElement("button");
+        reportItem.type = "button";
+        reportItem.className = "chat-menu-item chat-menu-report";
+        reportItem.textContent = "Felhasználó jelentése";
+
+        reportItem.addEventListener("click", () => {
+            closeChatMenu();
+            openReportDialog(null);
+        });
+
+        // a "Nincs elérhető művelet" felirat helyére is kerülhet
+        const empty = chatMenu.querySelector(".chat-menu-empty");
+
+        if (empty) {
+            empty.remove();
+        }
+
+        chatMenu.appendChild(reportItem);
+    }
+
     chatMenu.classList.add("open");
 
     document
@@ -2796,3 +2829,215 @@ function setupImageViewer() {
 }
 
 setupImageViewer();
+
+
+// ============================================================
+// JELENTÉS
+// ============================================================
+//
+// Két helyről indítható: a ⋮ menüből (a felhasználót jelenti) és a
+// kapott üzenet melletti ⚑ gombbal (az üzenetet jelenti). A jelentést
+// az adminisztrátorok kapják meg; a szerver ilyenkor elmenti a
+// jelentett üzenetet és az előtte lévő néhányat (lásd moderation.js),
+// így akkor is marad bizonyíték, ha a másik fél visszavonja az üzenetét.
+
+const REPORT_REASONS = [
+    ["SPAM", "Spam vagy reklám"],
+    ["HARASSMENT", "Zaklatás, sértő viselkedés"],
+    ["SCAM", "Csalás, átverés"],
+    ["INAPPROPRIATE", "Nem megfelelő tartalom"],
+    ["OTHER", "Egyéb"]
+];
+
+const REPORT_MAX_DETAILS = 500;
+
+let reportModal = null;
+
+
+function closeReportDialog() {
+
+    if (!reportModal) {
+        return;
+    }
+
+    const modal = reportModal;
+
+    reportModal = null;
+
+    modal.classList.remove("active");
+
+    setTimeout(() => modal.remove(), 250);
+}
+
+
+function openReportDialog(messageId) {
+
+    const conversation = findConversation(currentConversationId);
+
+    if (!conversation || reportModal) {
+        return;
+    }
+
+    const name = conversation.other_user_name || "Felhasználó";
+
+    reportModal = document.createElement("div");
+    reportModal.className = "report-modal";
+
+    reportModal.innerHTML = `
+        <div class="report-overlay" data-report-close></div>
+
+        <div class="report-window" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+
+            <button type="button" class="profile-close report-x" data-report-close aria-label="Bezárás">×</button>
+
+            <div class="report-body">
+
+                <h2 id="reportTitle">${messageId ? "Üzenet jelentése" : "Felhasználó jelentése"}</h2>
+
+                <p class="report-sub">
+                    ${messageId ? "Jelentés tárgya: " + escapeHtml(name) + " egyik üzenete" : "Jelentés tárgya: " + escapeHtml(name)}
+                </p>
+
+                <div class="report-reasons" role="radiogroup" aria-label="A jelentés oka">
+                    ${REPORT_REASONS.map(([value, label]) => `
+                        <label class="report-reason">
+                            <input type="radio" name="reportReason" value="${value}">
+                            <span>${escapeHtml(label)}</span>
+                        </label>`).join("")}
+                </div>
+
+                <label class="report-field">
+                    <span>Megjegyzés <small>(nem kötelező)</small></span>
+                    <textarea id="reportDetails" maxlength="${REPORT_MAX_DETAILS}"
+                              placeholder="Írd le röviden, mi történt..."></textarea>
+                    <small class="report-counter" id="reportCounter">0 / ${REPORT_MAX_DETAILS}</small>
+                </label>
+
+                <p class="report-info">
+                    A jelentést az oldal adminisztrátorai kapják meg. Ők a jelentett üzenetet és az előtte
+                    lévő néhány üzenetet látják, a teljes beszélgetést nem. A másik fél nem értesül arról,
+                    hogy jelentetted.
+                </p>
+
+                <p class="report-error" id="reportError" role="alert"></p>
+
+                <div class="report-actions">
+                    <button type="button" class="report-cancel" data-report-close>Mégse</button>
+                    <button type="button" class="report-send" id="reportSend">Jelentés elküldése</button>
+                </div>
+
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(reportModal);
+
+    // a megnyitó animációhoz egy képkocka késéssel kapja az "active" osztályt
+    requestAnimationFrame(() => {
+        if (reportModal) {
+            reportModal.classList.add("active");
+        }
+    });
+
+    const modal = reportModal;
+    const details = modal.querySelector("#reportDetails");
+    const counter = modal.querySelector("#reportCounter");
+    const errorBox = modal.querySelector("#reportError");
+    const sendButton = modal.querySelector("#reportSend");
+
+    details.addEventListener("input", () => {
+        counter.textContent = details.value.length + " / " + REPORT_MAX_DETAILS;
+    });
+
+    modal.querySelectorAll("[data-report-close]").forEach((element) => {
+        element.addEventListener("click", closeReportDialog);
+    });
+
+    sendButton.addEventListener("click", async () => {
+
+        const chosen = modal.querySelector("input[name='reportReason']:checked");
+
+        if (!chosen) {
+            errorBox.textContent = "Válassz egy okot.";
+            return;
+        }
+
+        errorBox.textContent = "";
+        sendButton.disabled = true;
+        sendButton.textContent = "Küldés...";
+
+        try {
+
+            const response = await fetch("/api/reports", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    conversation_id: conversation.id,
+                    message_id: messageId || null,
+                    reason: chosen.value,
+                    details: details.value.trim()
+                })
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+
+                errorBox.textContent = data.error || "Nem sikerült elküldeni a jelentést.";
+                sendButton.disabled = false;
+                sendButton.textContent = "Jelentés elküldése";
+
+                return;
+            }
+
+            modal.querySelector(".report-body").innerHTML = `
+                <div class="report-done">
+                    <div class="report-done-icon" aria-hidden="true">✓</div>
+                    <h2>Köszönjük a jelzést</h2>
+                    <p>A jelentést megkaptuk, az adminisztrátorok átnézik.</p>
+                    <div class="report-actions">
+                        <button type="button" class="report-send" data-report-close>Bezárás</button>
+                    </div>
+                </div>`;
+
+            modal.querySelectorAll("[data-report-close]").forEach((element) => {
+                element.addEventListener("click", closeReportDialog);
+            });
+
+        } catch (error) {
+
+            console.error("Jelentési hiba:", error);
+
+            errorBox.textContent = "Hálózati hiba, próbáld újra.";
+            sendButton.disabled = false;
+            sendButton.textContent = "Jelentés elküldése";
+        }
+    });
+}
+
+
+function setupReporting() {
+
+    const container = document.querySelector(".messages");
+
+    if (container) {
+
+        container.addEventListener("click", (event) => {
+
+            const button = event.target.closest(".report-button");
+
+            if (button) {
+                openReportDialog(Number(button.dataset.messageId));
+            }
+        });
+    }
+
+    document.addEventListener("keydown", (event) => {
+
+        if (event.key === "Escape") {
+            closeReportDialog();
+        }
+    });
+}
+
+setupReporting();
