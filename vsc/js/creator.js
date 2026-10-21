@@ -272,9 +272,11 @@ async function createNavbar() {
             </a>
 
 
+            ${user.role === "ADMIN" ? "" : `
             <a href="/chat">
                 <li>Chat</li>
             </a>
+            `}
 
 
             <a href="/subs">

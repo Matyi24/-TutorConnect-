@@ -226,9 +226,10 @@ app.get("/felhasz_feltetelek", (req, res) => {
 });
 
 
-app.get("/felhasz_feltetelek", (req, res) => {
+// A lábléc "Kapcsolatok" linkje ide mutat
+app.get("/kapcsolatok", (req, res) => {
     res.sendFile(
-        path.join(__dirname, "../html/felhasz_feltetelek.html")
+        path.join(__dirname, "../html/kapcsolatok.html")
     );
 });
 
@@ -250,8 +251,53 @@ app.get("/subs", (req, res) => {
 });
 
 
+// A belépés utáni úticél ("next"). Csak az oldalunkon belüli útvonalat
+// fogadjuk el ("/valami"), idegen címet nem ("//rossz.hu", "http://..."),
+// különben a belépő oldal átirányításra lenne használható (open redirect).
+function safeNext(value) {
+
+    if (
+        typeof value !== "string" ||
+        value.length > 200 ||
+        !value.startsWith("/") ||
+        value.startsWith("//") ||
+        value.startsWith("/\\") ||
+        /[\u0000-\u001f]/.test(value)
+    ) {
+        return "/index";
+    }
+
+    return value;
+}
+
+
+// Belépést igénylő oldalaknál: vendéget a belépéshez küldünk (és belépés
+// után ide vissza), az adminisztrátort az admin felületre, mert a diákoknak
+// és oktatóknak szóló oldalakon neki nincs dolga.
+// true = a válasz már elment (átirányítás).
+function guardPage(req, res, { forbidAdmin = false } = {}) {
+
+    if (!req.session.user) {
+        res.redirect("/login?next=" + encodeURIComponent(req.originalUrl));
+        return true;
+    }
+
+    if (forbidAdmin && req.session.user.role === "ADMIN") {
+        res.redirect("/admin");
+        return true;
+    }
+
+    return false;
+}
+
+
 app.get("/login", (req, res) => {
     console.log("🌐 GET /login");
+
+    // Aki már be van jelentkezve, annak nincs dolga a belépő oldalon
+    if (req.session.user) {
+        return res.redirect("/index");
+    }
 
     res.sendFile(
         path.join(__dirname, "../html/login.html")
@@ -261,6 +307,10 @@ app.get("/login", (req, res) => {
 
 app.get("/register", (req, res) => {
     console.log("🌐 GET /register");
+
+    if (req.session.user) {
+        return res.redirect("/index");
+    }
 
     res.sendFile(
         path.join(__dirname, "../html/register.html")
@@ -276,6 +326,11 @@ app.get("/gyik", (req, res) => {
 
 
 app.get("/chat", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/chat.html")
     );
@@ -290,6 +345,11 @@ app.get("/oktatok", (req, res) => {
 
 
 app.get("/foglalas", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/foglalas.html")
     );
@@ -297,6 +357,11 @@ app.get("/foglalas", (req, res) => {
 
 
 app.get("/foglalasutan", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/foglalasutan.html")
     );
@@ -837,11 +902,12 @@ app.post("/login", async (req, res) => {
 
 
                         // ------------------------------------------------
-                        // REDIRECT TO INDEX
+                        // REDIRECT: az eredetileg kért oldalra, ha volt ilyen,
+                        // különben a főoldalra (a "next" mindig ellenőrzött)
                         // ------------------------------------------------
 
                         return res.redirect(
-                            "/index"
+                            safeNext(req.body.next)
                         );
                     }
                 );
