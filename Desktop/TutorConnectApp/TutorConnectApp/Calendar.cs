@@ -1,4 +1,4 @@
-﻿using System.Drawing.Drawing2D;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
 namespace TutorConnectApp
@@ -17,7 +17,7 @@ namespace TutorConnectApp
         private List<TutorDto> tutors = new();
         private List<BookingDto> bookings = new();
         private List<SlotItemDto> mySlots = new();
-        private AvailabilityDto? tutorAvailability;
+        private List<TutorSlot> tutorSlots = new();
         private WeekCalendar calendar = null!;
         private MonthCalendar monthView = null!;
         private SelectableChip weekChip = null!;
@@ -25,8 +25,14 @@ namespace TutorConnectApp
         private bool monthMode;
         private Label weekLabel = null!;
         private Label infoLabel = null!;
-        private DropdownSelect? tutorBox;
+        private TutorPicker? picker;
+        private CheckPill? favoritesPill;
+        private TutorDto? selectedTutor;
+        private bool favoritesMode;
         private int refreshId;
+
+        /// <summary>Egy szabad időpont a hozzá tartozó oktatóval és tantárgyakkal (a naptár bejegyzéséhez csatolva).</summary>
+        private sealed record TutorSlot(TutorDto Tutor, SlotDto Slot, List<SlotSubjectDto> Subjects);
 
         public override bool HasPendingRequest => InitialTutorId != null;
         public override bool SelfRefreshing => true; // a hét és a nézet megmarad, az adatok csendben frissülnek
@@ -40,7 +46,7 @@ namespace TutorConnectApp
         public CalendarPage(UserInfo me) : base("Naptár",
             me.Role == "TUTOR"
                 ? "Add meg, mikor tartasz órát: húzd végig az egeret a naptár üres részén. A szabad időpontokat áthúzhatod, jobb gombbal másolhatod vagy törölheted."
-                : "Válassz oktatót, majd kattints egy szabad (zöld) időpontra a jelentkezéshez.")
+                : "Írd be az oktató nevét vagy tantárgyát, vagy kapcsold be a Kedvenceimet, majd kattints egy szabad (zöld) időpontra a jelentkezéshez.")
         {
             this.me = me;
             isTutor = me.Role == "TUTOR";
@@ -100,27 +106,23 @@ namespace TutorConnectApp
                 toolbar.Controls.Add(timeOff);
             }
 
-            if (!isTutor)
-            {
-                int initial = 0;
-                if (InitialTutorId is int id)
-                {
-                    int index = tutors.FindIndex(t => t.Id == id);
-                    if (index >= 0) initial = index + 1;
-                    InitialTutorId = null;
-                }
-
-                var names = new List<string> { "Válassz oktatót" };
-                names.AddRange(tutors.Select(t => t.FullName));
-                tutorBox = new DropdownSelect("Oktató", names, initial);
-                tutorBox.Margin = Ui.Pad(0, 0, 0, 12);
-                tutorBox.SelectionChanged += async (_, _) => await RefreshDataAsync();
-                toolbar.Controls.Add(tutorBox);
-            }
             AddRow(toolbar);
+
+            if (!isTutor) AddRow(BuildStudentSelector());
 
             infoLabel = Ui.Lbl("", 9.5F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12));
             AddRow(infoLabel);
+
+            // ---------- jelmagyarázat (felül: azonnal látszik, mit jelent az egyes szín) ----------
+            var entries = new List<LegendBar.Entry>
+            {
+                new(Theme.Success, "Szabad időpont", Dashed: true),
+                new(Theme.Warning, isTutor ? "Függőben (a jóváhagyásodra vár)" : "Függőben (az oktató még nem döntött)"),
+                new(Theme.MainBlue, "Visszaigazolva"),
+                new(Theme.Muted, "Lezajlott")
+            };
+            if (isTutor) entries.Add(new(Theme.Muted, "Szabadság", Hatched: true));
+            AddRow(new LegendBar("Jelmagyarázat", entries));
 
             calendar = new WeekCalendar();
             calendar.SetAllowSelect(isTutor);
@@ -141,16 +143,44 @@ namespace TutorConnectApp
             AddRow(monthView, animate: false);
             monthView.Visible = false;
 
-            // ---------- jelmagyarázat ----------
-            var legend = Ui.WrapRow();
-            legend.Controls.Add(Ui.Chip("Szabad időpont", Theme.Success));
-            legend.Controls.Add(Ui.Chip("Függőben", Theme.Warning));
-            legend.Controls.Add(Ui.Chip("Visszaigazolva", Theme.MainBlue));
-            legend.Controls.Add(Ui.Chip("Lezajlott", Theme.Muted));
-            AddRow(legend);
-
             UpdateWeekLabel();
             await RefreshDataAsync();
+        }
+
+        /// <summary>Diáknak: oktatókereső (javaslatokkal) és a Kedvenceim kapcsoló egy sorban.</summary>
+        private Control BuildStudentSelector()
+        {
+            TutorDto? initial = null;
+            if (InitialTutorId is int id)
+            {
+                initial = tutors.FirstOrDefault(t => t.Id == id);
+                InitialTutorId = null;
+            }
+            selectedTutor = initial;
+            favoritesMode = false;
+
+            var row = Ui.WrapRow();
+            picker = new TutorPicker(tutors, initial);
+            picker.TutorChosen += async tutor =>
+            {
+                selectedTutor = tutor;
+                await RefreshDataAsync();
+            };
+
+            int favoriteCount = tutors.Count(t => Favorites.IsFavorite(t.Id));
+            favoritesPill = new CheckPill("Kedvenceim", "♥");
+            favoritesPill.CheckedChanged += async (_, _) =>
+            {
+                favoritesMode = favoritesPill.Checked;
+                picker.SetEnabledLook(!favoritesMode);
+                await RefreshDataAsync();
+            };
+
+            row.Controls.Add(picker);
+            row.Controls.Add(favoritesPill);
+            if (favoriteCount == 0)
+                row.Controls.Add(Ui.Lbl("Még nincs kedvenc oktatód: az Oktatók oldalon a ♥ gombbal jelölhetsz.", 9.5F, Theme.Muted, margin: Ui.Pad(0, 20, 0, 0)));
+            return row;
         }
 
         // ------------------------------------------------------------
@@ -255,14 +285,18 @@ namespace TutorConnectApp
 
                 Task<List<SlotItemDto>>? slotsTask = isTutor ? ApiClient.GetAsync<List<SlotItemDto>>("/api/availability") : null;
 
-                Task<AvailabilityDto>? tutorTask = null;
-                TutorDto? selected = SelectedTutor();
-                if (!isTutor && selected != null)
-                    tutorTask = ApiClient.GetAsync<AvailabilityDto>($"/api/tutors/{selected.Id}/availability");
+                // kiket kell lekérdezni: kedvencek módban az összes kedvencet, különben a kiválasztottat
+                var wanted = new List<TutorDto>();
+                if (!isTutor)
+                {
+                    if (favoritesMode) wanted.AddRange(tutors.Where(t => Favorites.IsFavorite(t.Id)));
+                    else if (selectedTutor != null) wanted.Add(selectedTutor);
+                }
+                var availabilityTasks = wanted.Select(FetchAvailabilityAsync).ToList();
 
                 var all = new List<Task> { pendingTask, upcomingTask, pastTask };
                 if (slotsTask != null) all.Add(slotsTask);
-                if (tutorTask != null) all.Add(tutorTask);
+                all.AddRange(availabilityTasks);
                 await Task.WhenAll(all);
 
                 if (IsDisposed || myRefresh != refreshId) return;
@@ -270,10 +304,10 @@ namespace TutorConnectApp
                 bookings = pendingTask.Result.Concat(upcomingTask.Result).Concat(pastTask.Result)
                     .GroupBy(b => b.Id).Select(g => g.First()).ToList();
                 mySlots = slotsTask?.Result ?? new List<SlotItemDto>();
-                tutorAvailability = tutorTask?.Result;
+                tutorSlots = availabilityTasks.SelectMany(t => t.Result).OrderBy(t => t.Slot.StartTime).ToList();
 
                 infoLabel.ForeColor = Theme.Muted;
-                infoLabel.Text = DescribeState(selected);
+                infoLabel.Text = DescribeState(wanted);
                 var events = BuildEvents();
                 calendar.SetEvents(events);
                 monthView.SetEvents(events);
@@ -286,26 +320,44 @@ namespace TutorConnectApp
             }
         }
 
-        private string DescribeState(TutorDto? selected)
+        /// <summary>Egy oktató szabad időpontjai; hiba esetén üres (kedvencek módban egy oktató hibája ne akassza meg a többit).</summary>
+        private async Task<List<TutorSlot>> FetchAvailabilityAsync(TutorDto tutor)
+        {
+            try
+            {
+                var availability = await ApiClient.GetAsync<AvailabilityDto>($"/api/tutors/{tutor.Id}/availability");
+                return availability.Slots.Select(s => new TutorSlot(tutor, s, availability.Subjects)).ToList();
+            }
+            catch (ApiException) when (favoritesMode)
+            {
+                return new List<TutorSlot>();
+            }
+        }
+
+        private string DescribeState(List<TutorDto> wanted)
         {
             if (isTutor)
                 return mySlots.Count(s => !s.IsBooked) == 0
                     ? "Még nincs szabad időpontod. Húzd végig az egeret egy üres részen az első megadásához."
                     : "Kattints egy szabad időpontra a törléséhez, húzd át egy másik időpontra, vagy jobb gombbal másold. Foglalásra kattintva a részletek nyílnak meg.";
 
-            if (selected == null)
-                return "Válassz oktatót a fenti listából, hogy lásd a szabad időpontjait. A saját óráid mindig látszanak.";
+            if (favoritesMode)
+            {
+                if (wanted.Count == 0)
+                    return "Még nincs kedvenc oktatód. Az Oktatók oldalon a ♥ gombbal jelölheted meg őket, és itt együtt látod az időpontjaikat.";
 
-            return tutorAvailability is { Slots.Count: > 0 }
-                ? $"{selected.FullName} szabad időpontjai zöldek: kattints egyre a jelentkezéshez."
-                : $"{selected.FullName} jelenleg nem adott meg szabad időpontot.";
-        }
+                int tutorsWithSlots = tutorSlots.Select(t => t.Tutor.Id).Distinct().Count();
+                return tutorSlots.Count == 0
+                    ? "A kedvenc oktatóid közül most egyik sem adott meg szabad időpontot."
+                    : $"A kedvenceid szabad időpontjai zöldek ({tutorsWithSlots} oktató, {tutorSlots.Count} időpont): kattints egyre a jelentkezéshez.";
+            }
 
-        private TutorDto? SelectedTutor()
-        {
-            if (tutorBox == null || tutorBox.SelectedIndex <= 0) return null;
-            int index = tutorBox.SelectedIndex - 1;
-            return index < tutors.Count ? tutors[index] : null;
+            if (selectedTutor == null)
+                return "Kezdj el gépelni az oktató nevéből vagy tantárgyából, és válaszd ki a javaslatok közül. A saját óráid mindig látszanak.";
+
+            return tutorSlots.Count > 0
+                ? $"{selectedTutor.FullName} szabad időpontjai zöldek: kattints egyre a jelentkezéshez."
+                : $"{selectedTutor.FullName} jelenleg nem adott meg szabad időpontot.";
         }
 
         private List<CalEvent> BuildEvents()
@@ -354,18 +406,19 @@ namespace TutorConnectApp
                     }
                 }
             }
-            else if (tutorAvailability != null)
+            else
             {
-                foreach (var slot in tutorAvailability.Slots)
+                foreach (var item in tutorSlots)
                 {
                     result.Add(new CalEvent
                     {
-                        Start = slot.StartTime.ToLocalTime(),
-                        End = slot.EndTime.ToLocalTime(),
+                        Start = item.Slot.StartTime.ToLocalTime(),
+                        End = item.Slot.EndTime.ToLocalTime(),
                         Kind = CalKind.Free,
-                        Title = "Szabad",
+                        // kedvencek módban az oktató neve látszik, hogy ki lehessen választani, kihez jelentkezel
+                        Title = favoritesMode ? item.Tutor.FullName : "Szabad",
                         Subtitle = "Jelentkezés",
-                        Tag = slot
+                        Tag = item
                     });
                 }
             }
@@ -400,7 +453,7 @@ namespace TutorConnectApp
             {
                 if (isTutor && item.Tag is SlotItemDto mine)
                     await DeleteSlotAsync(mine);
-                else if (!isTutor && item.Tag is SlotDto slot)
+                else if (!isTutor && item.Tag is TutorSlot slot)
                     await ApplyAsync(slot);
                 return;
             }
@@ -616,12 +669,9 @@ namespace TutorConnectApp
             if (!IsDisposed) await RefreshDataAsync();
         }
 
-        private async Task ApplyAsync(SlotDto slot)
+        private async Task ApplyAsync(TutorSlot item)
         {
-            var selected = SelectedTutor();
-            if (selected == null || tutorAvailability == null) return;
-
-            using var dialog = new QuickBookDialog(selected.FullName, slot, tutorAvailability.Subjects);
+            using var dialog = new QuickBookDialog(item.Tutor.FullName, item.Slot, item.Subjects);
             if (dialog.ShowDialog(FindForm()) != DialogResult.OK || IsDisposed) return;
 
             MessageBox.Show(FindForm(), "A jelentkezést elküldtük. Az oktató visszaigazolására vár.", "Jelentkezés elküldve",

@@ -33,6 +33,7 @@ namespace TutorConnectApp
         private readonly HoverButton profileButton;
         private readonly SearchBox listSearch;
         private readonly Debouncer filterDebounce;
+        private readonly SearchClickFilter searchClickFilter;
         private readonly ComposerBox composer;
         private readonly System.Windows.Forms.Timer statusTimer = new() { Interval = 3000 };
         private readonly System.Windows.Forms.Timer receiptTimer = new() { Interval = ReceiptBaseMs };
@@ -74,6 +75,7 @@ namespace TutorConnectApp
 
             // keresés a beszélgetések és az üzenetek között (ékezetek nélkül is);
             // a lista a gépelés szünetében frissül, nem minden betűnél
+            searchClickFilter = new SearchClickFilter(this);
             filterDebounce = new Debouncer(150, OnFilterChanged);
             listSearch = new SearchBox("Keresés a beszélgetések és üzenetek között...") { Margin = Ui.Pad(0) };
             listSearch.ValueChanged += (_, _) =>
@@ -81,6 +83,7 @@ namespace TutorConnectApp
                 listFilter = listSearch.Value.Trim();
                 filterDebounce.Trigger();
             };
+            listSearch.EscapePressed += (_, _) => ExitSearch();
             listHeader.Controls.Add(listSearch);
 
             // a diák a Chat oldalról is indíthat új beszélgetést
@@ -337,7 +340,14 @@ namespace TutorConnectApp
         public override bool HasPendingRequest => PendingConversationId != null;
         public override bool SelfRefreshing => true; // a valós idejű események naprakészen tartják
 
-        protected override void OnActiveChanged(bool active) => SyncOpenState();
+        protected override void OnActiveChanged(bool active)
+        {
+            SyncOpenState();
+
+            // a keresőn kívüli kattintás csak a Chat oldalon aktív oldalon figyelt
+            if (active) Application.AddMessageFilter(searchClickFilter);
+            else Application.RemoveMessageFilter(searchClickFilter);
+        }
 
         /// <summary>Visszatéréskor a közben érkezett üzenetek és az olvasottság rendbe kerül.</summary>
         protected override void OnRevisited()
@@ -446,6 +456,7 @@ namespace TutorConnectApp
             {
                 if (ApiClient.CurrentUser != null)
                     StoreMessages(); // újraépítés (pl. témaváltás) után az üzenetek azonnal újra látszanak
+                Application.RemoveMessageFilter(searchClickFilter);
                 Realtime.EventReceived -= OnRealtime;
                 ChatState.Changed -= OnChatStateChanged;
                 if (ReferenceEquals(ChatState.OpenOwner, this))

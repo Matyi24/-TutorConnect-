@@ -104,7 +104,7 @@ namespace TutorConnectApp
             BuildBanner();
             ApplyTheme();
 
-            navBar.Select("home");
+            navBar.Select(pageOrder[0]); // adminnál az Áttekintés, másoknál a Főoldal
         }
 
         /// <summary>
@@ -115,6 +115,20 @@ namespace TutorConnectApp
         /// </summary>
         private void BuildMenu(UserInfo user)
         {
+            // az adminisztrátor saját menüt kap (mint a webes admin felület fülei); chatje és foglalása nincs
+            if (user.Role == "ADMIN")
+            {
+                AddPage("admin-overview", "Áttekintés", "\uE80F", () => new AdminOverviewPage());
+                AddPage("admin-reports", "Jelentések", "\uE7BA", () => new AdminReportsPage());
+                AddPage("admin-users", "Felhasználók", "\uE716", () => new AdminUsersPage());
+                AddPage("admin-reviews", "Értékelések", "\uE734", () => new AdminReviewsPage());
+                AddPage("admin-bookings", "Foglalások", "\uE787", () => new AdminBookingsPage());
+                AddPage("profile", "Profil", "\uE77B", () => new ProfilePage());
+                AddPage("settings", "Beállítások", "\uE713", () => new SettingsPage(Me));
+                navBar.AddAction("theme", "Sötét mód", "\uE708");
+                return;
+            }
+
             AddPage("home", "Főoldal", "\uE80F", () => new HomePage(Me));
             AddPage("chat", "Chat", "\uE8BD", () => new ChatPage(Me));
             AddPage("subjects", "Tantárgyak", "\uE8F1", () => new SubjectsPage(Me));
@@ -359,6 +373,21 @@ namespace TutorConnectApp
         /// <summary>A függő foglalások száma az oktatónál (kis, külön végpont; az olvasatlan üzeneteket a ChatState számolja).</summary>
         private async Task RefreshBadgesAsync()
         {
+            if (Me.Role == "ADMIN")
+            {
+                // adminnál a nyitott jelentések száma jelenik meg a Jelentések menüponton
+                try
+                {
+                    var stats = await ApiClient.GetAsync<AdminStatsDto>("/api/admin/stats");
+                    if (!IsDisposed) navBar.SetBadge("admin-reports", stats.Reports.Open);
+                }
+                catch (ApiException)
+                {
+                    // a jelvény nem kritikus
+                }
+                return;
+            }
+
             if (Me.Role != "TUTOR") return;
 
             try

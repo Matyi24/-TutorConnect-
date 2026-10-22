@@ -1,6 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Compile Update="AdminDialogs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="AdminPages.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Update="AvailabilityDialog.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -9,6 +15,9 @@
     </Compile>
     <Compile Update="BookingsPage.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="BookingTicket.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="Calendar.cs">
       <SubType>UserControl</SubType>
@@ -58,6 +67,9 @@
     <Compile Update="Emoji.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="FilterInputs.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="Form1.Banner.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -73,17 +85,26 @@
     <Compile Update="Inputs.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Update="Legend.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="LoginForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="NavBar.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="NoticeBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="PageBase.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Update="Pages.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="PillButton.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="ProfilePage.cs">
       <SubType>UserControl</SubType>
@@ -105,6 +126,9 @@
     </Compile>
     <Compile Update="SubjectsPage.cs">
       <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="TutorPicker.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Update="TutorProfile.cs">
       <SubType>Form</SubType>

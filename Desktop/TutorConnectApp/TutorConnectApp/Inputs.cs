@@ -291,6 +291,9 @@ namespace TutorConnectApp
 
         public event EventHandler? ValueChanged;
 
+        /// <summary>Az Esc billentyű (a szöveg ilyenkor törlődik): a használó kilép a keresésből.</summary>
+        public event EventHandler? EscapePressed;
+
         public SearchBox(string placeholder)
         {
             Height = Ui.S(50);
@@ -314,6 +317,15 @@ namespace TutorConnectApp
                 Invalidate();
                 ValueChanged?.Invoke(this, EventArgs.Empty);
             };
+            input.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode != Keys.Escape) return;
+
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                if (input.TextLength > 0) input.Clear();
+                EscapePressed?.Invoke(this, EventArgs.Empty);
+            };
             Controls.Add(input);
             LayoutInput();
         }
@@ -321,6 +333,12 @@ namespace TutorConnectApp
         public string Value => input.Text;
 
         public void SetValue(string text) => input.Text = text;
+
+        /// <summary>Igaz, ha a szövegmezőben van a kurzor.</summary>
+        public bool InputFocused => input.Focused;
+
+        /// <summary>A mező törlése (a ValueChanged esemény is lefut).</summary>
+        public void Clear() => input.Clear();
 
         /// <summary>A kurzor a mezőbe kerül (Ctrl+F), a meglévő keresőszöveg kijelölve.</summary>
         public void FocusInput()

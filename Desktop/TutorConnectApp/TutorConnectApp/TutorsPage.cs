@@ -12,22 +12,17 @@ namespace TutorConnectApp
 
         private const string AllSubjects = "Összes tantárgy";
 
-        private static readonly (string Label, decimal Min)[] RatingOptions =
-        {
-            ("Bármilyen", 0m), ("4.0 felett", 4.0m), ("4.5 felett", 4.5m), ("4.8 felett", 4.8m)
-        };
-
         private static readonly string[] SortOptions =
             { "Alapértelmezett", "Legjobb értékelés", "Ár szerint növekvő", "Ár szerint csökkenő" };
 
         private List<TutorDto> tutors = new();
         private SearchBox search = null!;
         private DropdownSelect subjectBox = null!;
-        private DropdownSelect ratingBox = null!;
+        private NumberField ratingBox = null!;
         private DropdownSelect sortBox = null!;
-        private DropdownSelect minPriceBox = null!;
-        private DropdownSelect maxPriceBox = null!;
-        private DropdownSelect viewBox = null!;
+        private NumberField minPriceBox = null!;
+        private NumberField maxPriceBox = null!;
+        private CheckPill favoritesBox = null!;
         private Label countLabel = null!;
         private State? restored;
         private int limit = PageSize;
@@ -36,16 +31,13 @@ namespace TutorConnectApp
         /// <summary>Ennyi oktatókártyát rajzolunk egyszerre; a többi gombnyomásra jelenik meg.</summary>
         private const int PageSize = 12;
 
-        /// <summary>Az óradíj-szűrők választható értékei (0 = bármennyi).</summary>
-        private static readonly int[] PriceSteps = { 0, 3000, 4000, 5000, 6000, 8000, 10000, 15000 };
-
-        private sealed record State(string Query, int Subject, int Rating, int Sort, int MinPrice, int MaxPrice, int View);
+        private sealed record State(string Query, int Subject, string Rating, int Sort, string MinPrice, string MaxPrice, bool OnlyFavorites);
 
         public override object? CaptureState() =>
             search == null
                 ? null
-                : new State(search.Value, subjectBox.SelectedIndex, ratingBox.SelectedIndex, sortBox.SelectedIndex,
-                    minPriceBox.SelectedIndex, maxPriceBox.SelectedIndex, viewBox.SelectedIndex);
+                : new State(search.Value, subjectBox.SelectedIndex, ratingBox.RawText, sortBox.SelectedIndex,
+                    minPriceBox.RawText, maxPriceBox.RawText, favoritesBox.Checked);
 
         public override void RestoreState(object? state) => restored = state as State;
 
@@ -113,26 +105,45 @@ namespace TutorConnectApp
             AddRow(search);
 
             subjectBox = new DropdownSelect("Tantárgy", new[] { AllSubjects }.Concat(subjectNames), initial);
-            ratingBox = new DropdownSelect("Értékelés", RatingOptions.Select(o => o.Label), keep?.Rating ?? 0);
             sortBox = new DropdownSelect("Rendezés", SortOptions, keep?.Sort ?? 0);
-            minPriceBox = new DropdownSelect("Óradíj legalább", PriceSteps.Select(PriceLabel), keep?.MinPrice ?? 0);
-            maxPriceBox = new DropdownSelect("Óradíj legfeljebb", PriceSteps.Select(PriceLabel), keep?.MaxPrice ?? 0);
-            viewBox = new DropdownSelect("Megjelenítés", new[] { "Minden oktató", "Csak a kedvenceim" }, keep?.View ?? 0);
-            foreach (var box in new[] { subjectBox, ratingBox, sortBox, minPriceBox, maxPriceBox, viewBox })
+            foreach (var box in new[] { subjectBox, sortBox })
                 box.SelectionChanged += (_, _) =>
                 {
                     limit = PageSize;
                     RenderList(animate: false);
                 };
 
+            // amit a felhasználó keres, azt beírja: óradíj-tartomány és legkisebb értékelés (üresen: nincs korlát)
+            minPriceBox = new NumberField("Óradíj legalább", "pl. 3000", "Ft", 0, 1_000_000);
+            maxPriceBox = new NumberField("Óradíj legfeljebb", "pl. 8000", "Ft", 0, 1_000_000);
+            ratingBox = new NumberField("Értékelés legalább", "pl. 4,5", "★", 0, 5, decimals: true);
+            if (keep != null)
+            {
+                minPriceBox.SetText(keep.MinPrice);
+                maxPriceBox.SetText(keep.MaxPrice);
+                ratingBox.SetText(keep.Rating);
+            }
+            foreach (var field in new[] { minPriceBox, maxPriceBox, ratingBox })
+                field.ValueChanged += (_, _) => searchDebounce.Trigger(); // gépelés közben a szünetben szűr
+
+            favoritesBox = new CheckPill("Csak a kedvenceim", "♥", keep?.OnlyFavorites ?? false);
+            favoritesBox.CheckedChanged += (_, _) =>
+            {
+                limit = PageSize;
+                RenderList(animate: false);
+            };
+
             var options = Ui.WrapRow();
             options.Controls.Add(subjectBox);
-            options.Controls.Add(ratingBox);
             options.Controls.Add(sortBox);
-            options.Controls.Add(minPriceBox);
-            options.Controls.Add(maxPriceBox);
-            options.Controls.Add(viewBox);
+            options.Controls.Add(favoritesBox);
             AddRow(options);
+
+            var ranges = Ui.WrapRow();
+            ranges.Controls.Add(minPriceBox);
+            ranges.Controls.Add(maxPriceBox);
+            ranges.Controls.Add(ratingBox);
+            AddRow(ranges);
 
             countLabel = Ui.Lbl("", 10F, Theme.Muted, margin: Ui.Pad(2, 0, 0, 12));
             AddRow(countLabel);
@@ -246,7 +257,6 @@ namespace TutorConnectApp
             return card;
         }
 
-        private static string PriceLabel(int value) => value == 0 ? "Bármennyi" : Ui.Money(value);
 
         /// <summary>Az oktató legkisebb és legnagyobb óradíja; (0, 0), ha nincs megadva.</summary>
         internal static (decimal Min, decimal Max) PriceBounds(TutorDto tutor)
@@ -265,10 +275,10 @@ namespace TutorConnectApp
         {
             string query = search.Value.Trim();
             string? subject = subjectBox.SelectedIndex > 0 ? subjectBox.SelectedText : null;
-            decimal minRating = RatingOptions[ratingBox.SelectedIndex].Min;
-            int minPrice = PriceSteps[minPriceBox.SelectedIndex];
-            int maxPrice = PriceSteps[maxPriceBox.SelectedIndex];
-            bool onlyFavorites = viewBox.SelectedIndex == 1;
+            decimal minRating = ratingBox.Value ?? 0m;
+            int minPrice = (int)(minPriceBox.Value ?? 0m);
+            int maxPrice = (int)(maxPriceBox.Value ?? 0m);
+            bool onlyFavorites = favoritesBox.Checked;
 
             IEnumerable<TutorDto> filtered = tutors.Where(t =>
                 (query.Length == 0
@@ -395,7 +405,7 @@ namespace TutorConnectApp
                     bool now = Favorites.Toggle(tutor.Id);
                     favorite!.Text = now ? "♥ Kedvenc" : "♡ Kedvenc";
                     favorite.ForeColor = now ? Theme.Danger : Theme.Text;
-                    if (viewBox.SelectedIndex == 1 && !now)
+                    if (favoritesBox.Checked && !now)
                         BeginInvoke(new Action(() => RenderList(animate: false))); // a kedvencek listájából kikerül
                 }, outline: true);
             actions.Controls.Add(favorite);

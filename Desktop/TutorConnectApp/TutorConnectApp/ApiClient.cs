@@ -410,6 +410,10 @@ namespace TutorConnectApp
         public static Task DeleteAsync(string path) =>
             SendAsync(HttpMethod.Delete, path, null);
 
+        /// <summary>Törlés kérés-törzzsel (pl. az admin indoklása, amit a szerver naplóz).</summary>
+        public static Task DeleteAsync(string path, object payload) =>
+            SendAsync(HttpMethod.Delete, path, payload);
+
         private static async Task<string> SendAsync(HttpMethod method, string path, object? payload, HttpContent? content = null, HttpClient? client = null)
         {
             using var request = new HttpRequestMessage(method, BaseUrl + path);

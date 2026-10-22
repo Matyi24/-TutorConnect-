@@ -8,6 +8,59 @@ namespace TutorConnectApp
         private string? searchStatus;
         private int searchSeq;
 
+        /// <summary>
+        /// Kilépés a keresésből: a keresőmező és a találatok törlődnek, a lista újra a teljes beszélgetés-lista,
+        /// a kurzor pedig a megnyitott beszélgetés írómezőjébe (vagy sehová) kerül.
+        /// </summary>
+        private void ExitSearch()
+        {
+            if (IsDisposed) return;
+
+            bool had = listSearch.Value.Length > 0 || hits.Count > 0 || searchStatus != null;
+            searchSeq++; // a még futó keresés eredményét eldobjuk
+            listFilter = "";
+            hits = new List<MessageHit>();
+            searchStatus = null;
+            if (listSearch.Value.Length > 0) listSearch.Clear();
+            if (had) RenderList();
+
+            if (listSearch.InputFocused)
+            {
+                if (current != null && ThreadVisible) composer.FocusInput();
+                else FindForm()?.Focus();
+            }
+        }
+
+        /// <summary>
+        /// Figyeli az egérkattintásokat: ha a keresőn és a találatokon kívülre kattintasz, a keresés véget ér.
+        /// A kattintás előbb a saját célpontjára hat (pl. beszélgetés megnyitása), a kilépés csak utána fut le.
+        /// </summary>
+        private sealed class SearchClickFilter : IMessageFilter
+        {
+            private const int WM_LBUTTONUP = 0x0202;
+            private readonly ChatPage page;
+
+            public SearchClickFilter(ChatPage page) => this.page = page;
+
+            public bool PreFilterMessage(ref Message m)
+            {
+                if (m.Msg != WM_LBUTTONUP || page.IsDisposed || !page.IsHandleCreated) return false;
+                if (page.listSearch.Value.Length == 0 && page.hits.Count == 0 && page.searchStatus == null) return false;
+
+                var target = Control.FromHandle(m.HWnd);
+                if (target == null || target.FindForm() != page.FindForm()) return false; // másik ablak (pl. dialógus)
+
+                // a kereső saját területe és a találatok nem zárják be a keresést
+                for (Control? c = target; c != null; c = c.Parent)
+                {
+                    if (ReferenceEquals(c, page.listSearch) || c is MessageHitItem) return false;
+                }
+
+                page.BeginInvoke(new Action(page.ExitSearch));
+                return false;
+            }
+        }
+
         /// <summary>A keresőmező változása (a gépelés szünete után): a lista szűrése, majd keresés az üzenetek szövegében is.</summary>
         private void OnFilterChanged()
         {
