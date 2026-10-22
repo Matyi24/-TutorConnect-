@@ -79,6 +79,9 @@
     <Compile Update="NavBar.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Update="NoticeBox.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Update="PageBase.cs">
       <SubType>UserControl</SubType>
     </Compile>

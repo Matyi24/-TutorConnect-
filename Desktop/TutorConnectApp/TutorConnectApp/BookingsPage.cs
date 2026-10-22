@@ -168,51 +168,121 @@ namespace TutorConnectApp
 
         private void ShowBookings(List<BookingDto> bookings)
         {
+            // oktatónál: hányan jelentkeztek ugyanarra az időpontra (egyet fogadhat el, a többi automatikusan elutasítva)
+            var competing = bookings
+                .Where(b => b.Status == "PENDING" && !b.AsStudent)
+                .GroupBy(b => (b.StartTime, b.EndTime))
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             ReplaceRowsAfter(tabRow, () =>
             {
                 if (bookings.Count == 0)
                     AddRow(Ui.MessageCard("Ebben a kategóriában nincs foglalás.", "\uE787"));
                 else
                     foreach (var booking in bookings)
-                        AddRow(BuildBookingCard(booking));
+                        AddRow(BuildBookingCard(booking, RivalsOf(booking, competing)));
             });
         }
 
-        private CardPanel BuildBookingCard(BookingDto b)
+        /// <summary>A többi függő jelentkező neve ugyanarra az időpontra (csak oktatónál és függő jelentkezésnél).</summary>
+        private static IReadOnlyList<string> RivalsOf(BookingDto booking, Dictionary<(DateTime, DateTime), List<BookingDto>> competing)
         {
-            var card = new CardPanel();
+            if (booking.Status != "PENDING" || booking.AsStudent) return Array.Empty<string>();
+            if (!competing.TryGetValue((booking.StartTime, booking.EndTime), out var group)) return Array.Empty<string>();
 
+            return group.Where(other => other.Id != booking.Id).Select(other => other.OtherName ?? "ismeretlen").ToList();
+        }
+
+        /// <summary>A kártya bal szélének színe az állapot szerint.</summary>
+        private static Color StatusColor(string status) => status switch
+        {
+            "PENDING" => Theme.Warning,
+            "CONFIRMED" => Theme.Success,
+            "COMPLETED" => Theme.MainBlue,
+            "REJECTED" => Theme.Danger,
+            _ => Theme.Muted
+        };
+
+        /// <summary>Egy adatsor ikonnal: pl. a partner neve, az időpont, az ár.</summary>
+        private static FlowLayoutPanel InfoLine(string glyph, string text, bool bold = false, Color? color = null)
+        {
+            var row = Ui.Row();
+            row.Margin = Ui.Pad(0, 0, 0, 6);
+
+            var icon = new Label
+            {
+                Text = glyph,
+                Font = Ui.IconFont(11F),
+                ForeColor = Theme.MainBlue,
+                AutoSize = false,
+                Size = new Size(Ui.S(26), Ui.LineHeight(Ui.MakeFont(10.5F)) + Ui.S(2)),
+                TextAlign = ContentAlignment.MiddleLeft,
+                BackColor = Color.Transparent,
+                Margin = Ui.Pad(0)
+            };
+            row.Controls.Add(icon);
+            row.Controls.Add(Ui.Lbl(text, 10.5F, color ?? Theme.Text, bold: bold, margin: Ui.Pad(0, 1, 0, 0)));
+            return row;
+        }
+
+        /// <param name="rivals">A többi diák neve, aki ugyanerre az időpontra jelentkezett (oktatónál, függő jelentkezésnél).</param>
+        private CardPanel BuildBookingCard(BookingDto b, IReadOnlyList<string>? rivals = null)
+        {
+            rivals ??= Array.Empty<string>();
+            var card = new AccentCard(StatusColor(b.Status));
+
+            // ---------- fej: tantárgy, állapot ----------
             var head = Ui.Row();
-            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 12, 0)));
+            head.Margin = Ui.Pad(0, 0, 0, 10);
+            head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 13.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 0, 14, 0)));
             head.Controls.Add(StatusChip(b.Status));
+            if (rivals.Count > 0)
+                head.Controls.Add(Ui.Chip($"{rivals.Count + 1} jelentkező", Theme.MainBlue));
             card.Controls.Add(head);
 
-            card.Controls.Add(Ui.Lbl((b.AsStudent ? "Oktató: " : "Diák: ") + (b.OtherName ?? "ismeretlen"), 10.5F, Theme.Text));
+            // ---------- adatok ----------
+            card.Controls.Add(InfoLine("\uE77B", (b.AsStudent ? "Oktató: " : "Diák: ") + (b.OtherName ?? "ismeretlen")));
+            card.Controls.Add(InfoLine("\uE787", Ui.FormatRange(b.StartTime, b.EndTime)));
+            if (b.Price is > 0)
+                card.Controls.Add(InfoLine("\uE8C7", Ui.Money(b.Price.Value), bold: true));
 
-            string when = Ui.FormatRange(b.StartTime, b.EndTime);
-            if (b.Price is > 0) when += $"  ·  {Ui.Money(b.Price.Value)}";
-            card.Controls.Add(Ui.Lbl(when, 10F, Theme.Muted));
+            // ---------- tudnivalók ----------
+            if (rivals.Count > 0 && b.CanConfirm)
+            {
+                string others = string.Join(", ", rivals);
+                card.Controls.Add(new NoticeBox("\uE716", $"{rivals.Count + 1} diák jelentkezett erre az időpontra",
+                    $"Egyet fogadhatsz el, a többi jelentkezés automatikusan elutasításra kerül. Többi jelentkező: {others}."));
+            }
+
+            if (b.Status == "PENDING" && b.AsStudent)
+                card.Controls.Add(new NoticeBox("\uE946", "Az oktató választ a jelentkezők közül",
+                    "Ha másik diákot fogad el erre az időpontra, ez a jelentkezésed automatikusan elutasításra kerül."));
 
             if (!string.IsNullOrWhiteSpace(b.Note))
-                card.Controls.Add(Ui.Lbl("Üzenet: " + b.Note, 10F, Theme.Muted, wrap: true));
+                card.Controls.Add(new NoticeBox("\uE8BD", b.AsStudent ? "Üzeneted" : "A diák üzenete", b.Note!.Trim(), NoticeBox.Tone.Muted));
 
             if (b.Review != null)
             {
                 int stars = Math.Clamp(b.Review.Rating, 0, 5);
-                string text = "Értékelés: " + new string('★', stars) + new string('☆', 5 - stars);
+                string text = new string('★', stars) + new string('☆', 5 - stars);
                 if (!string.IsNullOrWhiteSpace(b.Review.Comment)) text += "\n" + b.Review.Comment;
-                card.Controls.Add(Ui.Lbl(text, 10F, Theme.Muted, wrap: true));
+                card.Controls.Add(new NoticeBox("\uE734", "Értékelés", text, NoticeBox.Tone.Muted));
             }
 
             if (b.Status is "PENDING" or "CONFIRMED" or "COMPLETED")
                 card.Controls.Add(new LessonNoteRow(b));
 
+            // ---------- műveletek ----------
             bool canReview = b.AsStudent && b.Status == "COMPLETED" && b.Review == null;
             if (b.CanConfirm || b.CanReject || b.CanCancel || canReview)
             {
                 var actions = Ui.Row();
+                actions.Margin = Ui.Pad(0, 6, 0, 4);
                 if (b.CanConfirm)
-                    actions.Controls.Add(Ui.Btn("Elfogadás", Theme.Success, Theme.White, async (_, _) => await ActAsync(b, "confirm", null)));
+                    actions.Controls.Add(Ui.Btn("Elfogadás", Theme.Success, Theme.White, async (_, _) => await ActAsync(b, "confirm",
+                        rivals.Count > 0
+                            ? $"Elfogadod ezt a jelentkezést ({b.OtherName})? Erre az időpontra a másik {rivals.Count} jelentkezőt automatikusan elutasítjuk."
+                            : null)));
                 if (b.CanReject)
                     actions.Controls.Add(Ui.Btn("Elutasítás", Theme.CardBg, Theme.Danger,
                         async (_, _) => await ActAsync(b, "reject", "Biztosan elutasítod ezt a foglalást?"), outline: true));
@@ -221,12 +291,14 @@ namespace TutorConnectApp
                         async (_, _) => await ActAsync(b, "cancel", "Biztosan lemondod ezt a foglalást?"), outline: true));
                 if (canReview)
                     actions.Controls.Add(Ui.PrimaryBtn("Értékelés írása", async (_, _) => await ReviewAsync(b)));
+                if (b.AsStudent && b.OtherId > 0)
+                    actions.Controls.Add(Ui.Btn("Oktató profilja", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenTutorProfileAsync(b.OtherId), outline: true));
                 card.Controls.Add(actions);
             }
-
-            if (b.AsStudent && b.OtherId > 0)
+            else if (b.AsStudent && b.OtherId > 0)
             {
                 var more = Ui.Row();
+                more.Margin = Ui.Pad(0, 6, 0, 4);
                 more.Controls.Add(Ui.Btn("Oktató profilja", Theme.CardBg, Theme.MainBlue, async (_, _) => await OpenTutorProfileAsync(b.OtherId), outline: true));
                 card.Controls.Add(more);
             }
@@ -324,6 +396,8 @@ namespace TutorConnectApp
                         row.Controls.Add(slot.IsBooked
                             ? Ui.Chip("Lefoglalva", Theme.Warning)
                             : Ui.Chip("Szabad", Theme.Success));
+                        if (!slot.IsBooked && slot.Requests > 0)
+                            row.Controls.Add(Ui.Chip($"{slot.Requests} jelentkező", Theme.MainBlue));
                         if (!slot.IsBooked)
                         {
                             var delete = Ui.Btn("Törlés", Theme.CardBg, Theme.Danger, async (_, _) => await DeleteSlotAsync(slot), outline: true);
@@ -351,7 +425,10 @@ namespace TutorConnectApp
 
         private async Task DeleteSlotAsync(SlotItemDto slot)
         {
-            if (MessageBox.Show(FindForm(), "Biztosan törlöd ezt az időpontot?", "Megerősítés", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            string question = slot.Requests > 0
+                ? $"Erre az időpontra {slot.Requests} diák jelentkezett. Ha törlöd, a jelentkezések automatikusan elutasításra kerülnek.\n\nBiztosan törlöd?"
+                : "Biztosan törlöd ezt az időpontot?";
+            if (MessageBox.Show(FindForm(), question, "Megerősítés", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                 return;
 
             try
