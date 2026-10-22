@@ -146,9 +146,6 @@ namespace TutorConnectApp
         /// <summary>A MySQL tinyint(1) mezőt számként (0/1) adja vissza a szerver.</summary>
         [JsonPropertyName("is_booked")] public int IsBookedValue { get; set; }
 
-        /// <summary>Hány diák jelentkezett erre az időpontra (az oktató közülük választ); régebbi szervernél hiányzik.</summary>
-        [JsonPropertyName("requests")] public int Requests { get; set; }
-
         [JsonIgnore] public bool IsBooked => IsBookedValue != 0;
     }
 

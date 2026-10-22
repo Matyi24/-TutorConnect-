@@ -9,7 +9,7 @@ const http = require("http");
 const { WebSocketServer } = require("ws");
 
 
-const { hashPassword, verifyPassword } = require("./auth");
+const { hashPassword, verifyPassword, debug, DEBUG_LOGS } = require("./auth");
 
 const app = express();
 
@@ -53,7 +53,12 @@ app.use(express.json());
 //
 // ============================================================
 
+// A munkamenetek tárolója (memóriában). Külön változóban van, hogy a
+// jelszó-visszaállítás ki tudja léptetni egy felhasználó összes munkamenetét.
+const sessionStore = new session.MemoryStore();
+
 const sessionMiddleware = session({
+        store: sessionStore,
         // Secret used to sign the session cookie so it can't be forged.
         // In production set the SESSION_SECRET environment variable
         // and don't rely on the fallback value.
@@ -88,12 +93,20 @@ app.use(sessionMiddleware);
 // kijelentkeztetjük. Induláskor az adatbázisból töltődik fel.
 const deletedUserIds = new Set();
 
+// A felfüggesztett (admin által kitiltott) felhasználók azonosítói. Ugyanúgy
+// működik, mint a törölteké: ha egy ilyen felhasználónak még él egy
+// munkamenete, a következő kérésnél kijelentkeztetjük.
+const suspendedUserIds = new Set();
+
 app.use((req, res, next) => {
 
     if (
         req.session &&
         req.session.user &&
-        deletedUserIds.has(Number(req.session.user.id))
+        (
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
+        )
     ) {
         delete req.session.user;
     }
@@ -105,34 +118,66 @@ app.use((req, res, next) => {
 // STATIC FILES
 // ============================================================
 
-app.use("/css", express.static(path.join(__dirname, "../css")));
-app.use("/js", express.static(path.join(__dirname, "../js")));
-app.use("/html", express.static(path.join(__dirname, "../html")));
-app.use("/images", express.static(path.join(__dirname, "../images")));
+// A /js mappából a böngészőnek CSAK az itt felsorolt kliens fájlok járnak.
+// A mappában a szerver forráskódja is van (main.js, auth.js), amely az
+// adatbázis-hozzáférést és a session titkot tartalmazza, ezért azt soha
+// nem szabad kiszolgálni.
+//
+// Fehérlistát használunk, nem tiltólistát: ha egy új kliens fájl
+// kimarad innen, az azonnal látszik (404), míg egy tiltólistáról
+// elfelejtett szerverfájl csendben kiszivárogna.
+// ÚJ KLIENS SCRIPT HOZZÁADÁSAKOR ITT IS FEL KELL VENNI!
+const PUBLIC_JS_FILES = new Set([
+    "creator.js",
+    "chat.js",
+    "index.js",
+    "dropdown.js",
+    "oktatok.js",
+    "booking.js",
+    "foglalas.js",
+    "foglalasutan.js",
+    "home.js",
+    "selectmenu.js",
+    "admin.js"
+]);
 
-// A szerver mappája és a node_modules ne legyen letölthető a böngészőből
-const serverFolderName = path.basename(__dirname).toLowerCase();
-
+// Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
+// express.static már kiadja a fájlt.
 app.use((req, res, next) => {
 
-    let firstSegment = "";
+    let segments;
 
     try {
-        firstSegment = decodeURIComponent(req.path)
+        segments = decodeURIComponent(req.path)
             .split(/[\\/]+/)
-            .filter(Boolean)[0] || "";
+            .filter(Boolean)
+            .map((segment) => segment.toLowerCase());
     } catch (error) {
         return res.status(400).end();
     }
 
-    firstSegment = firstSegment.toLowerCase();
+    const firstSegment = segments[0] || "";
 
-    if (firstSegment === serverFolderName || firstSegment === "node_modules") {
+    if (firstSegment === "node_modules") {
         return res.status(404).end();
+    }
+
+    // /js/<fájl>: csak a fehérlistáról. Mappa, "..", "." vagy ismeretlen
+    // fájlnév (pl. MAIN.JS, main.js., main~1.js) esetén 404.
+    if (firstSegment === "js") {
+
+        if (segments.length !== 2 || !PUBLIC_JS_FILES.has(segments[1])) {
+            return res.status(404).end();
+        }
     }
 
     next();
 });
+
+app.use("/css", express.static(path.join(__dirname, "../css")));
+app.use("/js", express.static(path.join(__dirname, "../js")));
+app.use("/html", express.static(path.join(__dirname, "../html")));
+app.use("/images", express.static(path.join(__dirname, "../images")));
 
 
 // Serve the project root from the actual vsc folder regardless of
@@ -152,6 +197,9 @@ const db = mysql.createConnection({
     database: "zsamo"
 });
 
+// E-mail megerősítés és elfelejtett jelszó (lásd authflow.js)
+const authflow = require("./authflow").setup({ app, db, sessionStore });
+
 // ============================================================
 // BASIC PAGES
 // ============================================================
@@ -164,6 +212,26 @@ app.get("/", (req, res) => {
     );
 });
 
+app.get("/adatvedelem", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/adatvedelem.html")
+    );
+});
+
+
+app.get("/felhasz_feltetelek", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/felhasz_feltetelek.html")
+    );
+});
+
+
+// A lábléc "Kapcsolatok" linkje ide mutat
+app.get("/kapcsolatok", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "../html/kapcsolatok.html")
+    );
+});
 
 app.get("/index", (req, res) => {
     console.log("🌐 GET /index");
@@ -183,8 +251,53 @@ app.get("/subs", (req, res) => {
 });
 
 
+// A belépés utáni úticél ("next"). Csak az oldalunkon belüli útvonalat
+// fogadjuk el ("/valami"), idegen címet nem ("//rossz.hu", "http://..."),
+// különben a belépő oldal átirányításra lenne használható (open redirect).
+function safeNext(value) {
+
+    if (
+        typeof value !== "string" ||
+        value.length > 200 ||
+        !value.startsWith("/") ||
+        value.startsWith("//") ||
+        value.startsWith("/\\") ||
+        /[\u0000-\u001f]/.test(value)
+    ) {
+        return "/index";
+    }
+
+    return value;
+}
+
+
+// Belépést igénylő oldalaknál: vendéget a belépéshez küldünk (és belépés
+// után ide vissza), az adminisztrátort az admin felületre, mert a diákoknak
+// és oktatóknak szóló oldalakon neki nincs dolga.
+// true = a válasz már elment (átirányítás).
+function guardPage(req, res, { forbidAdmin = false } = {}) {
+
+    if (!req.session.user) {
+        res.redirect("/login?next=" + encodeURIComponent(req.originalUrl));
+        return true;
+    }
+
+    if (forbidAdmin && req.session.user.role === "ADMIN") {
+        res.redirect("/admin");
+        return true;
+    }
+
+    return false;
+}
+
+
 app.get("/login", (req, res) => {
     console.log("🌐 GET /login");
+
+    // Aki már be van jelentkezve, annak nincs dolga a belépő oldalon
+    if (req.session.user) {
+        return res.redirect("/index");
+    }
 
     res.sendFile(
         path.join(__dirname, "../html/login.html")
@@ -194,6 +307,10 @@ app.get("/login", (req, res) => {
 
 app.get("/register", (req, res) => {
     console.log("🌐 GET /register");
+
+    if (req.session.user) {
+        return res.redirect("/index");
+    }
 
     res.sendFile(
         path.join(__dirname, "../html/register.html")
@@ -209,6 +326,11 @@ app.get("/gyik", (req, res) => {
 
 
 app.get("/chat", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/chat.html")
     );
@@ -223,6 +345,11 @@ app.get("/oktatok", (req, res) => {
 
 
 app.get("/foglalas", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/foglalas.html")
     );
@@ -230,6 +357,11 @@ app.get("/foglalas", (req, res) => {
 
 
 app.get("/foglalasutan", (req, res) => {
+
+    if (guardPage(req, res, { forbidAdmin: true })) {
+        return;
+    }
+
     res.sendFile(
         path.join(__dirname, "../html/foglalasutan.html")
     );
@@ -252,7 +384,7 @@ app.get("/foglalasutan", (req, res) => {
 //
 // ============================================================
 
-app.get("/api/me", (req, res) => {
+app.get("/api/me", async (req, res) => {
 
     // No user stored in the session => nobody is logged in
     // (no cookie, expired cookie, or the session was destroyed).
@@ -261,6 +393,17 @@ app.get("/api/me", (req, res) => {
         return res.json({
             loggedIn: false
         });
+    }
+
+
+    // Megerősítette-e már az e-mail címét? (A creator.js ebből tudja,
+    // kell-e a figyelmeztető sáv.)
+    let emailVerified = true;
+
+    try {
+        emailVerified = await authflow.isVerified(req.session.user.id);
+    } catch (error) {
+        console.error("❌ /api/me (emailVerified):", error);
     }
 
 
@@ -274,7 +417,8 @@ app.get("/api/me", (req, res) => {
             id: req.session.user.id,
             name: req.session.user.name,
             email: req.session.user.email,
-            role: req.session.user.role
+            role: req.session.user.role,
+            emailVerified
         }
     });
 });
@@ -328,8 +472,9 @@ app.post("/register", async (req, res) => {
     console.log("==========================================");
 
 
-    console.log("\n📥 RAW DATA RECEIVED:");
-    console.log(req.body);
+    // A kérés törzse a jelszót is tartalmazza: csak teszt-naplózásnál írjuk ki
+    debug("\n📥 RAW DATA RECEIVED:");
+    debug(req.body);
 
 
     const {
@@ -491,6 +636,11 @@ app.post("/register", async (req, res) => {
             );
 
 
+            // Megerősítő levél (nem várjuk meg: a regisztráció nem függ tőle)
+            authflow.issueVerification(result.insertId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
+
+
             // ------------------------------------------------
             // AUTOMATIC LOGIN AFTER REGISTRATION
             // ------------------------------------------------
@@ -592,7 +742,9 @@ app.post("/login", async (req, res) => {
             full_name,
             email,
             password_hash,
-            role
+            role,
+            suspended_at,
+            suspended_reason
         FROM users
         WHERE email = ?
         LIMIT 1
@@ -680,6 +832,18 @@ app.post("/login", async (req, res) => {
                 // LOGIN SUCCESSFUL
                 // ------------------------------------------------
 
+                // Felfüggesztett fiók: a jelszó jó, de nem léphet be
+                if (user.suspended_at) {
+
+                    console.log("⛔ LOGIN BLOCKED (suspended):", user.id);
+
+                    return res.status(403).send(
+                        "A fiókod fel van függesztve." +
+                        (user.suspended_reason ? " Indoklás: " + user.suspended_reason : "") +
+                        " Ha tévedésnek tartod, írj az oldal üzemeltetőjének."
+                    );
+                }
+
                 console.log(
                     "✅ LOGIN SUCCESSFUL"
                 );
@@ -738,11 +902,12 @@ app.post("/login", async (req, res) => {
 
 
                         // ------------------------------------------------
-                        // REDIRECT TO INDEX
+                        // REDIRECT: az eredetileg kért oldalra, ha volt ilyen,
+                        // különben a főoldalra (a "next" mindig ellenőrzött)
                         // ------------------------------------------------
 
                         return res.redirect(
-                            "/index"
+                            safeNext(req.body.next)
                         );
                     }
                 );
@@ -842,6 +1007,8 @@ db.connect(
         ensureUserEmailLength();
         ensureProfileSchema();
         ensureBookingSchema();
+        authflow.ensureSchema();
+        moderation.ensureSchema();
 
         console.log(
             "🖥️ Host: localhost"
@@ -920,6 +1087,7 @@ app.get("/api/tutors", (req, res) => {
 
         WHERE u.role = 'TUTOR'
           AND u.deleted_at IS NULL
+          AND u.suspended_at IS NULL
 
         GROUP BY
             u.id,
@@ -953,6 +1121,16 @@ app.get("/api/tutors", (req, res) => {
             "✅ Tutorok lekérve:",
             results.length
         );
+
+
+        // Az e-mail cím személyes adat: csak bejelentkezett felhasználó
+        // láthatja. A vendégeknek üresen megy ki.
+        if (!req.session.user) {
+
+            results.forEach((tutor) => {
+                tutor.email = null;
+            });
+        }
 
 
         res.json(results);
@@ -1044,8 +1222,9 @@ app.get("/api/stats", (req, res) => {
 
     const sql = `
         SELECT
-            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL) AS tutor_count,
-            (SELECT COUNT(*) FROM bookings) AS booking_count,
+            (SELECT COUNT(*) FROM users WHERE role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL) AS tutor_count,
+            -- csak a lezajlott (teljesített) órák számítanak
+            (SELECT COUNT(*) FROM bookings WHERE status_ = 'COMPLETED') AS booking_count,
             (SELECT COALESCE(AVG(CAST(rating AS DECIMAL(2,1))), 0) FROM reviews) AS avg_rating
     `;
 
@@ -1263,7 +1442,7 @@ app.post("/api/conversations", (req, res) => {
 
     // 3. Létezik ez az oktató?
     db.query(
-        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+        "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
         [tutorId],
         (err, tutors) => {
 
@@ -1402,9 +1581,71 @@ app.post("/api/conversations/:id/read", (req, res) => {
 // ============================================================
 
 // Feltöltött fájlok helye (a böngészőből közvetlenül nem érhető el)
-const CHAT_UPLOAD_DIR = path.join(__dirname, "uploads", "chat");
+//
+// A fájlok a nyilvánosan kiszolgált vsc mappán KÍVÜL vannak
+// (projekt/uploads/chat). Így a böngésző nem érheti el őket közvetlenül,
+// csak a /api/messages/:id/attachment végponton keresztül, amely
+// ellenőrzi, hogy a kérő tagja-e a beszélgetésnek.
+// Az UPLOAD_DIR környezeti változóval át lehet írni.
+const CHAT_UPLOAD_DIR = process.env.UPLOAD_DIR
+    ? path.resolve(process.env.UPLOAD_DIR)
+    : path.join(__dirname, "..", "..", "uploads", "chat");
+
+// A régi hely (vsc/js/uploads/chat) a nyilvános /js mappában volt
+const LEGACY_UPLOAD_DIR = path.join(__dirname, "uploads", "chat");
 
 fs.mkdirSync(CHAT_UPLOAD_DIR, { recursive: true });
+
+// A korábban a régi helyre feltöltött fájlok átköltöztetése az újra
+// (egyszeri; ha nincs régi mappa, nem csinál semmit)
+function migrateLegacyUploads() {
+
+    if (!fs.existsSync(LEGACY_UPLOAD_DIR)) {
+        return;
+    }
+
+    let moved = 0;
+
+    for (const name of fs.readdirSync(LEGACY_UPLOAD_DIR)) {
+
+        const from = path.join(LEGACY_UPLOAD_DIR, name);
+        const to = path.join(CHAT_UPLOAD_DIR, name);
+
+        try {
+
+            if (!fs.statSync(from).isFile() || fs.existsSync(to)) {
+                continue;
+            }
+
+            try {
+                fs.renameSync(from, to);
+            } catch (renameError) {
+                // Másik meghajtóra nem lehet átnevezni: másolás + törlés
+                fs.copyFileSync(from, to);
+                fs.unlinkSync(from);
+            }
+
+            moved++;
+
+        } catch (error) {
+            console.error("❌ Feltöltött fájl átköltöztetése sikertelen:", name, error.message);
+        }
+    }
+
+    // A régi mappák törlése, ha kiürültek
+    try {
+        fs.rmdirSync(LEGACY_UPLOAD_DIR);
+        fs.rmdirSync(path.dirname(LEGACY_UPLOAD_DIR));
+    } catch (error) {
+        // nem üres, vagy már nincs: nem baj
+    }
+
+    if (moved > 0) {
+        console.log(`📦 ${moved} feltöltött fájl átköltöztetve a nyilvános mappából`);
+    }
+}
+
+migrateLegacyUploads();
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -2313,7 +2554,8 @@ server.on("upgrade", (req, socket, head) => {
         if (
             !req.session ||
             !req.session.user ||
-            deletedUserIds.has(Number(req.session.user.id))
+            deletedUserIds.has(Number(req.session.user.id)) ||
+            suspendedUserIds.has(Number(req.session.user.id))
         ) {
             socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
             socket.destroy();
@@ -2779,6 +3021,16 @@ app.put("/api/account", async (req, res) => {
         }
 
 
+        // Új e-mail cím: újra meg kell erősíteni
+        if (emailChanged) {
+
+            await authflow.markUnverified(userId);
+
+            authflow.issueVerification(userId, email, name)
+                .catch((error) => console.error("❌ Megerősítő levél:", error));
+        }
+
+
         // Keep the session in sync so the navbar shows the new data
         req.session.user.name = name;
         req.session.user.email = email;
@@ -2790,7 +3042,8 @@ app.put("/api/account", async (req, res) => {
                 name: name,
                 email: email,
                 role: current.role
-            }
+            },
+            emailVerificationSent: emailChanged
         });
 
     } catch (err) {
@@ -2812,22 +3065,16 @@ app.put("/api/account", async (req, res) => {
 //
 // Menete:
 //   1. Az oktató szabad időpontokat ad meg (availabilities).
-//   2. A diák kiválaszt egyet + egy tantárgyat -> a foglalás PENDING.
-//      Ugyanarra az időpontra TÖBB diák is jelentkezhet: a jelentkezés
-//      az időpontot még nem foglalja le (is_booked = 0 marad).
-//   3. Az oktató a jelentkezők közül EGYET elfogad (CONFIRMED): ekkor az
-//      időpont foglalt lesz (is_booked = 1), az összes többi függő
-//      jelentkezés pedig automatikusan elutasításra kerül (REJECTED).
-//      Az oktató el is utasíthat egy jelentkezőt (REJECTED), ilyenkor a
-//      többi jelentkezés függőben marad.
-//      Bármelyik fél lemondhatja (CANCELLED) az óra kezdete előtt;
-//      az elfogadott óra lemondásakor az időpont újra szabad lesz.
+//   2. A diák kiválaszt egyet + egy tantárgyat -> a foglalás PENDING,
+//      az időpont foglalt (is_booked = 1).
+//   3. Az oktató elfogadja (CONFIRMED) vagy elutasítja (REJECTED).
+//      Bármelyik fél lemondhatja (CANCELLED) az óra kezdete előtt.
+//      Elutasításkor és lemondáskor az időpont újra szabad lesz.
 //   4. Az elfogadott foglalás az óra végén magától COMPLETED lesz
 //      (ez után lehet értékelni).
 //
-// A jelentkezés egyetlen atomi INSERT ... SELECT-tel történik, amely csak
-// szabad időpontra sikerül; az elfogadást a status_ feltételes UPDATE-je
-// védi, így egy időpontra soha nem lesz két elfogadott foglalás.
+// Az időpont lefoglalása egyetlen atomi UPDATE-tel történik, így két
+// diák nem foglalhatja le ugyanazt.
 
 const BOOKING_FILTERS = {
     pending:   "b.status_ = 'PENDING' AND b.start_time >= NOW()",
@@ -2885,9 +3132,7 @@ app.get("/api/availability", async (req, res) => {
 
     try {
 
-        const pool = db.promise();
-
-        const [rows] = await pool.query(
+        const [rows] = await db.promise().query(
             `SELECT id, start_time, end_time, is_booked
              FROM availabilities
              WHERE tutor_id = ? AND end_time > NOW()
@@ -2896,28 +3141,7 @@ app.get("/api/availability", async (req, res) => {
             [req.session.user.id, MAX_FUTURE_SLOTS]
         );
 
-        // Hány diák jelentkezett az egyes időpontokra (az oktató ebből választ)
-        const [requests] = await pool.query(
-            `SELECT start_time, end_time, COUNT(*) AS n
-             FROM bookings
-             WHERE tutor_id = ? AND status_ = 'PENDING' AND start_time > NOW()
-             GROUP BY start_time, end_time`,
-            [req.session.user.id]
-        );
-
-        const counts = new Map(
-            requests.map((row) => [
-                new Date(row.start_time).getTime() + "-" + new Date(row.end_time).getTime(),
-                Number(row.n)
-            ])
-        );
-
-        res.json(rows.map((row) => ({
-            ...row,
-            requests: counts.get(
-                new Date(row.start_time).getTime() + "-" + new Date(row.end_time).getTime()
-            ) || 0
-        })));
+        res.json(rows);
 
     } catch (err) {
         console.error("❌ GET /api/availability error:", err);
@@ -2928,7 +3152,7 @@ app.get("/api/availability", async (req, res) => {
 
 app.post("/api/availability", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "TUTOR") {
         return res.status(403).json({ error: "Csak oktató adhat meg időpontot." });
@@ -3055,27 +3279,17 @@ app.delete("/api/availability/:id", async (req, res) => {
 
     try {
 
-        const pool = db.promise();
-
-        const [found] = await pool.query(
-            "SELECT start_time, end_time FROM availabilities WHERE id = ? AND tutor_id = ? AND is_booked = 0",
-            [slotId, req.session.user.id]
-        );
-
-        // Csak a saját, még el nem fogadott (le nem foglalt) időpont törölhető
-        const [result] = await pool.query(
+        // Csak a saját, még le nem foglalt időpont törölhető
+        const [result] = await db.promise().query(
             "DELETE FROM availabilities WHERE id = ? AND tutor_id = ? AND is_booked = 0",
             [slotId, req.session.user.id]
         );
 
-        if (result.affectedRows === 0 || found.length === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({
                 error: "Az időpont nem található, vagy már le van foglalva."
             });
         }
-
-        // A törölt időpontra jelentkezők elutasítva (nem maradhatnak függőben egy megszűnt időpontra)
-        await rejectPendingForSlot(pool, req.session.user.id, found[0].start_time, found[0].end_time);
 
         res.json({ success: true });
 
@@ -3103,7 +3317,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
         const pool = db.promise();
 
         const [tutor] = await pool.query(
-            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL",
+            "SELECT id FROM users WHERE id = ? AND role = 'TUTOR' AND deleted_at IS NULL AND suspended_at IS NULL",
             [tutorId]
         );
 
@@ -3142,7 +3356,7 @@ app.get("/api/tutors/:id/availability", async (req, res) => {
 
 app.post("/api/bookings", async (req, res) => {
 
-    if (!requireLogin(req, res)) return;
+    if (!(await authflow.requireVerified(req, res))) return;
 
     if (req.session.user.role !== "STUDENT") {
         return res.status(403).json({ error: "Csak diák foglalhat időpontot." });
@@ -3176,7 +3390,7 @@ app.post("/api/bookings", async (req, res) => {
             `SELECT a.id, a.tutor_id, a.start_time, a.end_time
              FROM availabilities a
              INNER JOIN users u ON u.id = a.tutor_id
-             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL`,
+             WHERE a.id = ? AND u.role = 'TUTOR' AND u.deleted_at IS NULL AND u.suspended_at IS NULL`,
             [slotId]
         );
 
@@ -3212,35 +3426,50 @@ app.post("/api/bookings", async (req, res) => {
             });
         }
 
-        const minutes = (new Date(slot.end_time) - new Date(slot.start_time)) / 60000;
-        const price = Math.round(Number(rates[0].hourly_rate) * minutes / 60);
-
-        // A jelentkezés az időpontot NEM foglalja le: több diák is jelentkezhet ugyanarra,
-        // az oktató választ közülük. Az egyetlen INSERT ... SELECT csak akkor szúr be, ha az
-        // időpont még szabad (nincs elfogadott foglalás) és a jövőben van, így egy közben
-        // történő elfogadással sem maradhat függő jelentkezés egy már foglalt időpontra.
-        const [result] = await pool.query(
-            `INSERT INTO bookings
-                (student_id, tutor_id, subject_id, start_time, end_time,
-                 status_, created_at, price, note)
-             SELECT ?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?
-             FROM availabilities
+        // Az időpont lefoglalása: csak akkor sikerül, ha még szabad.
+        const [claim] = await pool.query(
+            `UPDATE availabilities SET is_booked = 1
              WHERE id = ? AND is_booked = 0 AND start_time > NOW()`,
-            [
-                studentId, slot.tutor_id, subjectId,
-                slot.start_time, slot.end_time,
-                price, note || null,
-                slotId
-            ]
+            [slotId]
         );
 
-        if (result.affectedRows === 0) {
+        if (claim.affectedRows === 0) {
             return res.status(409).json({
                 error: "Ezt az időpontot már lefoglalták, vagy lejárt."
             });
         }
 
-        const bookingId = result.insertId;
+        const minutes = (new Date(slot.end_time) - new Date(slot.start_time)) / 60000;
+        const price = Math.round(Number(rates[0].hourly_rate) * minutes / 60);
+
+        let bookingId;
+
+        try {
+
+            const [result] = await pool.query(
+                `INSERT INTO bookings
+                    (student_id, tutor_id, subject_id, start_time, end_time,
+                     status_, created_at, price, note)
+                 VALUES (?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?)`,
+                [
+                    studentId, slot.tutor_id, subjectId,
+                    slot.start_time, slot.end_time,
+                    price, note || null
+                ]
+            );
+
+            bookingId = result.insertId;
+
+        } catch (insertError) {
+
+            // Sikertelen mentés: az időpont újra szabad
+            await pool.query(
+                "UPDATE availabilities SET is_booked = 0 WHERE id = ?",
+                [slotId]
+            );
+
+            throw insertError;
+        }
 
         console.log("📅 Új foglalás:", bookingId);
 
@@ -3466,46 +3695,6 @@ app.post("/api/bookings/:id/review", async (req, res) => {
 
 // ---------------- elfogadás, elutasítás, lemondás ----------------
 
-// Van-e (másik) elfogadott foglalás ugyanarra az oktatóra és időpontra?
-// lowerOnly: csak a kisebb azonosítójú számít (egyidejű elfogadások eldöntéséhez).
-async function hasConfirmedBooking(pool, booking, exceptId, lowerOnly = false) {
-
-    const [rows] = await pool.query(
-        `SELECT id FROM bookings
-         WHERE tutor_id = ? AND start_time = ? AND end_time = ?
-           AND status_ = 'CONFIRMED' AND id ${lowerOnly ? "<" : "<>"} ?
-         LIMIT 1`,
-        [booking.tutor_id, booking.start_time, booking.end_time, exceptId]
-    );
-
-    return rows.length > 0;
-}
-
-// Az időpontra függőben lévő összes jelentkezés elutasítása (egy jelentkezőt elfogadtak,
-// vagy az időpontot törölték). Az érintett diákok értesítést kapnak.
-async function rejectPendingForSlot(pool, tutorId, start, end, exceptId = 0) {
-
-    const [pending] = await pool.query(
-        `SELECT id, student_id FROM bookings
-         WHERE tutor_id = ? AND start_time = ? AND end_time = ?
-           AND status_ = 'PENDING' AND id <> ?`,
-        [tutorId, start, end, exceptId]
-    );
-
-    if (pending.length === 0) return 0;
-
-    await pool.query(
-        "UPDATE bookings SET status_ = 'REJECTED' WHERE id IN (?) AND status_ = 'PENDING'",
-        [pending.map((row) => row.id)]
-    );
-
-    for (const row of pending) {
-        sendToUser(row.student_id, { type: "booking_update" });
-    }
-
-    return pending.length;
-}
-
 const BOOKING_ACTIONS = {
     confirm: { from: "PENDING",   to: "CONFIRMED", tutorOnly: true,  frees: false },
     reject:  { from: "PENDING",   to: "REJECTED",  tutorOnly: true,  frees: true  },
@@ -3561,15 +3750,6 @@ app.post("/api/bookings/:id/:action", async (req, res) => {
             });
         }
 
-        const isConfirm = action.to === "CONFIRMED";
-
-        // Egy időpontra csak egy diákot fogadhat el az oktató
-        if (isConfirm && await hasConfirmedBooking(pool, booking, bookingId)) {
-            return res.status(409).json({
-                error: "Erre az időpontra már elfogadtál egy másik diákot."
-            });
-        }
-
         // A státuszt csak akkor írjuk át, ha közben nem változott
         const [result] = await pool.query(
             "UPDATE bookings SET status_ = ? WHERE id = ? AND status_ = ?",
@@ -3580,31 +3760,8 @@ app.post("/api/bookings/:id/:action", async (req, res) => {
             return res.status(409).json({ error: "A foglalás időközben megváltozott." });
         }
 
-        if (isConfirm) {
-
-            // Két egyidejű elfogadásnál a kisebb azonosítójú nyer, a másik visszalép
-            if (await hasConfirmedBooking(pool, booking, bookingId, true)) {
-                await pool.query(
-                    "UPDATE bookings SET status_ = 'REJECTED' WHERE id = ? AND status_ = 'CONFIRMED'",
-                    [bookingId]
-                );
-                return res.status(409).json({
-                    error: "Erre az időpontra már elfogadtál egy másik diákot."
-                });
-            }
-
-            // Az időpont foglalt, a többi jelentkező automatikusan elutasítva
-            await pool.query(
-                `UPDATE availabilities SET is_booked = 1
-                 WHERE tutor_id = ? AND start_time = ? AND end_time = ?`,
-                [booking.tutor_id, booking.start_time, booking.end_time]
-            );
-
-            await rejectPendingForSlot(pool, booking.tutor_id, booking.start_time, booking.end_time, bookingId);
-        }
-
-        // Az elfogadott óra lemondásakor az időpont újra szabad (jelentkezés elutasítása nem érinti)
-        if (action.frees && !(await hasConfirmedBooking(pool, booking, bookingId))) {
+        // Elutasításkor és lemondáskor az időpont újra szabad
+        if (action.frees) {
 
             await pool.query(
                 `UPDATE availabilities SET is_booked = 0
@@ -3828,9 +3985,24 @@ app.delete("/api/account", async (req, res) => {
 // START SERVER
 // ============================================================
 
+// Jelentések és admin felület (lásd moderation.js)
+const moderation = require("./moderation").setup({
+    app,
+    db,
+    suspendedUserIds,
+    clients,
+    endSessionsOf: authflow.endSessionsOf,
+    allow: authflow.allow
+});
+
 server.listen(3000, () => {
     console.log("\n==========================================");
     console.log("🌍 SERVER RUNNING");
     console.log("➡️ http://localhost:3000");
+    console.log(
+        DEBUG_LOGS
+            ? "🐞 Teszt-naplózás: BE (a jelszavak is kiíródnak, élesben ne használd)"
+            : "🔒 Teszt-naplózás: KI"
+    );
     console.log("==========================================\n");
 });
