@@ -168,23 +168,32 @@ namespace TutorConnectApp
 
         private void ShowBookings(List<BookingDto> bookings)
         {
+            // oktatónál: hányan jelentkeztek ugyanarra az időpontra (egyet fogadhat el, a többi automatikusan elutasítva)
+            var competing = bookings
+                .Where(b => b.Status == "PENDING" && !b.AsStudent)
+                .GroupBy(b => (b.StartTime, b.EndTime))
+                .ToDictionary(g => g.Key, g => g.Count());
+
             ReplaceRowsAfter(tabRow, () =>
             {
                 if (bookings.Count == 0)
                     AddRow(Ui.MessageCard("Ebben a kategóriában nincs foglalás.", "\uE787"));
                 else
                     foreach (var booking in bookings)
-                        AddRow(BuildBookingCard(booking));
+                        AddRow(BuildBookingCard(booking, competing.GetValueOrDefault((booking.StartTime, booking.EndTime), 1)));
             });
         }
 
-        private CardPanel BuildBookingCard(BookingDto b)
+        /// <param name="applicants">Hány függő jelentkezés van ugyanerre az időpontra (oktatónál).</param>
+        private CardPanel BuildBookingCard(BookingDto b, int applicants = 1)
         {
             var card = new CardPanel();
 
             var head = Ui.Row();
             head.Controls.Add(Ui.Lbl(b.SubjectName ?? "Tantárgy", 12.5F, Theme.Text, bold: true, margin: Ui.Pad(0, 2, 12, 0)));
             head.Controls.Add(StatusChip(b.Status));
+            if (applicants > 1)
+                head.Controls.Add(Ui.Chip($"{applicants} jelentkező erre az időpontra", Theme.MainBlue));
             card.Controls.Add(head);
 
             card.Controls.Add(Ui.Lbl((b.AsStudent ? "Oktató: " : "Diák: ") + (b.OtherName ?? "ismeretlen"), 10.5F, Theme.Text));
@@ -195,6 +204,10 @@ namespace TutorConnectApp
 
             if (!string.IsNullOrWhiteSpace(b.Note))
                 card.Controls.Add(Ui.Lbl("Üzenet: " + b.Note, 10F, Theme.Muted, wrap: true));
+
+            if (b.Status == "PENDING" && b.AsStudent)
+                card.Controls.Add(Ui.Lbl("Az oktató a jelentkezők közül választ. Ha másik diákot fogad el erre az időpontra, ez a jelentkezésed automatikusan elutasításra kerül.",
+                    9.5F, Theme.Muted, wrap: true, margin: Ui.Pad(0, 2, 0, 6)));
 
             if (b.Review != null)
             {
@@ -212,7 +225,10 @@ namespace TutorConnectApp
             {
                 var actions = Ui.Row();
                 if (b.CanConfirm)
-                    actions.Controls.Add(Ui.Btn("Elfogadás", Theme.Success, Theme.White, async (_, _) => await ActAsync(b, "confirm", null)));
+                    actions.Controls.Add(Ui.Btn("Elfogadás", Theme.Success, Theme.White, async (_, _) => await ActAsync(b, "confirm",
+                        applicants > 1
+                            ? $"Elfogadod ezt a jelentkezést ({b.OtherName})? Erre az időpontra a másik {applicants - 1} jelentkezőt automatikusan elutasítjuk."
+                            : null)));
                 if (b.CanReject)
                     actions.Controls.Add(Ui.Btn("Elutasítás", Theme.CardBg, Theme.Danger,
                         async (_, _) => await ActAsync(b, "reject", "Biztosan elutasítod ezt a foglalást?"), outline: true));
@@ -324,6 +340,8 @@ namespace TutorConnectApp
                         row.Controls.Add(slot.IsBooked
                             ? Ui.Chip("Lefoglalva", Theme.Warning)
                             : Ui.Chip("Szabad", Theme.Success));
+                        if (!slot.IsBooked && slot.Requests > 0)
+                            row.Controls.Add(Ui.Chip($"{slot.Requests} jelentkező", Theme.MainBlue));
                         if (!slot.IsBooked)
                         {
                             var delete = Ui.Btn("Törlés", Theme.CardBg, Theme.Danger, async (_, _) => await DeleteSlotAsync(slot), outline: true);
@@ -351,7 +369,10 @@ namespace TutorConnectApp
 
         private async Task DeleteSlotAsync(SlotItemDto slot)
         {
-            if (MessageBox.Show(FindForm(), "Biztosan törlöd ezt az időpontot?", "Megerősítés", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            string question = slot.Requests > 0
+                ? $"Erre az időpontra {slot.Requests} diák jelentkezett. Ha törlöd, a jelentkezések automatikusan elutasításra kerülnek.\n\nBiztosan törlöd?"
+                : "Biztosan törlöd ezt az időpontot?";
+            if (MessageBox.Show(FindForm(), question, "Megerősítés", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                 return;
 
             try
