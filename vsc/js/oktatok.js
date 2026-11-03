@@ -1189,31 +1189,10 @@ function renderProfileReviews(reviews) {
 
 
                             </div>
-
-
-                            <div
-                                class="profile-review-stars"
-                            >
-
-                                ${getStars(
-                                    rating
-                                )}
-
+                            <div class="profile-review-stars">${getStars(rating)}
                             </div>
-
-
                         </div>
-
-
-                        <p
-                            class="profile-review-text"
-                        >
-
-                            ${escapeHtml(
-                                text
-                            )}
-
-                        </p>
+        <p class="profile-review-text">${escapeHtml(text)}</p>
 
 
                     </article>
