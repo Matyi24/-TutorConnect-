@@ -12,6 +12,7 @@
 //
 // Utána a felhasználónak ki kell lépnie és újra be kell lépnie.
 
+const { dbConfig } = require("./env");
 const mysql = require("mysql2/promise");
 
 const email = process.argv[2];
@@ -24,12 +25,8 @@ if (!email || !["ADMIN", "STUDENT", "TUTOR"].includes(role)) {
 
 (async () => {
 
-    const db = await mysql.createConnection({
-        host: "localhost",
-        user: "root",
-        password: "",
-        database: "zsamo"
-    });
+    // A hozzáférési adatok a .env fájlból jönnek (lásd env.js)
+    const db = await mysql.createConnection(dbConfig);
 
     const [rows] = await db.query(
         "SELECT id, full_name, role FROM users WHERE email = ? AND deleted_at IS NULL LIMIT 1",

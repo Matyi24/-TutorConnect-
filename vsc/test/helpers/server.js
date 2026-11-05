@@ -13,6 +13,7 @@ const path = require("path");
 const http = require("http");
 
 const MAIN_PATH = path.join(__dirname, "../../vsc/js/main.js");
+const AUTHFLOW_PATH = path.join(path.dirname(MAIN_PATH), "authflow.js");
 const MYSQL_PATH = require.resolve("mysql2", { paths: [path.dirname(MAIN_PATH)] });
 
 // main.js and auth.js are very chatty (they even print passwords), so keep the
@@ -42,6 +43,12 @@ class FakeDb {
     reset() {
         this.responders = [];
         this.queries = [];
+
+        // The login / register rate limiter (authflow.js) counts per IP, and every
+        // test comes from 127.0.0.1 - start each test with empty counters.
+        const authflow = require.cache[AUTHFLOW_PATH];
+        if (authflow) authflow.exports.resetAttempts();
+
         // main.js runs these once after a successful connect().
         this.when(/SHOW COLUMNS FROM messages/i, () => [{ Field: "x" }]);
     }

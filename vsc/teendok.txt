@@ -4,11 +4,13 @@ TUTORCONNECT - HÁTRALÉVŐ TEENDŐK
 1) ROADMAP (a 6 pontos lista maradéka)
 --------------------------------------
 [ ] 4. Biztonsági javítások - még nyitott részek:
-      - Bejelentkezés próbálkozás-korlátozás (rate limit a /login és /register útvonalakon;
-        az authflow.js-ben már van egy kész "allow" függvény, amit újra lehet használni)
+      [x] Bejelentkezés próbálkozás-korlátozás (/login: IP-nként 30 és fiókonként 10 / 15 perc;
+          /register: IP-nként 10 / óra) - KÉSZ
       - Munkamenet (session) újragenerálás belépéskor (session fixation ellen)
       - Biztonsági HTTP fejlécek (helmet)
-      - Titkos adatok .env fájlba: session secret, adatbázis jelszó
+      [x] Titkos adatok .env fájlba: session secret, adatbázis jelszó - KÉSZ (lásd env.js és .env.example;
+          élesben NODE_ENV=production + SESSION_SECRET, DB_USER, DB_PASSWORD kötelező)
+      [x] A szerver forráskódja már nem érhető el a /js bypass-szal (/./js/main.js stb.) - KÉSZ
       - /register: jelszó-erősség ellenőrzése a szerveren is (most csak a kliens ellenőriz)
       - Session tár: most memóriában van, újraindításkor mindenki kilép (adatbázisos tár kellene)
       - A régi chat-feltöltések még benne vannak a GitHub előzményeiben (döntés kell: előzmény tisztítása?)

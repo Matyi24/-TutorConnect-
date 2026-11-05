@@ -492,4 +492,11 @@ function setup({ app, db, sessionStore }) {
 }
 
 
-module.exports = { setup };
+// Csak teszteléshez: a próbálkozás-számlálók nullázása, hogy az egymást követő
+// tesztek ne fussanak bele a korlátba. HTTP-n keresztül nem érhető el.
+function resetAttempts() {
+    attempts.clear();
+}
+
+
+module.exports = { setup, resetAttempts };

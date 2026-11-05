@@ -1,3 +1,6 @@
+// A .env betöltése és a titkok ellenőrzése: ennek kell az ELSŐNEK futnia
+const env = require("./env");
+
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
@@ -20,6 +23,18 @@ const app = express();
 console.log("==========================================");
 console.log("🚀 TUTOR CONNECT SERVER STARTING");
 console.log("==========================================");
+
+// Reverse proxy (nginx, Cloudflare, hosting) mögött a req.ip a proxy címe
+// lenne, így a próbálkozás-korlátozás mindenkit egy kalap alá venne. Ha a
+// szerver proxy mögött fut, állítsd be a TRUST_PROXY változót a proxyk
+// számára (pl. 1). Beállítás nélkül az X-Forwarded-For fejlécet NEM vesszük
+// figyelembe, mert egy támadó hamisíthatná, és megkerülhetné a korlátot.
+if (process.env.TRUST_PROXY) {
+
+    const hops = Number(process.env.TRUST_PROXY);
+
+    app.set("trust proxy", Number.isInteger(hops) ? hops : process.env.TRUST_PROXY);
+}
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -60,9 +75,9 @@ const sessionStore = new session.MemoryStore();
 const sessionMiddleware = session({
         store: sessionStore,
         // Secret used to sign the session cookie so it can't be forged.
-        // In production set the SESSION_SECRET environment variable
-        // and don't rely on the fallback value.
-        secret: process.env.SESSION_SECRET || "tutorconnect-dev-secret",
+        // It comes from the SESSION_SECRET environment variable (.env file);
+        // see env.js - in production the server refuses to start without it.
+        secret: env.sessionSecret,
         // Don't re-save the session on every request if nothing changed.
         resave: false,
         // Don't create a session (and cookie) for visitors who never log in.
@@ -76,9 +91,10 @@ const sessionMiddleware = session({
             // but it IS sent when the user simply navigates to our site.
             sameSite: "lax",
 
-            // For localhost development use false.
-            // If you later use HTTPS, change this to true.
-            secure: false,
+            // Only sent over HTTPS. Automatically true when
+            // NODE_ENV=production (override with COOKIE_SECURE=true/false),
+            // false for http://localhost development. See env.js.
+            secure: env.cookieSecure,
 
             // How long the cookie (= the login) lasts, in milliseconds:
             // 1000 ms * 60 s * 60 min * 24 h * 7 days = 7 days
@@ -117,15 +133,20 @@ app.use((req, res, next) => {
 // ============================================================
 // STATIC FILES
 // ============================================================
-
-// A /js mappából a böngészőnek CSAK az itt felsorolt kliens fájlok járnak.
-// A mappában a szerver forráskódja is van (main.js, auth.js), amely az
-// adatbázis-hozzáférést és a session titkot tartalmazza, ezért azt soha
-// nem szabad kiszolgálni.
 //
-// Fehérlistát használunk, nem tiltólistát: ha egy új kliens fájl
-// kimarad innen, az azonnal látszik (404), míg egy tiltólistáról
-// elfelejtett szerverfájl csendben kiszivárogna.
+// A böngészőnek CSAK ezek járnak: /css, /html, /images mappa, és a /js
+// mappából az alább felsorolt kliens fájlok.
+//
+// FONTOS: a vsc mappa gyökerét (és a /js mappát egészben) SOHA nem szabad
+// kiszolgálni. A vsc/js mappában van a szerver forráskódja (main.js, auth.js,
+// ...), a vsc gyökerében pedig a teendok.txt és a tesztek. Régebben egy
+// "express.static(vsc)" sor mindent kiadott, a /js védelme pedig csak az
+// útvonal első szakaszát nézte, ezért a /./js/main.js, a /html/../js/main.js
+// stb. címek kiadták a szerver forráskódját (adatbázis jelszó, session titok).
+//
+// Fehérlistát használunk, nem tiltólistát: ha egy új kliens fájl kimarad
+// innen, az azonnal látszik (404), míg egy tiltólistáról elfelejtett
+// szerverfájl csendben kiszivárogna.
 // ÚJ KLIENS SCRIPT HOZZÁADÁSAKOR ITT IS FEL KELL VENNI!
 const PUBLIC_JS_FILES = new Set([
     "creator.js",
@@ -141,48 +162,54 @@ const PUBLIC_JS_FILES = new Set([
     "admin.js"
 ]);
 
-// Ennek a statikus kiszolgálás ELŐTT kell futnia, különben az
-// express.static már kiadja a fájlt.
+// Második védvonal: minden olyan kérést elutasítunk, amelynek a (dekódolt)
+// útvonalában "." vagy ".." szakasz, visszaper jel vagy NUL karakter van.
+// Ilyen címet a böngésző sosem küld, csak egy támadó (pl. curl --path-as-is).
+// Ennek az összes statikus kiszolgálás ELŐTT kell futnia.
 app.use((req, res, next) => {
 
-    let segments;
+    let decoded;
 
     try {
-        segments = decodeURIComponent(req.path)
-            .split(/[\\/]+/)
-            .filter(Boolean)
-            .map((segment) => segment.toLowerCase());
+        decoded = decodeURIComponent(req.path);
     } catch (error) {
         return res.status(400).end();
     }
 
-    const firstSegment = segments[0] || "";
-
-    if (firstSegment === "node_modules") {
+    if (
+        decoded.includes("\\") ||
+        decoded.includes("\u0000") ||
+        decoded.split("/").some((segment) => segment === "." || segment === "..")
+    ) {
         return res.status(404).end();
-    }
-
-    // /js/<fájl>: csak a fehérlistáról. Mappa, "..", "." vagy ismeretlen
-    // fájlnév (pl. MAIN.JS, main.js., main~1.js) esetén 404.
-    if (firstSegment === "js") {
-
-        if (segments.length !== 2 || !PUBLIC_JS_FILES.has(segments[1])) {
-            return res.status(404).end();
-        }
     }
 
     next();
 });
 
+// /js/<fájl>: pontosan egy szakasz, és csak a fehérlistáról (kis- és
+// nagybetűre is érzékenyen). Minden más 404.
+app.get("/js/:file", (req, res) => {
+
+    const file = req.params.file;
+
+    if (!PUBLIC_JS_FILES.has(file)) {
+        return res.status(404).end();
+    }
+
+    res.sendFile(file, { root: __dirname }, (error) => {
+
+        if (error && !res.headersSent) {
+            res.status(404).end();
+        }
+    });
+});
+
+app.use("/js", (req, res) => res.status(404).end());
+
 app.use("/css", express.static(path.join(__dirname, "../css")));
-app.use("/js", express.static(path.join(__dirname, "../js")));
 app.use("/html", express.static(path.join(__dirname, "../html")));
 app.use("/images", express.static(path.join(__dirname, "../images")));
-
-
-// Serve the project root from the actual vsc folder regardless of
-// the terminal's current working directory.
-app.use(express.static(path.join(__dirname, "..")));
 
 // ============================================================
 // MYSQL CONNECTION
@@ -190,12 +217,8 @@ app.use(express.static(path.join(__dirname, "..")));
 
 console.log("\n📦 Creating MySQL connection...");
 
-const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "zsamo"
-});
+// A hozzáférési adatok a .env fájlból jönnek (lásd env.js), nem a kódból.
+const db = mysql.createConnection(env.dbConfig);
 
 // E-mail megerősítés és elfelejtett jelszó (lásd authflow.js)
 const authflow = require("./authflow").setup({ app, db, sessionStore });
@@ -461,6 +484,16 @@ app.post("/logout", (req, res) => {
 
 
 // ============================================================
+// PRÓBÁLKOZÁS-KORLÁTOK (belépés, regisztráció)
+// ============================================================
+
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_PER_IP = 30;
+const LOGIN_MAX_PER_ACCOUNT = 10;
+const REGISTER_MAX_PER_HOUR = 10;
+
+
+// ============================================================
 // REGISTER
 // ============================================================
 
@@ -484,6 +517,22 @@ app.post("/register", async (req, res) => {
         password_confirm,
         role
     } = req.body;
+
+
+    // --------------------------------------------------------
+    // RATE LIMIT
+    // --------------------------------------------------------
+    //
+    // A jelszó-hash (argon2) szándékosan lassú és sok memóriát használ, ezért
+    // korlát nélkül ez a végpont a szerver lefoglalására is használható lenne.
+    // IP-nként óránként legfeljebb REGISTER_MAX_PER_HOUR regisztráció.
+
+    if (!authflow.allow("register-ip:" + req.ip, REGISTER_MAX_PER_HOUR, 60 * 60 * 1000)) {
+
+        return res.status(429).send(
+            "Túl sok regisztráció erről a címről. Kérlek próbáld újra egy óra múlva."
+        );
+    }
 
 
     // --------------------------------------------------------
@@ -728,6 +777,32 @@ app.post("/login", async (req, res) => {
 
         return res.status(400).send(
             "E-mail és jelszó szükséges."
+        );
+    }
+
+
+    // --------------------------------------------------------
+    // RATE LIMIT (jelszótalálgatás ellen)
+    // --------------------------------------------------------
+    //
+    // Két korlát egyszerre:
+    //  - IP-nként: egy gépről ne lehessen sok fiókot végigpróbálni,
+    //  - fiókonként: több géppel sem lehet egy fiók jelszavát találgatni.
+    // A korlát lejártáig a válasz mindig ugyanaz, akár létezik a fiók, akár nem.
+    // (Mellékhatás: aki ismeri valaki e-mail címét, ideiglenesen kizárhatja őt
+    // a belépésből - ez a kisebbik rossz a korlátlan találgatáshoz képest.)
+
+    const loginKey = String(email).trim().toLowerCase().slice(0, MAX_EMAIL_LENGTH);
+
+    if (
+        !authflow.allow("login-ip:" + req.ip, LOGIN_MAX_PER_IP, LOGIN_WINDOW_MS) ||
+        !authflow.allow("login-account:" + loginKey, LOGIN_MAX_PER_ACCOUNT, LOGIN_WINDOW_MS)
+    ) {
+
+        console.log("⛔ LOGIN RATE LIMITED");
+
+        return res.status(429).send(
+            "Túl sok sikertelen próbálkozás. Kérlek várj 15 percet, mielőtt újra megpróbálod."
         );
     }
 
